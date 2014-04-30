@@ -1,0 +1,4 @@
+tags
+*.pyc
+build/
+tests/

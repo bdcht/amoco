@@ -91,7 +91,7 @@ Quickstart
 Look for various examples in tests/. Below is a very simple example where
 basic blocks are build with linear sweep:
 
-.. pygments:: python
+.. sourcecode:: python
 
  >>> import amoco
  >>> p = amoco.system.loader.load_program('tests/samples/flow.elf')
@@ -106,7 +106,7 @@ we start by using a high level loader which will try to detect its format
 and target platform and provide some feedback info. Here the loader
 creates a ``linux_x86.ELF`` object which shall represent the program task.
 
-.. pygments:: python
+.. sourcecode:: python
 
  >>> p.bin
  <amoco.system.elf.Elf32 object at 0xb721a48c>
@@ -135,7 +135,7 @@ are modeled as abstract expressions of type ``ext``. Note also that fetching
 compound data (symbolic+concrete) is possible. See MemoryZone_ for more details.
 Lets proceed with getting some basic blocks...
 
-.. pygments:: python
+.. sourcecode:: python
 
  >>> z = amoco.lsweep(p)
  >>> ib = z.iterblocks()
@@ -186,7 +186,7 @@ as absolute addresses (indicated by the '*' prefix).
 
 Lets look at the symbolic execution of this block:
 
-.. pygments:: python
+.. sourcecode:: python
 
  >>> b.map
  <amoco.cas.mapper.mapper object at 0x9cba3ec>

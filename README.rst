@@ -220,8 +220,6 @@ Lets look at the symbolic execution of this block:
 When a block is instanciated, a ``mapper`` object is automatically created.
 This function can map any input state to an output state corresponding to the
 interpretation of this block.
-(Note that this is a functional representation so the above order of "equations"
-is of course irrelevant.)
 
 Overview
 ========

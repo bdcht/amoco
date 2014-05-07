@@ -72,7 +72,7 @@ def load_program(file):
 
     elif isinstance(p,pe.PE):
 
-        if pe.pefile.MACHINE_TYPE[p.FILE_HEADER.Machine]=='IMAGE_FILE_MACHINE_I386':
+        if p.NT.Machine==pe.IMAGE_FILE_MACHINE_I386:
             from amoco.system.win32 import PE
             logger.info("win32 program created")
             return PE(p)

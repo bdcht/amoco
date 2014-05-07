@@ -36,7 +36,7 @@ class ELF(CoreExec):
     def initenv(self):
         from amoco.cas.mapper import mapper
         m = mapper()
-        e = self.bin.entrypoint()
+        e = self.bin.entrypoints[0]
         for k,v in ((cpu.pc , cpu.cst(e,32)),
                     (cpu.npc, cpu.cst(e+4,32)),
                     (cpu.sp , cpu.cst(0xc0000000,32)),

@@ -17,8 +17,10 @@ class PE(CoreExec):
     def load_binary(self):
         p = self.bin
         if p!=None:
-            # create text and data segments according to elf header:
-            for s in p.sections:
+            # create text and data segments according to PE headers:
+            base,headers = p.loadsegment(0).popitem()
+            self.mmap.write(base,headers) # load Headers
+            for s in p.sections:          # load other Sections
                 ms = p.loadsegment(s,PAGESIZE)
                 if ms!=None:
                     vaddr,data = ms.popitem()
@@ -37,7 +39,7 @@ class PE(CoreExec):
     def initenv(self):
         from amoco.cas.mapper import mapper
         m = mapper()
-        for k,v in ((cpu.eip, cpu.cst(self.bin.entrypoint(),32)),
+        for k,v in ((cpu.eip, cpu.cst(self.bin.entrypoints[0],32)),
                     (cpu.ebp, cpu.cst(0,32)),
                     (cpu.eax, cpu.cst(0,32)),
                     (cpu.ebx, cpu.cst(0,32)),

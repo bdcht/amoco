@@ -356,6 +356,7 @@ class CoreExec(object):
         if func is not None: return func
 
 
+#------------------------------------------------------------------------------
 from collections import defaultdict
 
 def default_hook(m):
@@ -373,3 +374,89 @@ def stub_default(f):
     stubs.default_factory = lambda :f
     return f
 
+#------------------------------------------------------------------------------
+from cStringIO import StringIO
+
+class DataIO(object):
+
+    def __init__(self, f):
+        if isinstance(f,file):
+            self.f=f
+        elif isinstance(f,str):
+            self.f=StringIO(f)
+        else:
+            raise TypeError
+
+    def __getitem__(self,i):
+        self.f.seek(i.start,0)
+        return self.f.read(i.stop-i.start)
+
+    def read(self,size=0):
+        return self.f.read(size)
+
+    def readline(self,size=0):
+        return self.f.readline(size)
+
+    def readlines(self,size=0):
+        return self.f.readlines(size)
+
+    def xreadlines(self,size=0):
+        return self.f.xreadlines(size)
+
+    def write(self,s):
+        return self.f.write(s)
+
+    def writelines(self,l):
+        return self.f.writelines(l)
+
+    def seek(self,offset,whence=0):
+        return self.f.seek(offset,whence)
+
+    def tell(self):
+        return self.f.tell()
+
+    def flush(self):
+        return self.f.flush()
+
+    def fileno(self):
+        return self.f.fileno()
+
+    def isatty(self):
+        return self.f.isatty()
+
+    def next(self):
+        return self.f.next()
+
+    def truncate(self,size=0):
+        return self.f.truncate(size)
+
+    def close(self):
+        return self.f.close()
+
+    @property
+    def closed(self):
+        return self.f.closed
+
+    @property
+    def encoding(self):
+        return self.f.encoding
+
+    @property
+    def errors(self):
+        return self.f.errors
+
+    @property
+    def mode(self):
+        return self.f.mode
+
+    @property
+    def name(self):
+        return self.f.name
+
+    @property
+    def newlines(self):
+        return self.f.newlines
+
+    @property
+    def softspace(self):
+        return self.f.softspace

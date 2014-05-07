@@ -597,8 +597,9 @@ class Elf32(object):
     functions = None
     variables = None
 
-    def entrypoint(self):
-        return self.Ehdr.e_entry
+    @property
+    def entrypoints(self):
+        return [self.Ehdr.e_entry]
 
     def __init__(self,filename):
         self.__file = file(filename,'rb')
@@ -1116,8 +1117,9 @@ class Elf64(object):
     functions = None
     variables = None
 
-    def entrypoint(self):
-        return self.Ehdr.e_entry
+    @property
+    def entrypoints(self):
+        return [self.Ehdr.e_entry]
 
     def __init__(self,filename):
         self.__file = file(filename,'rb')

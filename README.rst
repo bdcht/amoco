@@ -81,7 +81,6 @@ Amoco depends on the following python packages:
 
 - grandalf_
 - crysp_
-- pefile_ (will be removed in next release)
 - z3_  (not in current release)
 - pygments_ (not in current release)
 

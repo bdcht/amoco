@@ -358,6 +358,10 @@ A simple example is provided by the ``arch/arm/v8`` architecture which provides
 a model of ARM AArch64:
 The interface module is ``arch/arm/cpu_armv8.py``, which imports everything from
 the v8 subpackage.
+
+instruction specifications
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 The ``v8/spec_armv8.py`` module implements all decoding specifications thanks
 to an original decorating mechanism. For example, the EXTR instruction encoding
 is defined like this:
@@ -382,7 +386,7 @@ The ``@spec(...)`` decorator indicates that whenever the decoder buffer is fille
 with 32 bits that matches a given pattern, the decorated function is called with
 first argument being a ``arch.core.instruction`` instance with ``mnemonic`` attribute
 set to EXTR, and other arguments being extracted from corresponding bitfields.
-The function itself is responsible for filling the instruction instance with usefull
+The function itself is responsible for filling the instruction instance with useful
 other attributes like operands, type, etc.
 If you look at page 480 of armv8_, you will likely feel at home...
 
@@ -402,6 +406,26 @@ the CMOVcc instruction(s) specification is:
 
 .. **
 
+instruction semantics
+~~~~~~~~~~~~~~~~~~~~~
+
+The semantics of instructions are defined separately from their decoder specs,
+generally in a ``asm.py`` module. An ``instruction`` instance with mnemonic *XXX*
+will find its semantics definition by looking for a function ``i_XXX(i,fmap): ...``.
+
+For example (in ``arch/x86/asm.py``):
+
+.. sourcecode:: python
+
+ def i_CMOVcc(i,fmap):
+   op1 = i.operands[0]
+   op2 = fmap(i.operands[1])
+   fmap[eip] = fmap[eip]+i.length
+   a = fmap(op1)
+   fmap[op1] = tst(fmap(i.cond[1]),op2,a)
+
+The function takes as input the instruction instance *i* and a ``mapper``
+instance *fmap* (see cas_) and implements (an approximation of) the opcode semantics.
 
 cas
 ---

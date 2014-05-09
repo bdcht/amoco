@@ -82,7 +82,7 @@ Install
 
 Amoco depends on the following python packages:
 
-- grandalf_ used for building CFG
+- grandalf_ used for building CFG (and eventually rendering it)
 - crysp_    used by the generic intruction decoder (``arch/core.py``)
 - z3_       (not in current release)
 - pygments_ (not in current release)
@@ -159,7 +159,7 @@ Lets proceed with getting some basic blocks...
  0x8048395  51                             push        ecx
  0x8048396  56                             push        esi
  0x8048397  68fd840408                     push        #main
- 0x804839c  e8cfffffff                     call        \*0x8048370
+ 0x804839c  e8cfffffff                     call        *0x8048370
  >>> b.instr
  [<amoco.arch.x86.spec_ia32 [0x8048380]  XOR ( length=2 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048382]  POP ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048383]  MOV ( length=2 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048385]  AND ( length=3 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048388]  PUSH ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048389]  PUSH ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x804838a]  PUSH ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x804838b]  PUSH ( length=5 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048390]  PUSH ( length=5 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048395]  PUSH ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048396]  PUSH ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048397]  PUSH ( length=5 type=1 )>, <amoco.arch.x86.spec_ia32 [0x804839c]  CALL ( length=5 type=2 )>]
  >>> i = b.instr[-1]
@@ -185,7 +185,7 @@ We use here the most basic **linear sweep** approach and spawn a basic
 block iterator. The first block is well known. We can see that the default
 x86 pretty printer uses Intel syntax and codehelpers that show PLT refs
 as associated .got ``ext`` expression. Also, relative offsets are displayed
-as absolute addresses (indicated by the '*' prefix).
+as absolute addresses (indicated by the \* prefix).
 
 Lets look at the symbolic execution of this block:
 
@@ -224,15 +224,15 @@ When a block is instanciated, a ``mapper`` object is automatically created.
 This function can map any input state to an output state corresponding to the
 interpretation of this block.
 
+-----
 
 Lets try a (little) more elaborated analysis that will not only allow to
-build a list of basic blocks but also to help discovering the control flow
-graph of the program:
+build a list of basic blocks but will also help us discover (parts of)
+the control flow graph of the program:
 
 .. sourcecode:: python
 
  >>> ff = amoco.fforward(p)
- >>> ff.getcfg()
  >>> ff.policy
  {'depth-first': True, 'branch-lazy': True}
  >>> ff.policy['branch-lazy']=False
@@ -312,7 +312,7 @@ A little more elaborated analysis like **link-forward** would have started analy
  0x804844b  'c744240403000000'     mov         [esp+4],0x3
  0x8048453  '8b45f4'               mov         eax,[ebp-12]
  0x8048456  '890424'               mov         [esp],eax
- 0x8048459  'e825000000'           call        \*#fct_b
+ 0x8048459  'e825000000'           call        *#fct_b
  >>> print G.get_node('0x8048483').data
  # --- block 0x8048483 ---
  0x8048483  '55'         push        ebp
@@ -323,6 +323,8 @@ A little more elaborated analysis like **link-forward** would have started analy
  0x804848e  '5d'         pop         ebp
  0x804848f  'c3'         ret
 
+
+.. **
 
 Overview
 ========
@@ -349,7 +351,8 @@ This module shall:
   + define the ``@spec`` of every instruction for the generic decoder,
   + and define the *semantics* of every instruction with cas_ expressions.
 
-- optionnally define the output assembly format, and the *GNU as* assembly parser.
+- optionnally define the output assembly format, and the *GNU as* (or any other)
+  assembly parser.
 
 A simple example is provided by the ``arch/arm/v8`` architecture which provides
 a model of ARM AArch64:
@@ -381,8 +384,23 @@ first argument being a ``arch.core.instruction`` instance with ``mnemonic`` attr
 set to EXTR, and other arguments being extracted from corresponding bitfields.
 The function itself is responsible for filling the instruction instance with usefull
 other attributes like operands, type, etc.
-If you look at page of armv8_, you will likely feel at home...The same is true
-for x86/spec_ia32.py and the Intel manuals.
+If you look at page 480 of armv8_, you will likely feel at home...
+
+The same is true for ``x86/spec_ia32.py`` and the Intel manuals, for example
+the CMOVcc instruction(s) specification is:
+
+.. sourcecode:: python
+
+ # conditionals:
+ @ispec_ia32("*>[ {0f} cc(4) 0010 /r ]", mnemonic = "CMOVcc") # 0f 4x /r
+ def ia32_CMOVcc(obj,cc,Mod,RM,REG,data):
+     obj.cond = CONDITION_CODES[cc]
+     op2,data = getModRM(obj,Mod,RM,data)
+     op1 = env.getreg(REG,op2.size)
+     obj.operands = [op1, op2]
+     obj.type = type_data_processing
+
+.. **
 
 
 cas
@@ -413,7 +431,7 @@ Currently, only 3 simple techniques are released:
 
 - "link forward" (lforward) inherits from 'fforward' but uses a strict
   follow branch policy to avoid linear sweep and evaluates the program counter
-  by taking into account the "parent" block semantics.
+  by taking into account the parent block semantics.
 
 
 code.py

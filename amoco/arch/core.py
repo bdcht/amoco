@@ -226,7 +226,10 @@ class disassembler(object):
 #                     If the FORMAT LEN is also variable then all remaining bits from the
 #                     instruction buffer input string are used.
 #      if ommitted, default location is '(1)'.
-# 
+#
+# The special directive {byte} is a shortcut for 8 fixed bits. For example
+# 8>[{2f}] is equivalent to 8>[ 1111 0100 ], or 8<[ 0010 1111 ].
+#
 # Example:
 #
 # @ispec(32[ .cond(4) 101 1 imm24(24) ]", mnemonic="BL", _flag=True) 

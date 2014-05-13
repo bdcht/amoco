@@ -382,7 +382,7 @@ is defined like this:
      obj.type = type_data_processing
 
 
-The ``@spec(...)`` decorator indicates that whenever the decoder buffer is filled
+The ``@ispec(...)`` decorator indicates that whenever the decoder buffer is filled
 with 32 bits that matches a given pattern, the decorated function is called with
 first argument being a ``arch.core.instruction`` instance with ``mnemonic`` attribute
 set to EXTR, and other arguments being extracted from corresponding bitfields.
@@ -406,6 +406,22 @@ the CMOVcc instruction(s) specification is:
 
 .. **
 
+A detailed description of the ispec decorator class pattern format is provided in
+``arch/core.py``. Since implementing these specifications from CPUs docs
+is always error-prone, Amoco will check several things for you:
+
+- the size of the ispec format (the "pattern" to match) is consistent with its declared length (if not \*).
+- the prototype of the decorated function match the identifiers in the ispec format (count and names must match).
+- the ispec format is unique: the fixed part of the pattern does not exist in any other ispec instance.
+
+Internally, the decoder will collect all ispec instances declared within the module.
+The ``core.disassembler`` setup will later organize the list in a tree based on fixed patterns of each ispec.
+Note that identifying *holes* of the architecture's encoding scheme becomes relatively simple once this tree
+is built.
+Architectures with multiple (disjoint) instructions sets (think armv7/thumb) is supported by instanciating
+the core disassembler with respective specs modules and with the function that decides how to switch
+from one set to the other.
+
 instruction semantics
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -427,6 +443,60 @@ For example (in ``arch/x86/asm.py``):
 The function takes as input the instruction instance *i* and a ``mapper``
 instance *fmap* (see cas_) and implements (an approximation of) the opcode semantics.
 
+instruction formats
+~~~~~~~~~~~~~~~~~~~
+
+How an instruction object is printed is also defined separately to allow various
+outputs. A ``Formatter`` instance can be associated to the core instruction class
+to handle "pretty printing", including aliases of instructions.
+
+Basically, a ``Formatter`` object is created from a dict associating a key with a list
+of functions or format string. The key is either one of the mnemonics or possibly
+the name of a ispec-decorated function (this allows to group formatting styles
+rather than having to declare formats for every possible mnemonic.)
+When the instruction is printed, the formatting list elements are "called" and
+concatenated to produce the output string.
+
+An example follows from ``arch/x86/formats.py``:
+
+.. sourcecode:: python
+
+ def mnemo(i):
+    mnemo = i.mnemonic.replace('cc','')
+    if hasattr(i,'cond'): mnemo += i.cond[0].split('/')[0]
+    return '{: <12}'.format(mnemo.lower())
+
+ def opsize(i):
+     s = [op.size for op in i.operands if op._is_mem]
+     if len(s)==0: return ''
+     m = max(s)
+     return {8:'byte ptr ',16:'word ptr ',32:''}[m]
+
+ ...
+ format_intel_ptr = (mnemo,opsize,opers)
+ ...
+ IA32_Intel_formats = {
+     ....
+     'ia32_mov_adr' : format_intel_ptr,
+     'ia32_ptr_ib'  : format_intel_ptr,
+     ...
+ }
+
+The formatter is also used to take care of aliasing instructions like for example
+in the arm architectures where the *ANDS* instruction is replaced by *TST* when
+the destination register is X0/W0 :
+
+.. sourcecode:: python
+
+ def alias_AND(i):
+    m = mnemo(i)
+    r = regs(i)
+    if i.setflags and i.d==0:
+        m = 'tst'
+        r.pop(0)
+    return m.ljust(12) + ', '.join(r)
+
+ 
 cas
 ---
 

@@ -166,7 +166,7 @@ Lets proceed with getting some basic blocks...
  >>> i
  <amoco.arch.x86.spec_ia32 [0x804839c]  CALL ( length=5 type=2 )>
  >>> print i
- 0x804839c  e8cfffffff                     call        \*0x8048370
+ 0x804839c  e8cfffffff                     call        *0x8048370
  >>> i.mnemonic
  'CALL'
  >>> i.bytes

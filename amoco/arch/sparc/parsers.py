@@ -89,8 +89,8 @@ class sparc_syntax:
     def action_instr(toks):
         print toks
         i = instruction('')
-        i.mnemonic = toks.pop(0)
-        if len(toks)>0: i.operands = toks[0][0:]
+        i.mnemonic = toks[0]
+        if len(toks)>1: i.operands = toks[1][0:]
         return asmhelper(i)
 
     # actions:

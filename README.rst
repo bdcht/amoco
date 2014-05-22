@@ -80,12 +80,14 @@ Contributions to fulfill uncomplete/unimplemented parts are welcome.
 Install
 =======
 
-Amoco depends on the following python packages:
+Amoco is tested on python 2.7 and depends on the following python packages:
 
 - grandalf_ used for building CFG (and eventually rendering it)
 - crysp_    used by the generic intruction decoder (``arch/core.py``)
 - z3_       (not in current release)
 - pygments_ (not in current release)
+- pyparsing_ for parsing instruction decoder formats
+- ply_ (optional), for parsing *GNU as* files
 
 
 Quickstart
@@ -500,30 +502,214 @@ the destination register is X0/W0 :
 cas
 ---
 
+The *computer algebra system* of Amoco is built with the following elements implemented
+in ``cas/expressions.py``:
+
+- Constant ``cst``, which represents immediate (signed or unsigned) value of fixed size (bitvector),
+- Symbol ``sym``, a Constant equipped with a reference string (non-external symbol),
+- Register ``reg``, a fixed size CPU register **location**,
+- External ``ext``, a reference to an external location (external symbol),
+- Composite ``comp``, a bitvector composed of several elements,
+- Pointer ``ptr``, a memory **location** in a segment, with possible displacement,
+- Memory ``mem``, a Pointer to represent a value of fixed size in memory,
+- Slice ``slc``, a bitvector slice of any element,
+- Test ``tst``, a conditional expression, (see Tests_ below.)
+- Operator ``op``, an operation on (1 or 2) elements. The list of supported operations is
+  not fixed althrough several predefined operators allow to build expressions directly from
+  Python expressions: say, you don't need to write ``op('+',x,y)``, but can write ``x+y``.
+  Supported operators are:
+
+  + ``+``, ``-``, ``*`` (multiply low), ``**`` (multiply extended), ``/``
+  + ``&``, ``|``, ``^``, ``~``
+  + ``==``, ``!=``, ``<=``, ``>=``, ``<``, ``>``
+  + ``>>``, ``<<``, ``//`` (arithmetic shift right), ``>>>`` and ``<<<`` (rotations).
+
+  See Operators_ for more details.
+
+All elements inherit from the ``exp`` class which defines all default methods/properties.
+Common attributes and methods for all elements are:
+
+- ``size``,  a Python integer representing the size in bits,
+- ``sf``,    the True/False *sign-flag*.
+- ``length`` (size/8)
+- ``mask``   (1<<size)-1
+- extend methods (``signextend``, ``zeroextend``)
+
+All manipulation of an expression object usually result in a new expression object except for
+``simplify()`` which performs in-place elementary simplifications.
+
+Constants
+~~~~~~~~~
+
+Some examples of ``cst`` and ``sym`` expressions follow:
+
+.. sourcecode:: python
+
+ >>> from amoco.cas.expressions import *
+ >>> c = cst(253,8)
+ >>> print c
+ 0xfd
+ >>> c.sf
+ False
+ >>> c.sf=True
+ >>> print c
+ -0x3
+ >>> print c.value, type(c.value)
+ -3 <type 'int'>
+ >>> print c.v, c.mask, c.size
+ 253 255 8
+ >>> c.zeroextend(16)
+ <amoco.cas.expressions.cst object at 0xb728df4c>
+ >>> c2 = _
+ >>> print c2.sf, c2
+ False 0xfd
+ >>> e = c2+c.signextend(16)+5
+ >>> print e
+ 0xff
+ >>> c3 = e[0:8]
+ >>> print c3==cst(-1,8)
+ 0x0
+ >>> c3.sf=True
+ >>> print c3==cst(-1,8)
+ 0x1
+
+Here, after declaring an 8-bit constant with value 253, we can see that by default the
+associated ``cst`` object is unsigned. The internal storage is always the unsigned
+representation of the value. If we set its ``sf`` *sign-flag* attribute to True,
+the ``value`` property will return a signed Python integer.
+If the constant is inited from a negative integer, the resulting object's *sign-flag* is set to True.
+If a constant is *signextended* its *sign-flag* is set automatically, unset if *zeroextended*.
+Basically, during interpretation, the flag is set or unset depending on how the expression is
+used by the instructions. Logical operators tend to unset it, explicit sign-relevant instructions
+need to set it.
+
+The ``cst`` class is special because it is the only class that can be used as a
+Python boolean type:
+
+.. sourcecode:: python
+
+ >>> e==0xff
+ <amoco.cas.expressions.cst object at 0x9efd7ac>
+ >>> t=_
+ >>> print t
+ 0x1
+ >>> if t==True: print 'OK'
+ ... 
+ OK
+ >>> t.size
+ 1
+
+In above examples, the ``==`` Python operator is used. The return value is not a Python
+True/False value but as expected a new expression object. Since the operation here involves
+only constants, the result need not be an ``op`` element but can be readily simplified to
+a 1-bit constant with value 0 or 1.
+In Amoco, the **only** expression that evaluates to True is ``cst(1,1)``.
+
+Expressions of type ``sym`` are constants equipped with a symbol string for printing purpose only:
+
+.. sourcecode:: python
+
+ >>> s = sym('Hubble',42,8)
+ >>> print s
+ #Hubble
+ >>> s.value
+ 42
+ >>> print s+1
+ 0x2b
+
+(Note that as seen above, usage of a ``sym`` object in another expression will obviously
+forget the symbol string in the resulting expression.)
+
+Registers
+~~~~~~~~~
+
+Expressions of class ``reg`` are pure symbolic values.
+They are essentially used for representing the registers of a CPU, as "right-values"
+or left-values (locations). More details on *locations* in mapper_.
+
+.. sourcecode:: python
+
+ >>> r1 = reg('%r1',32)
+ >>> print r1
+ %r1
+ >>> e = 2+r1
+ >>> print e
+ (0x2+%r1)
+ >>> x = e-2
+ >>> print x
+ (0x0+%r1)
+ >>> x.simplify()
+ <amoco.cas.expressions.reg object at 0xb7250f6c>
+ >>> print _
+ %r1
+
+As shown above, elementary simplification rules are applied such that ``(2+r1)-2``
+leads to an ``op`` expression with operator ``+``, left member 0 and right member ``r1``,
+which eventually also simplifies further to the r1 register.
+Most real simplification rules should rely on SMT solvers like z3_ [TBC].
+
+Externals
+~~~~~~~~~
+
+Class ``ext`` inherit from registers as pure symbolic values
+but is used to represent external symbols that are equipped with a ``stub`` function.
+When "called", these objects invoke their stub function.
+(More details on ``@stub`` decorated functions are provided in system_.)
+
+Pointers and Memory objects
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A ``ptr`` object is a memory **location**. These objects are generally not found
+in expressions but only as mapper locations or addresses in ``mem`` objects.
+These objects have a ``base`` expression, and optional ``disp`` and ``seg`` fields
+to be used by MemoryZone_ objects.
+
+A ``mem`` object is a symbolic memory value equipped with a pointer and a size.
+There is no direct relation between such expression and a MemoryZone_ state. It is
+up to analysis methods to eventually update states according to such expressions.
+
+Operators
+~~~~~~~~~
+
+Most operations in Amoco involve left and right members sub-expressions. The operation
+will then usually proceed only if both member have the same size. If one member is not
+an expression but a Python integer, it will be implicitly "casted" to a constant of size
+required by the other expression member. Thus, it is possible to write ``r1+2`` and not
+``r1+cst(2,32)``.
+
+Composer and Slicer
+~~~~~~~~~~~~~~~~~~~
+
+Conditionals
+~~~~~~~~~~~~
+
+mapper
+~~~~~~
+
 main.py
 -------
 
-This module contains ``high-level`` analysis techniques implemented as classes that
+This module contains *high-level* analysis techniques implemented as classes that
 take a program abstraction provided by the system_ package.
 Currently, only 3 simple techniques are released:
 
-- "linear-sweep" (lsweep class) disassembles instructions without taking
+- *linear-sweep* (``lsweep`` class) disassembles instructions without taking
   into account any branching instruction.
 
-  Methods exposed by the lsweep class are:
+  Methods exposed by the ``lsweep`` class are:
 
-  * sequence(loc=None): returns an iterator that will yield disassembled
-    instructions starting at virtual address 'loc' (defaults to entrypoint).
-  * iterblocks(loc=None): which returns an iterator that will yield (basic) block_
-    of instructions starting at virtual address 'loc'.
+  * ``sequence(loc=None)``: returns an iterator that will yield disassembled
+    instructions starting at virtual address *loc* (defaults to entrypoint).
+  * ``iterblocks(loc=None)``: which returns an iterator that will yield (basic) block_
+    of instructions starting at virtual address *loc*.
 
-- "fast forward" (fforward) inherits from 'lsweep' and adds an algorithm that
+- *fast forward* (``fforward``) inherits from ``lsweep`` and adds an algorithm that
   tries to build the control-flow graph of the program by following branching
   instructions when the program counter is composed essentially of constant
   expressions when evaluated within block scope only.
   The default policy is to fallback to linear sweep otherwise.
 
-- "link forward" (lforward) inherits from 'fforward' but uses a strict
+- *link forward* (``lforward``) inherits from ``fforward`` but uses a strict
   follow branch policy to avoid linear sweep and evaluates the program counter
   by taking into account the parent block semantics.
 
@@ -540,9 +726,17 @@ system
 MemoryZone
 ~~~~~~~~~~
 
+CoreExec
+~~~~~~~~
+
+stubs
+~~~~~
+
 .. _grandalf: https://github.com/bdcht/grandalf
 .. _crysp: https://github.com/bdcht/crysp
 .. _minisat: http://minisat.se/
 .. _z3: http://z3.codeplex.com/
 .. _pygments: http://pygments.org/
 .. _armv8: http://www.cs.utexas.edu/~peterson/arm/DDI0487A_a_armv8_arm_errata.pdf
+.. _pyparsing: http://pyparsing.wikispaces.com/
+.. _ply: http://www.dabeaz.com/ply/

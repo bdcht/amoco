@@ -968,9 +968,9 @@ def eqn_helpers(e):
             if xop:
                 if e.l.l._is_cst:
                     cc = e.op(e.l.l,e.r)
-                    e.l = cc
                     e.r = e.l.r
                     e.op = e.l.op
+                    e.l = cc
                 elif e.l.r._is_cst:
                     cc = OP_ARITH[xop](e.l.r,e.r)
                     e.op = e.l.op

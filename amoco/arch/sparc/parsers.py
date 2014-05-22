@@ -67,10 +67,11 @@ class sparc_syntax:
 
     def action_hilo(toks):
         v = toks[1]
-        return env.hi(v) if toks[0]=='hi' else env.lo(v).zeroextend(32)
+        return env.hi(v) if toks[0]=='%hi' else env.lo(v).zeroextend(32)
 
     def action_exp(toks):
         tok = toks[0]
+        if isinstance(tok,env.exp): return tok
         if len(tok)==2:
             op=tok[0]
             r=tok[1]
@@ -87,7 +88,6 @@ class sparc_syntax:
             return tok
 
     def action_instr(toks):
-        print toks
         i = instruction('')
         i.mnemonic = toks[0]
         if len(toks)>1: i.operands = toks[1][0:]

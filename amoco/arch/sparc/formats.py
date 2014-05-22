@@ -138,7 +138,7 @@ SPARC_V8_full_formats = {
     'sparc_ld_'         : format_ld,
     'sparc_ldf_ldc'     : format_ld,
     'sparc_st_'         : format_st,
-    'sparc_std_stc'     : format_st,
+    'sparc_stf_stc'     : format_st,
     'sparc_logic_'      : format_logic,
     'sethi'             : format_sethi,
     'nop'               : format_mn,

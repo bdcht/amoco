@@ -162,7 +162,7 @@ def sparc_tagged_(obj,rd,rs1,i,rs2,simm13):
 def sparc_jmpl(obj,rd,rs1,i,rs2,simm13):
     src1 = env.r[rs1]
     src2 = env.r[rs2] if i==0 else env.cst(simm13,13).signextend(32)
-    adr  = env.ptr(src1+src2)
+    adr  = src1+src2
     dst  = env.r[rd]
     obj.operands = [adr,dst]
     obj.misc['delayed'] = True
@@ -172,7 +172,7 @@ def sparc_jmpl(obj,rd,rs1,i,rs2,simm13):
 def sparc_rett(obj,rd,rs1,i,rs2,simm13):
     src1 = env.r[rs1]
     src2 = env.r[rs2] if i==0 else env.cst(simm13,13).signextend(32)
-    adr  = env.ptr(src1+src2)
+    adr  = src1+src2
     obj.operands = [adr]
     obj.type = type_control_flow
 
@@ -215,7 +215,7 @@ def sparc_wr_(obj,rd,rs1,i,rs2,simm13,_dst):
 def sparc_flush(obj,rs1,i,rs2,simm13):
     src1 = env.r[rs1]
     src2 = env.r[rs2] if i==0 else env.cst(simm13,13).signextend(32)
-    obj.operands = [env.ptr(src1+src2)]
+    obj.operands = [(src1+src2)]
     obj.type = type_cpu_state
 
 # format 2

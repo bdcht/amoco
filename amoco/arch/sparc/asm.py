@@ -518,7 +518,7 @@ def i_call(ins,fmap):
 def i_jmpl(ins,fmap):
     op1, op2 = ins.operands
     fmap[op2] = fmap[pc]
-    fmap[pc] = fmap(mem(op1,32))
+    fmap[pc] = fmap(op1)
 
 @__pcnpc
 def i_rett(ins,fmap):raise NotImplementedError

@@ -22,8 +22,8 @@ class sparc_syntax:
 
     comment = pp.Regex(r'\#.*')
     symbol  = pp.Regex(r'[A-Za-z_.$][A-Za-z0-9_.$]*').setParseAction(lambda r: env.ext(r[0]))
-    mnemo   = pp.LineStart() + symbol
-    mnemo.setParseAction(lambda r: r[0].ref.lower())
+    mnemo   = pp.LineStart() + symbol + pp.Optional(pp.Literal(',a'))
+    mnemo.setParseAction(lambda r: r[0].ref.lower()+''.join(r[1:]))
     integer = pp.Regex(r'[1-9][0-9]*').setParseAction(lambda r: int(r[0],10))
     hexa    = pp.Regex(r'0[xX][0-9a-fA-F]+').setParseAction(lambda r: int(r[0],16))
     octa    = pp.Regex(r'0[0-7]*').setParseAction(lambda r: int(r[0],8))

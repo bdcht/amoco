@@ -24,11 +24,13 @@ ISPECS = []
 @ispec_ia32("*>[ {0f}{5f} /r ]", mnemonic="MAX")
 @ispec_ia32("*>[ {0f}{c2} /r ]", mnemonic="CMP")
 def ia32_sse2(obj,Mod,REG,RM,data):
-    obj.mnemonic += "PS"
-    # order is important here (see tests/test_x86.asm)
-    if obj.misc['opdsz']==16: obj.mnemonic+="PD"       #66 pfx
-    if obj.misc['pfx'][0]=='repne': obj.mnemonic+="SD" #f2 pfx
-    if obj.misc['pfx'][0]=='rep': obj.mnemonic+="SS"   #f3 pfx
+    if obj.misc['pfx'] is not None:
+        # order is important here (see tests/test_x86.asm)
+        if   obj.misc['pfx'][0]=='repne': obj.mnemonic+="SD" #f2 pfx
+        elif obj.misc['pfx'][0]=='rep': obj.mnemonic+="SS"   #f3 pfx
+        elif obj.misc['opdsz']==16: obj.mnemonic+="PD"       #66 pfx
+    else:
+        obj.mnemonic += "PS"
     obj.misc['opdsz']=128
     op2,data = getModRM(obj,Mod,RM,data)
     op1 = env.getreg(REG,op2.size)

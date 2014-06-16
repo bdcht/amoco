@@ -57,6 +57,7 @@ class exp(object):
     _is_cst   = False
     _is_reg   = False
     _is_cmp   = False
+    _is_slc   = False
     _is_mem   = False
     _is_ext   = False
     _is_ptr   = False
@@ -83,6 +84,9 @@ class exp(object):
 
     def simplify(self):
         return self
+
+    def depth(self):
+        return 1.
 
     def addr(self,env):
         raise TypeError('exp has no address')
@@ -216,6 +220,9 @@ class exp(object):
 
 class top(exp):
     _is_def   = 0
+
+    def depth(self):
+        return float('inf')
 
 #------------------------------------------------------------------------------
 # cst holds numeric immediate values (up to size 32 bits.)
@@ -671,8 +678,7 @@ class ptr(exp):
 
     def eval(self,env):
         a = self.base.eval(env)
-        if a._is_cst: return a+self.disp
-        else: return ptr(a,self.seg,self.disp)
+        return ptr(a,self.seg,self.disp)
 
 
 #------------------------------------------------------------------------------
@@ -691,6 +697,7 @@ def slicer(x,pos,size):
 class slc(exp):
     __slots__ = ['x','pos','ref']
     _is_def   = True
+    _is_slc   = True
 
     def __init__(self,x,pos,size,ref=None):
         if not isinstance(pos,(int,long)): raise TypeError,pos
@@ -815,6 +822,10 @@ class op(exp):
             self.sf |= r.sf
             if self.r._is_eqn : self.prop |= self.r.prop
 
+    @classmethod
+    def limit(cls,v):
+        cls.threshold = v
+
     def eval(self,env):
         # single-operand :
         l = self.l.eval(env)
@@ -838,6 +849,11 @@ class op(exp):
             self.r = self.r.simplify()
             return eqn_helpers(self)
         return self
+
+    def depth(self):
+        if self.r is not None: d = self.r.depth()
+        else: d = 0.
+        return self.l.depth()+d
 
 ##
 
@@ -910,6 +926,8 @@ class _operator(object):
 # basic simplifier:
 #------------------
 
+op.limit(30)
+
 def symbols_of(e):
    if e is None: return []
    if e._is_cst: return []
@@ -922,11 +940,14 @@ def symbols_of(e):
    return sum(map(symbols_of,e.parts.itervalues()),[])
 
 def complexity(e):
-   c=0.
-   return c
+   return e.depth()+len(symbols_of(e))
 
 def eqn_helpers(e):
     if e.r is None: return e
+    if hasattr(e,'threshold'):
+        if e.l.depth()>e.threshold: e.l = top(e.l.size)
+        if e.r.depth()>e.threshold: e.r = top(e.r.size)
+    if False in (e.l._is_def, e.r._is_def): return top(e.size)
     if e.l._is_cst and e.r._is_cst:
         return e.op(e.l,e.r)
     if e.l is e.r:

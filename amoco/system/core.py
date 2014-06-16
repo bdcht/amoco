@@ -130,7 +130,7 @@ class mo(object):
             return self.data.getpart(vaddr-self.vaddr,l)
         else:
             logger.warning('%s read out of bound (vaddr=%08x, l=%d)',repr(self),vaddr,l)
-            return (None,0)
+            return (None,l)
 
     # update current obj resulting from writing datadiv at vaddr, returning the
     # list of possibly additional objs to insert in the map

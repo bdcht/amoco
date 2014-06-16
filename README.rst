@@ -69,7 +69,6 @@ More precisely:
 - x86 fpu and sse decoder specs (``arch/x86/spec_{fpu,sse2}.pỳ``) are not implemented,
 - arm v7 semantics (``arch/arm/v7/asm.py``) is currently not merged,
 - arm SIMD, VFP, NEON, TrustZone, Jazelle instruction sets are not implemented,
-- z80 arch is currently not merged,
 - pretty printers based on pygments package are not merged,
 - interface to z3 solver (and associated analysis) is currently not merged,
 - backward and solver-based disassembling strategies are not merged yet.
@@ -332,7 +331,7 @@ Overview
 ========
 
 Amoco is composed of 3 packages arch_, cas_ and system_, on top of which the
-classes implemented in ``code.py, cfg.py`` and ``main.py`` provide high-level
+classes implemented in ``code.py``, ``cfg.py`` and ``main.py`` provide high-level
 abstractions of basic blocks, functions, control flow graphs and
 disassembling/analysis techniques.
 
@@ -350,7 +349,7 @@ This module shall:
 - provide the CPU *environment* (registers and other internals)
 - provide an instance of ``core.disassembler`` class, which requires to:
 
-  + define the ``@spec`` of every instruction for the generic decoder,
+  + define the ``@ispec`` of every instruction for the generic decoder,
   + and define the *semantics* of every instruction with cas_ expressions.
 
 - optionnally define the output assembly format, and the *GNU as* (or any other)

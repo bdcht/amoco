@@ -198,10 +198,10 @@ def sparc_rd_(obj,rd,rs1,_src):
     obj.operands = [_src,dst]
     obj.type = type_other
 
-@ispec("32[ 10 rd(5) 101000 rs1(5) i -------- rs2(5) =simm13(13) ]", mnemonic="wt", _dst=env.y)
-@ispec("32[ 10 rd(5) 101001 rs1(5) i -------- rs2(5) =simm13(13) ]", mnemonic="wt", _dst=env.psr)
-@ispec("32[ 10 rd(5) 101010 rs1(5) i -------- rs2(5) =simm13(13) ]", mnemonic="wt", _dst=env.wim)
-@ispec("32[ 10 rd(5) 101011 rs1(5) i -------- rs2(5) =simm13(13) ]", mnemonic="wt", _dst=env.tbr)
+@ispec("32[ 10 rd(5) 101000 rs1(5) i -------- rs2(5) =simm13(13) ]", mnemonic="wr", _dst=env.y)
+@ispec("32[ 10 rd(5) 101001 rs1(5) i -------- rs2(5) =simm13(13) ]", mnemonic="wr", _dst=env.psr)
+@ispec("32[ 10 rd(5) 101010 rs1(5) i -------- rs2(5) =simm13(13) ]", mnemonic="wr", _dst=env.wim)
+@ispec("32[ 10 rd(5) 101011 rs1(5) i -------- rs2(5) =simm13(13) ]", mnemonic="wr", _dst=env.tbr)
 def sparc_wr_(obj,rd,rs1,i,rs2,simm13,_dst):
     if _dst==env.y:
         if rs1!=0:

@@ -270,6 +270,7 @@ def i_sra(ins,fmap):
     if dst is not g0:
         fmap[dst] = fmap(src1>>src2)
 
+@__pcnpc
 def i_add(ins,fmap):
     src1,src2,dst = ins.operands
     _s1 = fmap(src1)
@@ -517,7 +518,8 @@ def i_call(ins,fmap):
 @__pcnpc
 def i_jmpl(ins,fmap):
     op1, op2 = ins.operands
-    fmap[op2] = fmap[pc]
+    if op2 is not g0:
+        fmap[op2] = fmap[pc]
     fmap[pc] = fmap(op1)
 
 @__pcnpc

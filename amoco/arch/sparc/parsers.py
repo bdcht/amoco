@@ -49,7 +49,7 @@ class sparc_syntax:
                  (op_bit,2,pp.opAssoc.LEFT),
                 ]
     reg = pp.Suppress('%')+pp.NotAny(pp.oneOf('hi lo'))+symbol
-    hilo = pp.oneOf('%hi %lo')+pp.Suppress('(')+symbol+pp.Suppress(')')
+    hilo = pp.oneOf('%hi %lo')+pp.Suppress('(')+exp+pp.Suppress(')')
     exp << pp.operatorPrecedence(term|reg|hilo,operators)
 
     adr = pp.Suppress('[')+exp+pp.Suppress(']')

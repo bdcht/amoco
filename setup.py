@@ -11,6 +11,7 @@ setup(
               'amoco/arch/arm/v7',
               'amoco/arch/arm/v8',
               'amoco/arch/sparc',
+              'amoco/arch/z80',
              ],
     # Metadata
     author = 'Axel Tillequin',

@@ -141,7 +141,7 @@ def ia32_ib8(obj,ib):
 
 @ispec_ia32("16>[ {e3} cb(8) ]", mnemonic = "JECXZ", type=type_control_flow)
 def ia32_cb8(obj,cb):
-    if obj.misc['opdsz']==16: obj.mnemonic = "JCXZ"
+    if obj.misc['adrsz']==16: obj.mnemonic = "JCXZ"
     obj.operands = [env.cst(cb,8)]
 
 # imm16:

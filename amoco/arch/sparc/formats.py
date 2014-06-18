@@ -194,13 +194,13 @@ def SPARC_V8_synthetic(null,i):
         if i.operands[0]==i.operands[2]:
             return s.rpartition(',')[0]
         return s
-    if i.mnemonic=='add' and i.operands[0]==i.operands[2]:
+    if i.mnemonic=='add' and i.operands[0]==i.operands[2] and i.operands[1]._is_cst:
         m = 'inccc' if i.misc['icc'] else 'inc'
         if i.operands[1]==1:
             return '{} %{}'.format(m,i.operands[0])
         else:
             return '{} {}, %{}'.format(m,i.operands[1],i.operands[0])
-    if i.mnemonic=='sub' and i.operands[0]==i.operands[2]:
+    if i.mnemonic=='sub' and i.operands[0]==i.operands[2] and i.operands[1]._is_cst:
         m = 'deccc' if i.misc['icc'] else 'dec'
         if i.operands[1]==1:
             return '{} %{}'.format(m,i.operands[0])

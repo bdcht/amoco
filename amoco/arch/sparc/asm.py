@@ -68,7 +68,7 @@ def i_ldd(ins,fmap):
     v = fmap(mem(src,64))
     if dst is not g0:
         fmap[dst] = v[32:64]
-    fmap[env.r[ins.rd|1]] = v[0:32]
+    fmap[r[ins.rd|1]] = v[0:32]
 
 def i_ldsba(ins,fmap):
     i_ldsb(ins,fmap)
@@ -118,7 +118,7 @@ def i_std(ins,fmap):
     src,dst = ins.operands
     rr = comp(64)
     rr[32:64] = src
-    rr[0:32] = env.r[ins.rd|1]
+    rr[0:32] = r[ins.rd|1]
     if dst.base is not g0:
         fmap[mem(dst,64)] = fmap(rr)
 

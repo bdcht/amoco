@@ -417,15 +417,19 @@ def i_udiv(ins,fmap):
     _xs1 = comp(64)
     _xs1[0:32] = src1
     _xs1[32:64] = y
-    _xs1.sf = src2.sf = False
-    _r = fmap(_xs1/src2)
-    fmap[y] = _r[32:64]
+    _xs2 = src2.zeroextend(64)
+    _xs1.sf = _xs2.sf = False
+    _r = fmap(_xs1/_xs2)
+    _v = cst(0xffffffff,32)
+    _dst = tst(_r>_v, _v, _r[0:32])
+    #fmap[y] = _r[32:64]
+    fmap[y] = top(32)
     if dst is not g0:
-        fmap[dst] = _r[0:32]
+        fmap[dst] = _dst
     if ins.misc['icc']:
-        fmap[nf] = _r[31:32]
-        fmap[zf] = _r==0
-        fmap[vf] = bit0
+        fmap[nf] = _dst[31:32]
+        fmap[zf] = _dst==0
+        fmap[vf] = (_r>_v)
         fmap[cf] = bit0
 
 @__pcnpc
@@ -434,15 +438,19 @@ def i_sdiv(ins,fmap):
     _xs1 = comp(64)
     _xs1[0:32] = src1
     _xs1[32:64] = y
-    _xs1.sf = src2.sf = True
-    _r = fmap(_xs1/src2)
-    fmap[y] = _r[32:64]
+    _xs2 = src2.zeroextend(64)
+    _xs1.sf = _xs2.sf = True
+    _r = fmap(_xs1/_xs2)
+    _v = cst(0x7fffffff,32)
+    _dst = tst(_r>_v, _v, _r[0:32])
+    #fmap[y] = _r[32:64]
+    fmap[y] = top(32)
     if dst is not g0:
-        fmap[dst] = _r[0:32]
+        fmap[dst] = _dst
     if ins.misc['icc']:
-        fmap[nf] = _r[31:32]
-        fmap[zf] = _r==0
-        fmap[vf] = bit0
+        fmap[nf] = _dst[31:32]
+        fmap[zf] = _dst==0
+        fmap[vf] = (_r>_v)
         fmap[cf] = bit0
 
 @__pcnpc

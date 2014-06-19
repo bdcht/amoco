@@ -6,6 +6,8 @@ def regs(i):
     return ['%{0}'.format(r) for r in i.operands]
 
 def address(a):
+    if not (a._is_mem or a._is_ptr):
+        a = ptr(a)
     if not a.base._is_eqn:
         return '%'+str(a.base)
     l = '%'+str(a.base.l)
@@ -126,8 +128,8 @@ format_sethi  = [mnemo, lambda i: '%hi({0})'.format(i.operands[0]), ', %{i.opera
 format_arith  = [mnemo_icc, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'%d'), ', %{i.operands[2]}']
 format_xb     = [mnemo_cond, label]
 format_call   = [mnemo, label]
-format_jmpl   = [mnemo, '{i.operands[0]}, %{i.operands[1]}']
-format_addr   = [mnemo, '{i.operands[0]}']
+format_jmpl   = [mnemo, lambda i: address(i.operands[0]), ', %{i.operands[1]}']
+format_addr   = [mnemo, lambda i: address(i.operands[0])]
 format_t      = [lambda i: CONDT[i.cond]+' ', label]
 format_rd     = format_regs
 format_wr     = [mnemo, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'0x%x'), ', %{i.operands[2]}']

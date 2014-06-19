@@ -38,8 +38,8 @@ def reg_or_imm(x,t='%d'):
 def label(i):
     _pc = i.address
     if _pc is None: _pc=pc
-    offset = i.operands[0]*4
-    return str(_pc+offset)
+    offset = i.operands[0].signextend(32)
+    return str(_pc+(offset*4))
 
 CONDB = {
   0b1000: 'ba',
@@ -126,8 +126,8 @@ format_sethi  = [mnemo, lambda i: '%hi({0})'.format(i.operands[0]), ', %{i.opera
 format_arith  = [mnemo_icc, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'%d'), ', %{i.operands[2]}']
 format_xb     = [mnemo_cond, label]
 format_call   = [mnemo, label]
-format_jmpl   = [mnemo, lambda i: address(i.operands[0]), ', %{i.operands[1]}']
-format_addr   = [mnemo, lambda i: address(i.operands[0])]
+format_jmpl   = [mnemo, '{i.operands[0]}, %{i.operands[1]}']
+format_addr   = [mnemo, '{i.operands[0]}']
 format_t      = [lambda i: CONDT[i.cond]+' ', label]
 format_rd     = format_regs
 format_wr     = [mnemo, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'0x%x'), ', %{i.operands[2]}']
@@ -164,10 +164,12 @@ SPARC_V8_full = Formatter(SPARC_V8_full_formats)
 
 def SPARC_V8_synthetic(null,i):
     s = SPARC_V8_full(i)
-    if i.mnemonic=='or' and i.operands[0]==g0:
+    if i.mnemonic=='or' and not i.misc['icc'] and i.operands[0]==g0:
         return s.replace('or','mov').replace('%g0,','')
-    if i.mnemonic=='rd' and i.operands[0] in asr+(y,psr,wim,tbr):
-        return s.replace('rd','mov')
+    if i.mnemonic=='rd':
+        op1 = str(i.operands[0])
+        if op1.startswith('asr') or op1 in ('y','psr','wim','tbr'):
+            return s.replace('rd','mov')
     if i.mnemonic=='wr' and i.operands[0]==g0:
         return s.replace('wr','mov').replace('%g0,','')
     if i.mnemonic=='sub' and i.misc['icc'] and i.operands[2]==g0:
@@ -180,7 +182,7 @@ def SPARC_V8_synthetic(null,i):
         return s.replace('jmpl','jmp').replace(', %g0','')
     if i.mnemonic=='jmpl' and i.operands[1]==o7:
         return s.replace('jmpl','call').replace(', %o7','')
-    if i.mnemonic=='orcc' and i.operands[0]==i.operands[2]==g0:
+    if i.mnemonic=='or' and i.misc['icc'] and i.operands[0]==i.operands[2]==g0:
         return s.replace('orcc','tst').replace('%g0,','').replace(', %g0','')
     if s=='restore %g0, %g0, %g0': return 'restore'
     if s=='save %g0, %g0, %g0': return 'save'
@@ -206,15 +208,15 @@ def SPARC_V8_synthetic(null,i):
             return '{} %{}'.format(m,i.operands[0])
         else:
             return '{} {}, %{}'.format(m,i.operands[1],i.operands[0])
-    if i.mnemonic=='andcc' and i.operands[2]==g0:
+    if i.mnemonic=='and' and i.misc['icc'] and i.operands[2]==g0:
         return s.replace('andcc','btst').replace(', %g0','')
-    if i.mnemonic=='or' and i.operands[0]==i.operands[2]:
+    if i.mnemonic=='or' and not i.misc['icc'] and i.operands[0]==i.operands[2]:
         return s.replace('or','bset').replace('%%%s,'%i.operands[0],'',1)
-    if i.mnemonic=='andn' and i.operands[0]==i.operands[2]:
+    if i.mnemonic=='andn' and not i.misc['icc'] and i.operands[0]==i.operands[2]:
         return s.replace('andn','bclr').replace('%%%s,'%i.operands[0],'',1)
-    if i.mnemonic=='xor' and i.operands[0]==i.operands[2]:
+    if i.mnemonic=='xor' and not i.misc['icc'] and i.operands[0]==i.operands[2]:
         return s.replace('xor','btog').replace('%%%s,'%i.operands[0],'',1)
-    if i.mnemonic=='or' and i.operands[0]==i.operands[1]==g0:
+    if i.mnemonic=='or' and not i.misc['icc'] and i.operands[0]==i.operands[1]==g0:
         return s.replace('or','clr').replace('%g0,','')
     if i.mnemonic=='stb' and i.operands[0]==g0:
         return s.replace('stb','clrb').replace('%g0,','')

@@ -181,7 +181,7 @@ def sparc_Ticc(obj,rs1,i,rs2,imm7):
     src1 = env.r[rs1]
     src2 = env.r[rs2] if i==0 else env.cst(imm7,7).signextend(32)
     obj.src  = (src1+src2)[0:7]
-    obj.operands = [src]
+    obj.operands = [obj.src]
     obj.type = type_control_flow
 
 @ispec("32[ 10 rd(5) 101000 rs1(5) - ------------- ]", mnemonic="rd", _src=env.y)

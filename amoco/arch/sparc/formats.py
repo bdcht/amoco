@@ -182,7 +182,7 @@ def SPARC_V8_synthetic(null,i):
         return s.replace('jmpl','jmp').replace(', %g0','')
     if i.mnemonic=='jmpl' and i.operands[1]==o7:
         return s.replace('jmpl','call').replace(', %o7','')
-    if i.mnemonic=='or' and i.misc['icc'] and i.operands[0]==i.operands[2]==g0:
+    if i.mnemonic=='or' and i.misc['icc'] and i.operands[1]._is_reg and i.operands[0]==i.operands[2]==g0:
         return s.replace('orcc','tst').replace('%g0,','').replace(', %g0','')
     if s=='restore %g0, %g0, %g0': return 'restore'
     if s=='save %g0, %g0, %g0': return 'save'
@@ -191,7 +191,7 @@ def SPARC_V8_synthetic(null,i):
         if i.operands[0]==i.operands[2]:
             return s.rpartition(',')[0]
         return s
-    if i.mnemonic=='sub' and i.operands[1]==g0:
+    if i.mnemonic=='sub' and i.operands[0]==g0 and i.operands[1]._is_reg:
         s = s.replace('sub','neg').replace('%g0,','')
         if i.operands[0]==i.operands[2]:
             return s.rpartition(',')[0]

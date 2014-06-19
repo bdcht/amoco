@@ -209,7 +209,9 @@ def SPARC_V8_synthetic(null,i):
         else:
             return '{} {}, %{}'.format(m,i.operands[1],i.operands[0])
     if i.mnemonic=='and' and i.misc['icc'] and i.operands[2]==g0:
-        return s.replace('andcc','btst').replace(', %g0','')
+        s = s.replace('andcc','btst').replace(', %g0','')
+        m = s.split()
+        return '{} {}, {}'.format(m[0],m[2],m[1].replace(',',''))
     if i.mnemonic=='or' and not i.misc['icc'] and i.operands[0]==i.operands[2]:
         return s.replace('or','bset').replace('%%%s,'%i.operands[0],'',1)
     if i.mnemonic=='andn' and not i.misc['icc'] and i.operands[0]==i.operands[2]:

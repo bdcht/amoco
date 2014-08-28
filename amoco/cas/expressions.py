@@ -649,7 +649,7 @@ class mem(exp):
         return env[mem(a,self.size)]
 
     def simplify(self):
-        self.a.base = self.a.base.simplify()
+        self.a.simplify()
         return self
 
     def addr(self,env):
@@ -676,10 +676,24 @@ class ptr(exp):
         d = '%+d'%self.disp if self.disp else ''
         return '%s(%s%s)'%(self.seg,self.base,d)
 
+    def simplify(self):
+        self.base = self.base.simplify()
+        if isinstance(self.seg,exp):
+            self.seg = self.seg.simplify()
+        return self
+
+    # default segment handler does not care about seg value:
+    @staticmethod
+    def segment_handler(env,s,bd):
+        base,disp = bd
+        return ptr(base,s,disp)
+
     def eval(self,env):
         a = self.base.eval(env)
-        return ptr(a,self.seg,self.disp)
-
+        s = self.seg
+        if isinstance(s,exp):
+            s = s.eval(env)
+        return self.segment_handler(env,s,(a,self.disp))
 
 #------------------------------------------------------------------------------
 # slicer is slc class wrapper that deals with slicing the entire expression

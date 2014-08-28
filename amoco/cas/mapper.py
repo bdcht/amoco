@@ -84,7 +84,9 @@ class mapper(object):
         except TypeError:
             logger.verbose('setitem ignored (invalid left-value expression)')
             return
-        if k._is_mem:
+        if k._is_slc and not loc._is_reg:
+            raise ValueError('memory location slc is not supported')
+        elif k._is_mem:
             r = v
         else:
             r = self.R(loc)

@@ -43,11 +43,11 @@ def ROL(x,n):
     return (x<<n | x>>(x.size-n))
 
 def RORWithCarry(x,n,c):
-    y = composer(c,x)
+    y = composer([x,c])
     ry = ROR(y,n)
     return (ry[0:x.size],ry[x.size:y.size])
 
 def ROLWithCarry(x,n,c):
-    y = composer(c,x)
+    y = composer([x,c])
     ry = ROL(y,n)
     return (ry[0:x.size],ry[x.size:y.size])

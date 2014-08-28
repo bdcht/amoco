@@ -12,6 +12,8 @@ setup(
               'amoco/arch/arm/v8',
               'amoco/arch/sparc',
               'amoco/arch/z80',
+              'amoco/arch/pic', 'amoco/arch/pic/F46K22',
+              'amoco/arch/msp430',
              ],
     # Metadata
     author = 'Axel Tillequin',

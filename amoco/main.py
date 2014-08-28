@@ -24,7 +24,7 @@ class lsweep(object):
         p = self.prog
         if loc is None:
             m = p.initenv()
-            loc = m[p.PC()]
+            loc = m(p.PC())
         while True:
             i = p.read_instruction(loc)
             if i is None: raise StopIteration
@@ -86,7 +86,7 @@ class fforward(lsweep):
         m = code.mapper()
         pc = self.prog.PC()
         m[pc] = blk.address
-        target = (blk.map[pc]).eval(m)
+        target = (blk.map(pc)).eval(m)
         return target.simplify()
 
     # generic 'forward' analysis explorer.
@@ -104,7 +104,11 @@ class fforward(lsweep):
                 err = '%s analysis failed at block %s'%(self.__class__.__name__,b.name)
                 sta,sto = b.support
                 vtx = cfg.node(b)
-                if vtx in F.V(): break
+                if vtx in F.V():
+                    e = cfg.link(parent,F.get_node(vtx.name))
+                    F.add_edge(e)
+                    logger.verbose('edge %s added'%e)
+                    break
                 if parent is None or (parent.data.address is None):
                     b.misc[code.tag.FUNC_START]=1
                     F.add_vertex(vtx)
@@ -158,6 +162,6 @@ class lforward(fforward):
         m = withmap.data.map.use() #work on copy
         pc = self.prog.PC()
         m[pc] = blk.address
-        target = (blk.map[pc]).eval(m)
+        target = (blk.map(pc)).eval(m)
         return target.simplify()
 

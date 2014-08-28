@@ -286,7 +286,7 @@ class ispec(object):
         go = +1
         chklen = True
         if direction=='<': # format goes from high bits to low bits
-            fmt = reversed(fmt)
+            fmt = list(reversed(fmt))
             go = -1
         if size == '*':
             self.size = 0

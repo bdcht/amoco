@@ -18,7 +18,7 @@ class PEError(Exception):
 ##
 
 class PEcore(object):
-    order = '@' #native order
+    order = '<' #le
     pfx = ''
     def __init__(self,data,offset=0):
         self.set(data[offset:offset+len(self)])
@@ -42,7 +42,7 @@ IMAGE_OS2_SIGNATURE_LE=0x454C
 IMAGE_VXD_SIGNATURE=0x454C
 
 class DOSHdr(PEcore):
-    fmt = 'H58xl'
+    fmt = 'H58xI'
     keys = ('e_magic', 'e_lfanew')
     def __init__(self,data,offset=0):
         if data[offset:offset+2]!='MZ': raise PEError('no DOS Header found')

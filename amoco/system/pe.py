@@ -649,38 +649,49 @@ class PE(PEcore):
             data = data[:imports.Size]
             self.ImportTable = ImportTable(data)
             for e in self.ImportTable.dlls:
-                dllname = self.getdata(e.NameRVA)
-                e.Name = dllname.partition('\0')[0]
-                data = self.getdata(e.ImportLookupTableRVA)
-                e.ImportLookupTable = ImportLookupTable(data,self.Opt.Magic)
-                e.ImportAddressTable = []
-                vaddr = e.ImportAddressTableRVA + self.basemap
-                for x in e.ImportLookupTable.imports:
-                    if x[0]==0:
-                        ref = NameTableEntry(self.getdata(x[1]))
-                    else:
-                        ref = '#%s'%str(x[1]) #ordinal case
-                    e.ImportAddressTable.append((vaddr,ref))
-                    vaddr += e.ImportLookupTable.elsize
-                D.update(e.ImportAddressTable)
-                for vaddr,ref in e.ImportAddressTable:
-                    if isinstance(ref,str): symbol=ref
-                    else: symbol = ref.symbol
-                    D[vaddr] = "%s::%s"%(e.Name,symbol)
+                try:
+                    dllname = self.getdata(e.NameRVA)
+                    e.Name = dllname.partition('\0')[0]
+                except ValueError:
+                    logger.warning('invalid dll name RVA in ImportTable')
+                try:
+                    data = self.getdata(e.ImportLookupTableRVA)
+                except ValueError:
+                    logger.warning('invalid ImportLookupTable RVA')
+                else:
+                    e.ImportLookupTable = ImportLookupTable(data,self.Opt.Magic)
+                    e.ImportAddressTable = []
+                    vaddr = e.ImportAddressTableRVA + self.basemap
+                    for x in e.ImportLookupTable.imports:
+                        if x[0]==0:
+                            ref = NameTableEntry(self.getdata(x[1]))
+                        else:
+                            ref = '#%s'%str(x[1]) #ordinal case
+                        e.ImportAddressTable.append((vaddr,ref))
+                        vaddr += e.ImportLookupTable.elsize
+                    D.update(e.ImportAddressTable)
+                    for vaddr,ref in e.ImportAddressTable:
+                        if isinstance(ref,str): symbol=ref
+                        else: symbol = ref.symbol
+                        D[vaddr] = "%s::%s"%(e.Name,symbol)
         return D
 
     def __tls(self):
         tls = self.Opt.DataDirectories.get('TLSTable',None)
         if tls is not None:
-            data = self.getdata(tls.RVA)
-            tls = TLSTable(data,self.Opt.Magic)
             try:
-                cbtable = self.getdata(tls.AddressOfCallbacks,absolute=True)
+                data = self.getdata(tls.RVA)
             except ValueError:
-                tls.callbacks = []
+                logger.warning('invalid TLS RVA')
             else:
-                tls.readcallbacks(cbtable)
-            return tls
+                tls = TLSTable(data,self.Opt.Magic)
+                try:
+                    cbtable = self.getdata(tls.AddressOfCallbacks,absolute=True)
+                except ValueError:
+                    tls.callbacks = []
+                else:
+                    tls.readcallbacks(cbtable)
+                return tls
         return None
 
     def __variables(self):

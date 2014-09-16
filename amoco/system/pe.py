@@ -251,7 +251,10 @@ class SectionHdr(PEcore):
             'Characteristics')
     def __init__(self,data,offset=0):
         PEcore.__init__(self,data,offset)
-        self.Name = self.Name.decode('utf-8').strip('\0')
+        try:
+            self.Name = self.Name.decode('utf-8').strip('\0')
+        except UnicodeDecodeError:
+            logger.info('SectionHdr: Name string decode error %s'%repr(self.Name))
 
     def group(self):
         return self.Name.partition('$')
@@ -339,7 +342,11 @@ class StdSymbolRecord(PEcore):
             index = struct.unpack('I',self._Name[4:8])[0]
             return index
         else:
-            return self._Name.decode('utf-8').strip('\0')
+            try:
+                return self._Name.decode('utf-8').strip('\0')
+            except UnicodeDecodeError:
+                logger.info('StdSymbolHdr: Name decode error %s'%repr(self._Name))
+                return self._Name
 
     def typename(self):
         try:
@@ -608,10 +615,10 @@ class PE(PEcore):
         if S and not S.Characteristics==IMAGE_SCN_LNK_REMOVE:
             addr = self.basemap+S.RVA
             if addr%self.Opt.SectionAlignment:
-                logger.warning('bad alignment for section %s'%S.name)
+                logger.warning('bad alignment for section %s'%S.Name)
             sta = S.PointerToRawData
             if sta%self.Opt.FileAlignment:
-                logger.warning('bad file alignment for section %s'%S.name)
+                logger.warning('bad file alignment for section %s'%S.Name)
             sto = sta+S.SizeOfRawData
             bytes = self.data[sta:sto].ljust(S.VirtualSize)
             if pagesize:

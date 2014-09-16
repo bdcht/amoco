@@ -290,11 +290,15 @@ def ia32_imm_rel(obj,cc,cb):
     obj.operands = [env.cst(cb,8).signextend(32)]
     obj.type = type_control_flow
 
-@ispec_ia32("*>[ {0f} cc(4) 0001 rel(*) ]", mnemonic = "Jcc") # 0f 8x cw/d
-def ia32_imm_rel(obj,cc,rel):
+@ispec_ia32("*>[ {0f} cc(4) 0001 ~data(*) ]", mnemonic = "Jcc") # 0f 8x cw/d
+def ia32_imm_rel(obj,cc,data):
     obj.cond = CONDITION_CODES[cc]
     size = obj.misc['opdsz'] or 32
-    obj.operands = [env.cst(rel,size)]
+    imm = data[0:size]
+    op1 = env.cst(imm.int(-1),size)
+    op1.sf = True
+    obj.operands = [op1]
+    obj.bytes += pack(imm)
     obj.type = type_control_flow
 
 # 2 operands

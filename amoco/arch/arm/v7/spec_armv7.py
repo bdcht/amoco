@@ -118,11 +118,11 @@ def instr_BFC_BFI(obj,msb,Rd,lsb,Rn):
   obj.lsbit = lsb
   if Rn==15:
     obj.mnemonic = "BFC"
-    obj.operands = [obj.d,obj.lsbit,obj.lsbit-obj.msbit+1]
+    obj.operands = [obj.d,obj.lsbit,obj.msbit-obj.lsbit+1]
   else:
     obj.mnemonic = "BFI"
     obj.n = env.regs[Rn]
-    obj.operands = [obj.d,obj.n,obj.lsbit,obj.lsbit-obj.msbit+1]
+    obj.operands = [obj.d,obj.n,obj.lsbit,obj.msbit-obj.lsbit+1]
   obj.type = type_data_processing
 
 @ispec("32[ .cond(4) 00010010 imm12(12) 0111 imm4(4) ]", mnemonic="BKPT")

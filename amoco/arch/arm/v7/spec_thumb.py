@@ -342,6 +342,6 @@ def T1_SETEND(obj,E):
   obj.type = type_cpu_state
 
 # add THUMB-2 instructions:
-from amoco.arch.arm import spec_thumb2
+from amoco.arch.arm.v7 import spec_thumb2
 
 ISPECS += spec_thumb2.ISPECS

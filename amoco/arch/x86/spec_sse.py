@@ -14,6 +14,57 @@ from .utils import *
 
 ISPECS = []
 
+@ispec_ia32("*>[ {0f}{6e} /r ]", mnemonic="MOV", _inv=False)
+@ispec_ia32("*>[ {0f}{7e} /r ]", mnemonic="MOV", _inv=True)
+def ia32_sse2(obj,Mod,REG,RM,data,_inv):
+    if obj.misc['pfx'] is not None:
+        # order is important here
+        if   obj.misc['pfx'][0]=='repne': raise NotImplementedError #f2 pfx
+        elif obj.misc['pfx'][0]=='rep': #f3 pfx
+            obj.misc['opdsz']=128
+            obj.mnemonic+="Q"
+            _inv = False
+        elif obj.misc['opdsz']==16:
+            obj.misc['opdsz']=128
+            obj.mnemonic+="D"
+    else:
+        obj.misc['opdsz']=64
+        obj.mnemonic+="D"
+    op2,data = getModRM(obj,Mod,RM,data)
+    op1 = env.getreg(REG,op2.size)
+    obj.operands = [op1,op2] if not _inv else [op2,op1]
+    obj.type = type_data_processing
+
+@ispec_ia32("*>[ {0f}{6f} /r ]", mnemonic="MOV", _inv=False)
+@ispec_ia32("*>[ {0f}{7f} /r ]", mnemonic="MOV", _inv=True)
+def ia32_sse2(obj,Mod,REG,RM,data,_inv):
+    if obj.misc['pfx'] is not None:
+        # order is important here
+        if   obj.misc['pfx'][0]=='repne': raise InstructionError(obj) #f2 pfx
+        elif obj.misc['pfx'][0]=='rep':
+            obj.misc['opdsz']=128
+            obj.mnemonic+="DQU"
+        elif obj.misc['opdsz']==16:
+            obj.misc['opdsz']=128
+            obj.mnemonic+="DQA"
+    else:
+            obj.misc['opdsz']=64
+            obj.mnemonic+="Q"
+    op2,data = getModRM(obj,Mod,RM,data)
+    op1 = env.getreg(REG,op2.size)
+    obj.operands = [op1,op2] if not _inv else [op2,op1]
+    obj.type = type_data_processing
+
+@ispec_ia32("*>[ {0f}{d6} /r ]", mnemonic="MOVQ")
+def ia32_sse2(obj,Mod,REG,RM,data):
+    if obj.misc['opdsz']==16: obj.misc['opdsz']=128
+    else: raise InstructionError(obj)
+    op2,data = getModRM(obj,Mod,RM,data)
+    op1 = env.getreg(REG,op2.size)
+    obj.operands = [op2,op1]
+    obj.type = type_data_processing
+
+
 @ispec_ia32("*>[ {0f}{10} /r ]", mnemonic="MOV")
 @ispec_ia32("*>[ {0f}{51} /r ]", mnemonic="SQRT")
 @ispec_ia32("*>[ {0f}{58} /r ]", mnemonic="ADD")
@@ -74,5 +125,16 @@ def ia32_sse2(obj,Mod,REG,RM,data,_opdsz,_inv):
 # DPPD,DPPS
 # EXTRACTPS
 # INSERTPS
+
+@ispec_ia32("*>[ {0f}{3a}{0f} /r ]", mnemonic="PALIGNR")
+def ia32_sse2(obj,Mod,REG,RM,data):
+    obj.misc['opdsz'] = 128 if obj.misc['opdsz']==16 else 64
+    op2,data = getModRM(obj,Mod,RM,data)
+    op1 = env.getreg(REG,op2.size)
+    if data.size<8: raise InstructionError(obj)
+    imm = data[0:8]
+    obj.operands = [op1,op2,env.cst(imm.int(),8)]
+    obj.bytes += pack(imm)
+    obj.type = type_data_processing
 
 

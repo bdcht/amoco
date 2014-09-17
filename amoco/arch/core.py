@@ -116,7 +116,7 @@ class disassembler(object):
     # specmodules: list of python modules containing ispec decorated funcs
     # iset: lambda used to select module (ispec list)
     # endian: instruction fetch endianess (1: little, -1: big)
-    def __init__(self,specmodules,iset=lambda:0,endian=lambda:1):
+    def __init__(self,specmodules,iset=(lambda *args,**kargs:0),endian=(lambda *args, **kargs:1)):
         self.maxlen = max((s.mask.size/8 for s in sum((m.ISPECS for m in specmodules),[])))
         self.iset = iset
         self.endian = endian
@@ -169,6 +169,8 @@ class disassembler(object):
                         if self.__i is None: self.__i = i
                         return self(bytestring[s.mask.size/8:],**kargs)
                     self.__i = None
+                    if 'address' in kargs:
+                        i.address = kargs['address']
                     return i
                 break
             else: # go deeper in the tree according to submask value of b

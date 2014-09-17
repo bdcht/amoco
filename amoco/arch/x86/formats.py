@@ -44,6 +44,10 @@ def opers(i):
 def oprel(i):
     to = i.misc['to']
     if to is not None: return '*'+str(to)
+    if (i.address is not None) and i.operands[0]._is_cst:
+        v = i.address + i.operands[0].signextend(32) + i.length
+        i.misc['to'] = v
+        return '*'+str(v)
     return '.%+d'%i.operands[0].value
 
 # main intel formats:

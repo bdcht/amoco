@@ -56,6 +56,7 @@ def ia32_sse2(obj,Mod,REG,RM,data,_inv):
     obj.type = type_data_processing
 
 @ispec_ia32("*>[ {0f}{d6} /r ]", mnemonic="MOVQ")
+@ispec_ia32("*>[ {0f}{ef} /r ]", mnemonic="PXOR")
 def ia32_sse2(obj,Mod,REG,RM,data):
     if obj.misc['opdsz']==16: obj.misc['opdsz']=128
     else: raise InstructionError(obj)

@@ -678,7 +678,7 @@ class PE(PEcore):
 
     def __tls(self):
         tls = self.Opt.DataDirectories.get('TLSTable',None)
-        if tls is not None:
+        if tls is not None and tls.RVA != 0:
             try:
                 data = self.getdata(tls.RVA)
             except ValueError:

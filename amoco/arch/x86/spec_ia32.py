@@ -779,16 +779,13 @@ def ia32_in_out(obj,ib):
     obj.operands = [r,x] if obj.mnemonic=='IN' else [x,r]
     obj.type = type_system
 
-@ispec_ia32("*>[ {e5} ~data(*) ]", mnemonic = "IN")
-@ispec_ia32("*>[ {e7} ~data(*) ]", mnemonic = "OUT")
-def ia32_ADC_eax_imm(obj,data):
+@ispec_ia32("16>[ {e5} ib(8) ]", mnemonic = "IN")
+@ispec_ia32("16>[ {e7} ib(8) ]", mnemonic = "OUT")
+def ia32_ADC_eax_imm(obj,ib):
     size = obj.misc['opdsz'] or 32
-    if data.size<size: raise InstructionError(obj)
-    imm = data[0:size]
     r = env.eax if size==32 else env.ax
-    x = env.cst(imm.int(),size)
+    x = env.cst(ib,8)
     obj.operands = [r,x] if obj.mnemonic=='IN' else [x,r]
-    obj.bytes += pack(imm)
     obj.type = type_system
 
 @ispec_ia32("*>[ {0f}{b6} /r ]", mnemonic = "MOVZX", _flg8=True)

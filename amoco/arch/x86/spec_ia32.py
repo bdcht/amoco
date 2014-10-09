@@ -639,15 +639,15 @@ def ia32_reg_32_inv(obj,Mod,RM,REG,data):
         raise InstructionError(obj)
 
 # r16/32 , m16:16/32
-@ispec_ia32("*>[ {c5} /r     ]", mnemonic = "LDS")
-@ispec_ia32("*>[ {0f}{b2} /r ]", mnemonic = "LSS")
-@ispec_ia32("*>[ {c4} /r     ]", mnemonic = "LES")
-@ispec_ia32("*>[ {0f}{b4} /r ]", mnemonic = "LFS")
-@ispec_ia32("*>[ {0f}{b5} /r ]", mnemonic = "LGS")
-def ia32_r32_seg(obj,Mod,RM,REG,data):
+@ispec_ia32("*>[ {c5} /r     ]", mnemonic = "LDS", _seg=env.ds)
+@ispec_ia32("*>[ {0f}{b2} /r ]", mnemonic = "LSS", _seg=env.ss)
+@ispec_ia32("*>[ {c4} /r     ]", mnemonic = "LES", _seg=env.es)
+@ispec_ia32("*>[ {0f}{b4} /r ]", mnemonic = "LFS", _seg=env.fs)
+@ispec_ia32("*>[ {0f}{b5} /r ]", mnemonic = "LGS", _seg=env.gs)
+def ia32_r32_seg(obj,Mod,RM,REG,data,_seg):
     op2,data = getModRM(obj,Mod,RM,data)
     op1 = env.getreg(REG,op2.size)
-    op2.size += 16
+    op2 = env.mem(op2,op1.size+16,_seg)
     obj.operands = [op1, op2]
     obj.type = type_system
 
@@ -656,7 +656,7 @@ def ia32_r32_seg(obj,Mod,RM,REG,data):
 def ia32_r32_bound(obj,Mod,RM,REG,data):
     op2,data = getModRM(obj,Mod,RM,data)
     op1 = env.getreg(REG,op2.size)
-    op2.size *=2
+    op2 = env.mem(op2,op1.size*2)
     obj.operands = [op1, op2]
     obj.type = type_data_processing
 

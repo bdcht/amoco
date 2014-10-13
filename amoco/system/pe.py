@@ -655,7 +655,10 @@ class PE(PEcore):
                 except ValueError:
                     logger.warning('invalid dll name RVA in ImportTable')
                 try:
-                    data = self.getdata(e.ImportLookupTableRVA)
+                    if e.ImportLookupTableRVA != 0:
+                        data = self.getdata(e.ImportLookupTableRVA)
+                    else:
+                        data = self.getdata(e.ImportAddressTableRVA)
                 except ValueError:
                     logger.warning('invalid ImportLookupTable RVA')
                 else:

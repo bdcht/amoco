@@ -329,6 +329,8 @@ class CoreExec(object):
         except MemoryError,e:
             ll = e.message
             l = maxlen-ll
+            if l == 0:
+                return None
             logger.warning("instruction fetch error: reducing fetch size (%d)"%l)
             istr = self.mmap.read(vaddr,l)
         if len(istr)>1:

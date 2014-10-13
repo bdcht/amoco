@@ -265,6 +265,11 @@ class MemoryMap(object):
         z.rel = label
         self._zones[label] = z
 
+    def locate(self,address):
+        r, a = self.reference(address)
+        idx = self._zones[r].locate(address)
+        return self._zones[r]._map[idx]
+
     def reference(self,address):
         if isinstance(address,(int,long)):
             return (None,address)

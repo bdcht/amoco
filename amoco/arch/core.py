@@ -160,7 +160,7 @@ class disassembler(object):
             if f==0: # we are on a leaf...
                 for s in l: # lets search linearly over this branch
                     try:
-                        i = s.decode(bytestring,e,i=self.__i)
+                        i = s.decode(bytestring,e,i=self.__i,ival=b.ival)
                     except (DecodeError,InstructionError):
                         logger.debug('exception raised by disassembler:'
                                      'decoding %s with spec %s'%(bytestring,s.format))
@@ -360,14 +360,14 @@ class ispec(object):
         return ast
 
     # decode always receive input bytes in ascending memory order
-    # istr 
-    def decode(self,istr,endian=1,i=None):
+    def decode(self,istr,endian=1,i=None,ival=None):
         # check spec :
         blen = self.fix.size/8
         if len(istr)<blen: raise DecodeError
         bs = istr[0:blen]
         # Bits object created with LSB to MSB byte string:
-        b = Bits(bs[::endian],self.fix.size,bitorder=1)
+        if ival is None: ival = bs[::endian]
+        b = Bits(ival,self.fix.size,bitorder=1)
         if b&self.mask != self.fix: raise DecodeError
         if self.size==0: # variable length spec:
             if endian!=1: logger.error("invalid endianess")

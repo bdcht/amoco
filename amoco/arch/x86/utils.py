@@ -83,8 +83,9 @@ def getModRM(obj,Mod,RM,data):
         data = data[adrsz:data.size]
         d = d.int(-1)
     bs = b+s
-    if bs==0x0:
-        bs = env.cst(d,adrsz)
+    if bs._is_cst and bs.v==0x0:
+        bs.v = d
+        bs.size = adrsz
         d = 0
     return env.mem(bs,opdsz,seg,d),data
 

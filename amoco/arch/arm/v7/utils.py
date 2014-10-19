@@ -78,7 +78,11 @@ def DecodeShift(stype, reg, shift):
 
 def ARMExpandImm(x):
     v = cst(x&0xff,32)
-    return ror2(v,x>>8)
+    return _ror2(v,x>>8)
+
+def ARMExpandImm_C(x):
+    v = ARMExpandImm(x)
+    return (v,v.bit(31))
 
 def ThumbExpandImm(imm12):
     x = int(imm12,2)
@@ -102,19 +106,30 @@ def ThumbExpandImm(imm12):
         return cst(imm32,32)
     else:
         v = cst(1<<7 + x&0x7f,32)
-        return ror(v,(x>>7)&0x1f)
+        return _ror(v,(x>>7)&0x1f)
+
+def ITAdvance(itstate):
+    if itstate&7 == 0:
+        return 0
+    else:
+        it_hi = itstate    & 0b11100000
+        it_lo = itstate    & 0xf
+        return it_hi | (it_lo<<1)
 
 def InITBlock(itstate):
-    return itstate != 0
+    return itstate&0xf != 0
 
 def LastInITBlock(itstate):
-    return itstate == 0b1000
+    return itstate&0xf == 0b1000
 
-def ror(x,n):
+def _ror(x,n):
   xx = x&0xffffffff
   return (xx>>n | xx<<(32-n))&0xffffffff
-def ror2(x,n):
+
+def _ror2(x,n):
   xx = x&0xffffffff
   nn = n+n
   return (xx>>nn | xx<<(32-nn))&0xffffffff
 
+def BadReg(r):
+    return (r==13 or r==15)

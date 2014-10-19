@@ -1,4 +1,8 @@
 tags
 *.pyc
+<<<<<<< HEAD
+=======
+*.swp
+>>>>>>> develop
 build/
 tests/

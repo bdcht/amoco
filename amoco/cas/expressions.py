@@ -155,6 +155,8 @@ class exp(object):
     @_checkarg_numeric
     def __div__(self,n): return oper('/',self,n)
     @_checkarg_numeric
+    def __mod__(self,n): return oper('%',self,n)
+    @_checkarg_numeric
     def __floordiv__(self,n): return oper('//',self,n)
     @_checkarg_numeric
     def __and__(self,n): return oper('&',self,n)
@@ -311,6 +313,10 @@ class cst(exp):
         if n._is_cst: return cst(int(float(self.value)/n.value),self.size)
         else : return exp.__div__(self,n)
     @_checkarg_numeric
+    def __mod__(self,n):
+        if n._is_cst: return cst(self.value%n.value,self.size)
+        else : return exp.__mod__(self,n)
+    @_checkarg_numeric
     @_checkarg_sizes
     def __and__(self,n):
         if n._is_cst: return cst(self.v&n.v,self.size)
@@ -413,7 +419,7 @@ class sym(cst):
 # reg holds 32-bit register reference (refname).
 #------------------------------------------------------------------------------
 class reg(exp):
-    __slots__ = ['ref']
+    __slots__ = ['ref','_subrefs']
     _is_def   = True
     _is_reg   = True
 
@@ -421,6 +427,7 @@ class reg(exp):
         self.size = size
         self.sf  = False
         self.ref = refname
+        self._subrefs = {}
 
     @_checkarg_slice
     def __getitem__(self,i):
@@ -722,12 +729,23 @@ class slc(exp):
         self.size = size
         self.sf   = False
         self.pos  = pos
-        self.ref  = ref
+        self.setref(ref)
+
+    def setref(self,ref):
+        if self.x._is_reg:
+            if ref is None:
+                ref = self.x._subrefs.get((self.pos,self.size),None)
+            else:
+                self.x._subrefs[(self.pos,self.size)] = ref
+        self.ref = ref
+
+    def raw(self):
+        return "%s[%d:%d]"%(str(self.x),self.pos,self.pos+self.size)
 
     def __str__(self):
-        return self.ref or "%s[%d:%d]"%(str(self.x),self.pos,self.pos+self.size)
+        return self.ref or self.raw()
     ##
-    def __hash__(self): return hash("%s[%d:%d]"%(str(self.x),self.pos,self.pos+self.size))
+    def __hash__(self): return hash(self.raw())
 
     def eval(self,env):
         n = self.x.eval(env)
@@ -833,7 +851,7 @@ class op(exp):
         self.sf = l.sf
         if self.l._is_eqn: self.prop |= self.l.prop
         if self.r is not None:
-            self.sf |= r.sf
+            if self.prop==1: self.sf |= r.sf
             if self.r._is_eqn : self.prop |= self.r.prop
 
     @classmethod
@@ -877,16 +895,17 @@ class op(exp):
 import operator
 
 def ror(x,n):
-        return (x>>n | x<<(x.size-n))
+    return (x>>n | x<<(x.size-n)) if x._is_cst else op('>>>',x,n)
 
 def rol(x,n):
-        return (x<<n | x>>(x.size-n))
+    return (x<<n | x>>(x.size-n)) if x._is_cst else op('<<<',x,n)
 
 OP_ARITH = {'+'  : operator.add,
             '-'  : operator.sub,
             '*'  : operator.mul,
             '**' : operator.pow,
             '/'  : operator.div,
+            '%'  : operator.mod,
            }
 OP_LOGIC = {'&'  : operator.and_,
             '|'  : operator.or_,

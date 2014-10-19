@@ -82,7 +82,7 @@ class mapper(object):
         try:
             loc = k.addr(self)
         except TypeError:
-            logger.verbose('setitem ignored (invalid left-value expression)')
+            logger.error('setitem ignored (invalid left-value expression)')
             return
         if k._is_slc and not loc._is_reg:
             raise ValueError('memory location slc is not supported')

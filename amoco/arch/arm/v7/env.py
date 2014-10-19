@@ -81,7 +81,7 @@ CONDITION_UNDEFINED : ('??',top(1)),
 # internal states not exposed to symbolic interpreter:
 #-----------------------------------------------------
 internals = {    # states MUST be in a mutable object !
-        'isetstate'  : 0, #0: ARM, 1: Thumb
+        'isetstate'  : 0, #0: ARM, 1: Thumb, 2: Jazelle, 3: ThumbEE
         'itstate'    : 0, # thumb internal parameter (see IT instruction)
         'endianstate': 0, #0: LE, 1: BE
 }

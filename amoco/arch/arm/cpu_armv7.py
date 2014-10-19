@@ -14,6 +14,10 @@ instruction.set_uarch(uarch)
 from amoco.arch.arm.v7 import spec_armv7
 from amoco.arch.arm.v7 import spec_thumb
 
+from amoco.arch.arm.v7.formats import ARM_V7_full
+instruction.set_formatter(ARM_V7_full)
+
+
 mode   = (lambda : internals['isetstate'])
 endian = (lambda : 1 if internals['endianstate']==0 else -1)
 

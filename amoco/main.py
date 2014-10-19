@@ -97,7 +97,6 @@ class fforward(lsweep):
         order = -1 if self.policy['depth-first'] else 0
         lazy  = self.policy['branch-lazy']
         F = cfg.func()
-        pc = self.prog.PC()
         while len(spool)>0:
             current,parent = spool.pop(order)
             for b in self.iterblocks(loc=current):

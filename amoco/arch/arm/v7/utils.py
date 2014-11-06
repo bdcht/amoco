@@ -38,14 +38,14 @@ def ROR_C(x,shift):
     assert shift != 0
     n = x.size
     m = shift % n
-    res = LSR(x,m)|LSL(x,N-m)
+    res = LSR(x,m)|LSL(x,n-m)
     return (res, res.bit(n-1))
 
 def ROR(x,shift):
     assert shift != 0
     n = x.size
     m = shift % n
-    res = LSR(x,m)|LSL(x,N-m)
+    res = LSR(x,m)|LSL(x,n-m)
     return res
 
 def RRX_C(x,carry_in):
@@ -123,13 +123,13 @@ def LastInITBlock(itstate):
     return itstate&0xf == 0b1000
 
 def _ror(x,n):
-  xx = x&0xffffffff
-  return (xx>>n | xx<<(32-n))&0xffffffff
+    xx = x&0xffffffff
+    return (xx>>n | xx<<(32-n))&0xffffffff
 
 def _ror2(x,n):
-  xx = x&0xffffffff
-  nn = n+n
-  return (xx>>nn | xx<<(32-nn))&0xffffffff
+    xx = x&0xffffffff
+    nn = n+n
+    return (xx>>nn | xx<<(32-nn))&0xffffffff
 
 def BadReg(r):
     return (r==13 or r==15)

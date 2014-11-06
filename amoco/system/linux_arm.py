@@ -17,10 +17,10 @@ class ELF(CoreExec):
         if p!=None:
             # create text and data segments according to elf header:
             for s in p.Phdr:
-              ms = p.loadsegment(s,PAGESIZE)
-              if ms!=None:
-                  vaddr,data = ms.items()[0]
-                  self.mmap.write(vaddr,data)
+                ms = p.loadsegment(s,PAGESIZE)
+                if ms!=None:
+                    vaddr,data = ms.items()[0]
+                    self.mmap.write(vaddr,data)
             # create the dynamic segments:
             self.load_shlib()
         # create the stack zone:

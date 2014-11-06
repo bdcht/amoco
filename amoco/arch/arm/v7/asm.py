@@ -9,7 +9,7 @@ from .env import *
 
 from .utils import *
 from amoco.cas.utils import *
-
+from amoco.arch.core import InstructionError
 from amoco.logger import Log
 logger = Log(__name__)
 
@@ -288,7 +288,7 @@ def i_ASR(i,fmap):
     if shift._is_cst:
         result,cout = ASR_C(fmap(op1),shift.value)
     else:
-        result,cout = fmap(ap1>>ap2), top(1)
+        result,cout = fmap(op1>>op2), top(1)
     fmap[dest] = tst(cond,result,fmap(dest))
     if dest is pc:
         __check_state(i,fmap)
@@ -301,7 +301,7 @@ def i_LSL(i,fmap):
     if shift._is_cst:
         result,cout = LSL_C(fmap(op1),shift.value)
     else:
-        result,cout = fmap(ap1<<ap2), top(1)
+        result,cout = fmap(op1<<op2), top(1)
     fmap[dest] = tst(cond,result,fmap(dest))
     if dest is pc:
         __check_state(i,fmap)
@@ -314,7 +314,7 @@ def i_LSR(i,fmap):
     if shift._is_cst:
         result,cout = LSR_C(fmap(op1),shift.value)
     else:
-        result,cout = fmap(ap1>>ap2), top(1)
+        result,cout = fmap(op1>>op2), top(1)
     fmap[dest] = tst(cond,result,fmap(dest))
     if dest is pc:
         __check_state(i,fmap)
@@ -327,7 +327,7 @@ def i_ROR(i,fmap):
     if shift._is_cst:
         result,cout = ROR_C(fmap(op1),shift.value)
     else:
-        result,cout = ror(ap1,ap2), top(1)
+        result,cout = ror(op1,op2), top(1)
     fmap[dest] = tst(cond,result,fmap(dest))
     if dest is pc:
         __check_state(i,fmap)

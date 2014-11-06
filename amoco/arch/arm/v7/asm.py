@@ -625,7 +625,10 @@ def i_LDRSH(i,fmap):
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
 
 def i_LDRD(i,fmap):
-    cond,dest,src,sht = __pre(i,fmap)
+    fmap[pc] = fmap(pc+i.length)
+    cond = fmap(CONDITION[i.cond][1])
+    dst1,dst2,src,sht = i.operands
+    if src is pc: src = src+i.length
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.index else src
     res1 = fmap(mem(adr,32))

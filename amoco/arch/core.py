@@ -105,7 +105,7 @@ class InstructionError(Exception):
     def __init__(self,i):
         self.ins = i
     def __str__(self):
-        return repr(i)
+        return repr(self.ins)
 
 class DecodeError(Exception): pass
 

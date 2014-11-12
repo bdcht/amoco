@@ -544,7 +544,7 @@ def ia32_BTx(obj,Mod,RM,data):
 @ispec_ia32("*>[ {38} /r     ]", mnemonic = "CMP")
 @ispec_ia32("*>[ {0f}{b0} /r ]", mnemonic = "CMPXCHG")
 @ispec_ia32("*>[ {0f}{c0} /r ]", mnemonic = "XADD")
-@ispec_ia32("*>[ {8a} /r     ]", mnemonic = "MOV")
+@ispec_ia32("*>[ {88} /r     ]", mnemonic = "MOV")
 @ispec_ia32("*>[ {84} /r     ]", mnemonic = "TEST")
 def ia32_reg_8(obj,Mod,RM,REG,data):
     obj.misc['opdsz']=8
@@ -563,7 +563,7 @@ def ia32_reg_8(obj,Mod,RM,REG,data):
 @ispec_ia32("*>[ {32} /r ]", mnemonic = "XOR")
 @ispec_ia32("*>[ {3a} /r ]", mnemonic = "CMP")
 @ispec_ia32("*>[ {86} /r ]", mnemonic = "XCHG")
-@ispec_ia32("*>[ {88} /r ]", mnemonic = "MOV")
+@ispec_ia32("*>[ {8a} /r ]", mnemonic = "MOV")
 def ia32_reg_8_inv(obj,Mod,RM,REG,data):
     obj.misc['opdsz']=8
     op2,data = getModRM(obj,Mod,RM,data)

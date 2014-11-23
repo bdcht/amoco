@@ -6,7 +6,7 @@
 
 # spec_xxx files are providers for instruction objects.
 
-from amoco.arch.x86 import env
+from amoco.arch.x64 import env
 
 from amoco.arch.core import *
 
@@ -27,32 +27,63 @@ class ispec_ia32(ispec):
             f=format
         ispec.__init__(self,f,**kargs)
 
+def getregR(obj,REG,size):
+    REX = obj.misc['REX']
+    if REX is None:
+        W=R=X=B=0
+    else:
+        W,R,X,B=REX
+    return env.getreg(REG+(R<<3),size)
+
+def getregRW(obj,REG,size):
+    REX = obj.misc['REX']
+    if REX is None:
+        W=R=X=B=0
+    else:
+        W,R,X,B=REX
+        if W==1: size=64
+    return env.getreg(REG+(R<<3),size)
+
+def getregB(obj,REG,size):
+    REX = obj.misc['REX']
+    if REX is None:
+        W=R=X=B=0
+    else:
+        W,R,X,B=REX
+    return env.getreg(REG+(B<<3),size)
+
 # read ModR/M + SIB values and update obj accordingly:
 def getModRM(obj,Mod,RM,data):
     opdsz = obj.misc['opdsz'] or 32
-    adrsz = obj.misc['adrsz'] or 32
+    adrsz = obj.misc['adrsz'] or 64
     seg   = obj.misc['segreg']
     if seg is None: seg=''
+    REX = obj.misc['REX']
+    if REX is None:
+        W=R=X=B=0
+    else:
+        W,R,X,B = REX
+        if W==1: opdsz = 64
     # r/16/32 case:
     if Mod==0b11:
-        op1 = env.getreg(RM,opdsz)
+        op1 = env.getreg((B<<3)+RM,opdsz)
         return op1,data
     # m/16/32 case:
-    if adrsz==32 and RM==0b100:
+    if adrsz!=16 and RM==0b100:
         # read SIB byte in data:
         if data.size<8: raise InstructionError(obj)
         sib,data = data[0:8],data[8:data.size]
         # add sib byte:
         obj.bytes += pack(sib)
         # decode base & scaled index
-        b = env.getreg(sib[0:3].int(),adrsz)
-        i = env.getreg(sib[3:6].int(),adrsz)
+        b = env.getreg((B<<3)+sib[0:3].int(),adrsz)
+        i = env.getreg((X<<3)+sib[3:6].int(),adrsz)
         ss = 1<<(sib[6:8].int())
-        s = i*ss if not i.ref in ('esp','sp') else 0
+        s = i*ss if not i.ref in ('rsp','esp','sp') else 0
     else:
         s = 0
-        if adrsz==32:
-            b = env.getreg(RM,adrsz)
+        if adrsz!=16:
+            b = env.getreg((B<<3)+RM,adrsz)
         else:
             b =  (env.bx+env.si,
                   env.bx+env.di,
@@ -64,7 +95,11 @@ def getModRM(obj,Mod,RM,data):
                   env.bx)[RM]
 
     # check [disp16/32] case:
-    if (b is env.ebp or b is env.bp) and Mod==0:
+    if (b is env.rbp or b is env.r13) and Mod==0:
+        b=env.rip
+        if seg is '': seg = env.cs
+        Mod = 0b10
+    if (b is env.bp) and Mod==0:
         b=env.cst(0,adrsz)
         Mod = 0b10
     # now read displacement bytes:
@@ -77,10 +112,12 @@ def getModRM(obj,Mod,RM,data):
         obj.bytes += pack(d)
         d = d.signextend(adrsz).int(-1)
     elif Mod==0b10:
-        if data.size<adrsz: raise InstructionError(obj)
-        d = data[0:adrsz]
+        immsz = adrsz
+        if immsz==64: immsz=32
+        if data.size<immsz: raise InstructionError(obj)
+        d = data[0:immsz]
         obj.bytes += pack(d)
-        data = data[adrsz:data.size]
+        data = data[immsz:data.size]
         d = d.int(-1)
     bs = b+s
     if bs._is_cst and bs.v==0x0:
@@ -114,10 +151,10 @@ def do_nothing(obj):
 
 def set_opdsz_128(obj):
     obj.misc['opdsz']=128
+def set_opdsz_mm(obj):
+    obj.misc['opdsz']='mm'
 def set_opdsz_64(obj):
     obj.misc['opdsz']=64
-def set_opdsz_32(obj):
-    obj.misc['opdsz']=32
 
 def check_f2(obj,f=do_nothing):
     if obj.misc['pfx'] and obj.misc['pfx'][0]=='repne':

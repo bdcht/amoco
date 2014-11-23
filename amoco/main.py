@@ -57,6 +57,11 @@ class lsweep(object):
             b = code.block(l)
             yield self.prog.codehelper(block=b)
 
+    def getblock(self,val):
+        p = self.prog
+        target = p.cpu.cst(val,p.PC().size)
+        return next(self.iterblocks(target))
+
     def getcfg(self,loc=None):
         F = []
         for b in self.iterblocks(loc):

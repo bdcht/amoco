@@ -7,6 +7,7 @@ setup(
     version = '2.x',
     packages=['amoco','amoco/arch','amoco/system','amoco/cas',
               'amoco/arch/x86',
+              'amoco/arch/x64',
               'amoco/arch/arm',
               'amoco/arch/arm/v7',
               'amoco/arch/arm/v8',

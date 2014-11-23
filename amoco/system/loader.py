@@ -53,8 +53,9 @@ def load_program(file):
                 from amoco.system.linux_x86 import ELF
                 logger.info("linux_x86 program created")
                 return ELF(p)
-            elif p.Ehdr.e_ident['EI_CLASS']==elf.ELFCLASS64 and \
-                 p.Ehdr.e_ident['EI_DATA']==elf.ELFDATA2LSB:
+        elif p.Ehdr.e_machine==elf.EM_X86_64:
+            if p.Ehdr.e_ident['EI_CLASS']==elf.ELFCLASS64 and \
+               p.Ehdr.e_ident['EI_DATA']==elf.ELFDATA2LSB:
                 from amoco.system.linux_x64 import ELF
                 logger.info("linux_x64 program created")
                 return ELF(p)

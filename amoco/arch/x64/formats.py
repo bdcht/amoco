@@ -14,8 +14,8 @@ def mnemo(i):
 def deref(op):
     if not op._is_mem: return str(op)
     d = '%+d'%op.a.disp if op.a.disp else ''
-    s = {8:'byte ptr ',16:'word ptr ', 64:'qword ptr ', 128:'xmmword ptr '}.get(op.size,'')
-    s += '%s:'%op.a.seg  if op.a.seg  else ''
+    s = {8:'byte ptr ',16:'word ptr ',32:'dword ptr ', 128:'xmmword ptr '}.get(op.size,'')
+    s += '%s:'%op.a.seg  if op.a.seg is not '' else ''
     s += '[%s%s]'%(op.a.base,d)
     return s
 
@@ -40,7 +40,7 @@ def oprel(i):
     to = i.misc['to']
     if to is not None: return '*'+str(to)
     if (i.address is not None) and i.operands[0]._is_cst:
-        v = i.address + i.operands[0].signextend(32) + i.length
+        v = i.address + i.operands[0].signextend(64) + i.length
         i.misc['to'] = v
         return '*'+str(v)
     return '.%+d'%i.operands[0].value
@@ -55,7 +55,7 @@ format_intel_str = (pfx,mnemo,opers)
 format_intel_rel = (mnemo,oprel)
 
 # formats:
-IA32_Intel_formats = {
+IA32e_Intel_formats = {
     'ia32_strings' : format_intel_str,
     'ia32_mov_adr' : format_intel_ptr,
     'ia32_ptr_ib'  : format_intel_ptr,
@@ -65,5 +65,5 @@ IA32_Intel_formats = {
     'ia32_imm_rel' : format_intel_rel,
 }
 
-IA32_Intel = Formatter(IA32_Intel_formats)
-IA32_Intel.default = format_intel_default
+IA32e_Intel = Formatter(IA32e_Intel_formats)
+IA32e_Intel.default = format_intel_default

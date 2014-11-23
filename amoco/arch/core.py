@@ -389,7 +389,13 @@ class ispec(object):
             if type(v)==type(lambda:1): v=v(b)
             kargs[k] = v
         # and call hooks:
-        self.hook(obj=i,**kargs)
+        try:
+            self.hook(obj=i,**kargs)
+        except InstructionError:
+            # clean up:
+            i.bytes = i.bytes[:-len(bs)]
+            for k in self.iattr.iterkeys(): delattr(i,k)
+            raise InstructionError(i)
         return i
 
     def encode(self,i):

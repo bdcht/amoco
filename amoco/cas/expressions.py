@@ -27,6 +27,8 @@ def _checkarg_numeric(f):
     def checkarg_numeric(self,n):
         if isinstance(n,(int,long)):
                 n = cst(n,self.size)
+        elif isinstance(n,(float)):
+                n = cfp(n,self.size)
         return f(self,n)
     return checkarg_numeric
 
@@ -226,11 +228,9 @@ class top(exp):
     def depth(self):
         return float('inf')
 
-#------------------------------------------------------------------------------
-# cst holds numeric immediate values (up to size 32 bits.)
-# This class is an atom expression with respect to eval in some env since it
-# evals to itself independently of the env in which it performs the eval.
-#------------------------------------------------------------------------------
+#-----------------------------------
+# cst holds numeric immediate values
+#-----------------------------------
 class cst(exp):
     __slots__ = ['v']
     _is_def   = True
@@ -252,8 +252,10 @@ class cst(exp):
         else:
             return self.v
 
+    # for slicing purpose:
     def __index__(self):
         return self.value
+    # coercion to Python int:
     def __int__(self):
         return self.value
 
@@ -414,6 +416,103 @@ class sym(cst):
     def __str__(self):
         return "#%s"%self.ref
 
+#---------------------------------
+# flt holds float immediate values
+#---------------------------------
+class flt(exp):
+    __slots__ = ['v']
+    _is_def   = True
+    _is_cst   = True
+
+    def __init__(self,v,size=32):
+        self.size = size
+        self.v  = float(v)
+    ##
+
+    @property
+    def value(self):
+        return self.v
+
+    # coercion to integer:
+    def __int__(self):
+        return NotImplementedError
+
+    def __str__(self):
+        return '{:f}'.format(self.value)
+
+    def eval(self,env): return cfp(self.value,self.size)
+
+    def __neg__(self):
+        return cfp(-(self.value),self.size)
+
+    @_checkarg_numeric
+    @_checkarg_sizes
+    def __add__(self,n):
+        if n._is_cst: return cfp(self.v+n.value,self.size)
+        else : return exp.__add__(self,n)
+    @_checkarg_numeric
+    @_checkarg_sizes
+    def __sub__(self,n):
+        if n._is_cst: return cfp(self.v-n.value,self.size)
+        else : return exp.__sub__(self,n)
+    @_checkarg_numeric
+    @_checkarg_sizes
+    def __mul__(self,n):
+        if n._is_cst: return cfp(self.v*n.value,self.size)
+        else : return exp.__mul__(self,n)
+    @_checkarg_numeric
+    @_checkarg_sizes
+    def __pow__(self,n):
+        if n._is_cst: return cfp(self.v**n.value,self.size)
+        else : return exp.__pow__(self,n)
+    @_checkarg_numeric
+    def __div__(self,n):
+        if n._is_cst: return cfp(self.v/n.value,self.size)
+        else : return exp.__div__(self,n)
+
+    @_checkarg_numeric
+    def __radd__(self,n): return n+self
+    @_checkarg_numeric
+    def __rsub__(self,n): return n-self
+    @_checkarg_numeric
+    def __rmul__(self,n): return n*self
+    @_checkarg_numeric
+    def __rpow__(self,n): return n**self
+    @_checkarg_numeric
+    def __rdiv__(self,n): return n/self
+
+    @_checkarg_numeric
+    @_checkarg_sizes
+    def __eq__(self,n):
+        if n._is_cst: return cst(self.value==n.value)
+        else : return exp.__eq__(self,n)
+    @_checkarg_numeric
+    @_checkarg_sizes
+    def __ne__(self,n):
+        if n._is_cst: return cst(self.value!=n.value)
+        else : return exp.__ne__(self,n)
+
+    @_checkarg_numeric
+    @_checkarg_sizes
+    def __lt__(self,n):
+        if n._is_cst: return cst(self.value<n.value)
+        else : return exp.__lt__(self,n)
+    @_checkarg_numeric
+    @_checkarg_sizes
+    def __le__(self,n):
+        if n._is_cst: return cst(self.value<=n.value)
+        else : return exp.__le__(self,n)
+    @_checkarg_numeric
+    @_checkarg_sizes
+    def __ge__(self,n):
+        if n._is_cst: return cst(self.value>=n.value)
+        else : return exp.__ge__(self,n)
+    @_checkarg_numeric
+    @_checkarg_sizes
+    def __gt__(self,n):
+        if n._is_cst: return cst(self.value>n.value)
+        else : return exp.__gt__(self,n)
+##
 
 #------------------------------------------------------------------------------
 # reg holds 32-bit register reference (refname).
@@ -710,6 +809,9 @@ def slicer(x,pos,size):
     if pos==0 and size==x.size:
         return x
     else:
+        if x._is_mem:
+            a = ptr(x.a.base,x.a.seg,x.a.disp+pos)
+            return mem(a,size)
         return slc(x,pos,size)
 
 #------------------------------------------------------------------------------
@@ -753,6 +855,9 @@ class slc(exp):
 
     def simplify(self):
         self.x = self.x.simplify()
+        if self.x._is_mem:
+            a = ptr(self.x.a.base,self.x.a.seg,self.x.a.disp+self.pos)
+            return mem(a,self.size)
         return self
 
     # slice of a slice: 

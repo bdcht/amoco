@@ -66,8 +66,7 @@ Some components of Amoco are still in the
 process of being pushed to the release branch or further developed.
 More precisely:
 
-- x86 fpu and sse decoder specs (``arch/x86/spec_{fpu,sse2}.pỳ``) are not implemented,
-- arm v7 semantics (``arch/arm/v7/asm.py``) is currently not merged,
+- x86 fpu and sse instructions semantics are not implemented,
 - arm SIMD, VFP, NEON, TrustZone, Jazelle instruction sets are not implemented,
 - pretty printers based on pygments package are not merged,
 - interface to z3 solver (and associated analysis) is currently not merged,

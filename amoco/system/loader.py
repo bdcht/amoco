@@ -77,6 +77,10 @@ def load_program(file):
             from amoco.system.win32 import PE
             logger.info("win32 program created")
             return PE(p)
+        elif p.NT.Machine==pe.IMAGE_FILE_MACHINE_AMD64:
+            from amoco.system.win64 import PE
+            logger.info("win64 program created")
+            return PE(p)
         else:
             logger.error('machine type not supported')
             raise ValueError

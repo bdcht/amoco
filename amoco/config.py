@@ -1,12 +1,9 @@
 from collections import defaultdict
 
-from amoco.logger import Log
-logger = Log(__name__)
-
 try:
     import ConfigParser as cp
 except ImportError:
-    logger.info('ConfigParser not found, fallback to default config')
+    print('ConfigParser not found, fallback to default config')
     cp = None
 
 
@@ -17,6 +14,8 @@ if cp:
     conf.set('block', 'header', 'True')
     conf.set('block', 'bytecode', 'True')
     conf.set('block', 'padding', '4')
+    conf.add_section('log')
+    conf.set('log', 'level', '20')
     conf.read([os.path.expanduser('~/.amocorc')])
 else:
     conf = None
@@ -59,5 +58,6 @@ else:
             self.mset('block', header=True)
             self.mset('block', bytecode=True)
             self.mset('block', padding=4)
+            self.mset('log', level=20)
 
     conf = DefaultConf()

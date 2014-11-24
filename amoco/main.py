@@ -2,7 +2,7 @@
 # Copyright (C) 2006-2014 Axel Tillequin (bdcht3@gmail.com) 
 # published under GPLv2 license
 
-from amoco.logger import Log
+from amoco.logger import Log, set_debug,set_quiet,set_log_all
 logger = Log(__name__)
 
 from amoco import cfg

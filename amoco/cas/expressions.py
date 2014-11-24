@@ -518,12 +518,14 @@ class flt(exp):
 # reg holds 32-bit register reference (refname).
 #------------------------------------------------------------------------------
 class reg(exp):
-    __slots__ = ['ref','_subrefs']
+    __slots__ = ['ref','_subrefs', '__protect']
     _is_def   = True
     _is_reg   = True
 
     def __init__(self,refname,size=32):
+        self.__protect = False
         self.size = size
+        self.__protect = True
         self.sf  = False
         self.ref = refname
         self._subrefs = {}
@@ -541,6 +543,11 @@ class reg(exp):
 
     def addr(self,env):
         return self
+
+    def __setattr__(self,a,v):
+        if a is 'size' and self.__protect is True:
+            raise AttributeError,'protected attribute'
+        exp.__setattr__(self,a,v)
 ##
 
 #------------------------------------------------------------------------------
@@ -818,7 +825,7 @@ def slicer(x,pos,size):
 # slc holds bit-slice of a non-cst (and non-slc) expressions 
 #------------------------------------------------------------------------------
 class slc(exp):
-    __slots__ = ['x','pos','ref']
+    __slots__ = ['x','pos','ref','__protect','_is_reg']
     _is_def   = True
     _is_slc   = True
 
@@ -828,6 +835,7 @@ class slc(exp):
             res = x[pos:pos+size]
             x,pos = res.x,res.pos
         self.x = x
+        self.__protect = False
         self.size = size
         self.sf   = False
         self.pos  = pos
@@ -835,14 +843,21 @@ class slc(exp):
 
     def setref(self,ref):
         if self.x._is_reg:
+            self._is_reg = True
             if ref is None:
                 ref = self.x._subrefs.get((self.pos,self.size),None)
             else:
                 self.x._subrefs[(self.pos,self.size)] = ref
+            self.__protect = True
         self.ref = ref
 
     def raw(self):
         return "%s[%d:%d]"%(str(self.x),self.pos,self.pos+self.size)
+
+    def __setattr__(self,a,v):
+        if a is 'size' and self.__protect is True:
+            raise AttributeError,'protected attribute'
+        exp.__setattr__(self,a,v)
 
     def __str__(self):
         return self.ref or self.raw()

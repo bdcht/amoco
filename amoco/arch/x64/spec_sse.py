@@ -40,7 +40,7 @@ ISPECS = []
 def sse_ps(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,op2.size)
+    op1 = getregR(obj,REG,op2.size)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -52,7 +52,7 @@ def sse_ps(obj,Mod,REG,RM,data,_op1sz):
     if not check_nopfx(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 64
-    op1 = getregR(REG,_op1sz)
+    op1 = getregR(obj,REG,_op1sz)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -61,7 +61,7 @@ def sse_ps(obj,Mod,REG,RM,data,_op1sz):
 def sse_ps(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -72,7 +72,7 @@ def sse_ps(obj,Mod,REG,RM,data):
 def sse_ps(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,op2.size)
+    op1 = getregR(obj,REG,op2.size)
     obj.operands = [op2,op1]
     obj.type = type_data_processing
 
@@ -83,7 +83,7 @@ def sse_ps(obj,Mod,REG,RM,data):
 def sse_ps(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,op2.size)
+    op1 = getregR(obj,REG,op2.size)
     obj.operands = [op1,op2]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
@@ -100,7 +100,7 @@ def sse_ps(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 32
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -207,7 +207,7 @@ def sse_pd(obj,Mod,REG,RM,data, _inv):
 def sse_pd(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,'mm')
+    op1 = getregR(obj,REG,'mm')
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -236,7 +236,7 @@ def sse_pd(obj,Mod,RM,data):
 def sse_pd(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,'mm')
+    op1 = getregR(obj,REG,'mm')
     obj.operands = [op1,op2]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
@@ -250,7 +250,7 @@ def sse_pd(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_32): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 16
-    op1 = getregR(REG,'mm')
+    op1 = getregR(obj,REG,'mm')
     obj.operands = [op1,op2]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
@@ -264,7 +264,7 @@ def sse_pd(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: raise InstructionError(obj)
-    op1 = getregR(REG,32)
+    op1 = getregR(obj,REG,32)
     obj.operands = [op1,op2]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
@@ -278,7 +278,7 @@ def sse_pd(obj,Mod,REG,RM,data):
 def sse_pd(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,'mm')
+    op1 = getregR(obj,REG,'mm')
     obj.operands = [op2,op1]
     obj.type = type_data_processing
 
@@ -289,7 +289,7 @@ def sse_pd(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_reg: raise InstructionError(obj)
-    op1 = getregR(REG,op2.size)
+    op1 = getregR(obj,REG,op2.size)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -303,7 +303,7 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
     if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_mem: raise InstructionError(obj)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2] if not _inv else [op2, op1]
     obj.type = type_data_processing
 
@@ -314,7 +314,7 @@ def sse_pd(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_reg: raise InstructionError(obj)
-    op1 = getregR(REG,64)
+    op1 = getregR(obj,REG,64)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -324,7 +324,7 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
     if not check_nopfx(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_mem: raise InstructionError(obj)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2] if not _inv else [op2,op1]
     obj.type = type_data_processing
 
@@ -348,7 +348,7 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
 def sse_ps(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -369,7 +369,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 64
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -380,7 +380,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 64
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op2,op1]
     obj.type = type_data_processing
 
@@ -391,7 +391,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 64
-    op1 = getregRW(REG,32)
+    op1 = getregRW(obj,REG,32)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -400,7 +400,7 @@ def sse_sd(obj,Mod,REG,RM,data):
 def sse_sd(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_64): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -411,7 +411,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem and obj.mnemonic=='CMPSD': op2.size = 64
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
@@ -425,7 +425,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_mem: raise InstructionError(obj)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -435,7 +435,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_reg: raise InstructionError(obj)
-    op1 = getregR(REG,'mm')
+    op1 = getregR(obj,REG,'mm')
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -458,7 +458,7 @@ def sse_ss(obj,Mod,REG,RM,data):
     if not check_f3(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 32
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -469,7 +469,7 @@ def sse_ss(obj,Mod,REG,RM,data):
     if not check_f3(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 32
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op2,op1]
     obj.type = type_data_processing
 
@@ -481,7 +481,7 @@ def sse_ss(obj,Mod,REG,RM,data):
     if not check_f3(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem and obj.mnemonic=='CMPSS': op2.size = 32
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
@@ -497,7 +497,7 @@ def sse_pd(obj,Mod,REG,RM,data,_op2sz):
     if not check_f3(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = _op2sz
-    op1 = getregR(REG,op2.size)
+    op1 = getregR(obj,REG,op2.size)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -511,7 +511,7 @@ def sse_pd(obj,Mod,REG,RM,data,_op2sz):
 def sse_pd(obj,Mod,REG,RM,data, _inv):
     if not check_f3(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2] if not _inv else [op2,op1]
     obj.type = type_data_processing
 
@@ -521,7 +521,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     if not check_f3(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_reg: raise InstructionError(obj)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -530,7 +530,7 @@ def sse_sd(obj,Mod,REG,RM,data):
 def sse_sd(obj,Mod,REG,RM,data):
     if not check_f3(obj,set_opdsz_64): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -541,7 +541,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 32
-    op1 = getregRW(REG,32)
+    op1 = getregRW(obj,REG,32)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -666,7 +666,7 @@ def sse_sd(obj,Mod,REG,RM,data):
 def sse_pd(obj,Mod,REG,RM,data):
     if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,op2.size)
+    op1 = getregR(obj,REG,op2.size)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -687,7 +687,7 @@ def sse_pd(obj,Mod,REG,RM,data, _op2sz):
     if not check_66(obj,set_opdz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = _op2sz
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -699,7 +699,7 @@ def sse_pd(obj,Mod,REG,RM,data, _op2sz):
 def sse_pd(obj,Mod,REG,RM,data):
     if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,op2.size)
+    op1 = getregR(obj,REG,op2.size)
     obj.operands = [op2,op1]
     obj.type = type_data_processing
 
@@ -730,7 +730,7 @@ def sse_pd(obj,Mod,REG,RM,data):
     if op2._is_mem:
         if obj.mnemonic=='ROUNDSD': op2.size = 64
         if obj.mnemonic=='ROUNDSS': op2.size = 32
-    op1 = getregR(REG,op2.size)
+    op1 = getregR(obj,REG,op2.size)
     obj.operands = [op1,op2]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
@@ -748,7 +748,7 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
     if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 64
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2] if not _inv else [op2,op1]
     obj.type = type_data_processing
 
@@ -757,7 +757,7 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
 def sse_pd(obj,Mod,REG,RM,data,_inv):
     if not check_66(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -782,7 +782,7 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
         elif obj.mnemonic[-1]=='W':
             if _inv: raise InstructionError(obj)
             else: op2.size=16
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2] if not _inv else [op2,op1]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
@@ -797,7 +797,7 @@ def sse_pd(obj,Mod,REG,RM,data):
     if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_reg: raise InstructionError(obj)
-    op1 = getregR(REG,op2.size)
+    op1 = getregR(obj,REG,op2.size)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -807,7 +807,7 @@ def sse_pd(obj,Mod,REG,RM,data):
     if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_reg: raise InstructionError(obj)
-    op1 = getregR(REG,32)
+    op1 = getregR(obj,REG,32)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -817,7 +817,7 @@ def sse_pd(obj,Mod,REG,RM,data):
 def sse_pd(obj,Mod,REG,RM,data):
     if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,64)
+    op1 = getregR(obj,REG,64)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -852,7 +852,7 @@ def sse_pd(obj,Mod,RM,data):
 def sse_pd(obj,Mod,REG,RM,data, _inv):
     if not check_66(obj,set_opdsz_64): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2] if not _inv else [op2,op1]
     obj.type = type_data_processing
 
@@ -866,7 +866,7 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
     if not check_66(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_mem: raise InstructionError(obj)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2] if not _inv else [op2, op1]
     obj.type = type_data_processing
 
@@ -879,7 +879,7 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
     if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_mem: raise InstructionError(obj)
-    op1 = getregR(REG,128)
+    op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2] if not _inv else [op2,op1]
     obj.type = type_data_processing
 

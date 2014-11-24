@@ -102,12 +102,12 @@ def ia32_nooperand(obj):
 @ispec_ia32(" 8>[ {98}         ]", mnemonic = "CWDE",    type=type_data_processing)
 @ispec_ia32(" 8>[ {99}         ]", mnemonic = "CDQ",     type=type_data_processing)
 def ia32_nooperand(obj):
-    if i.misc['opdsz']:
-        if i.mnemonic=="CWDE": i.mnemonic="CBW"
-        if i.mnemonic=="CDQ" : i.mnemonic="CWD"
-    if i.misc['REX']:
-        if i.mnemonic=="CWDE": i.mnemonic="CDQE"
-        if i.mnemonic=="CDQ" : i.mnemonic="CQO"
+    if obj.misc['opdsz']:
+        if obj.mnemonic=="CWDE": obj.mnemonic="CBW"
+        if obj.mnemonic=="CDQ" : obj.mnemonic="CWD"
+    if obj.misc['REX']:
+        if obj.mnemonic=="CWDE": obj.mnemonic="CDQE"
+        if obj.mnemonic=="CDQ" : obj.mnemonic="CQO"
 
 # instructions for which REP/REPNE is valid (see formats.py):
 @ispec_ia32(" 8>[ {6c} ]", mnemonic = "INSB",    type=type_system)
@@ -595,12 +595,14 @@ def ia32_arpl(obj,Mod,REG,RM,data,_inv):
 @ispec_ia32("*>[ {63} /r ]", mnemonic = "MOVSXD")
 def ia32_movsxd(obj,Mod,REG,RM,data):
     REX = obj.misc['REX']
+    if REX: W,R,X,B = REX
+    else:   W=0
     op1 = getregR(obj,REG,64)
     # force 32-bit wide op2
-    if REX and W==1: obj.misc['REX'] = (0,R,X,B)
+    if W==1: obj.misc['REX'] = (0,R,X,B)
     op2,data = getModRM(obj,Mod,RM,data)
     # restore original W
-    if REX and W==1: obj.misc['REX'] = (1,R,X,B)
+    if W==1: obj.misc['REX'] = (1,R,X,B)
     obj.operands = [op1, op2]
     obj.type = type_data_processing
 

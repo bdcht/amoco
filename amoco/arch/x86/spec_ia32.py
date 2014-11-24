@@ -106,9 +106,9 @@ def ia32_nooperand(obj):
 @ispec_ia32(" 8>[ {98}         ]", mnemonic = "CWDE",    type=type_data_processing)
 @ispec_ia32(" 8>[ {99}         ]", mnemonic = "CDQ",     type=type_data_processing)
 def ia32_nooperand(obj):
-    if i.misc['opdsz']:
-        if i.mnemonic=="CWDE": i.mnemonic="CBW"
-        if i.mnemonic=="CDQ" : i.mnemonic="CWD"
+    if obj.misc['opdsz']:
+        if obj.mnemonic=="CWDE": obj.mnemonic="CBW"
+        if obj.mnemonic=="CDQ" : obj.mnemonic="CWD"
 
 # instructions for which REP/REPNE is valid (see formats.py):
 @ispec_ia32(" 8>[ {6c} ]", mnemonic = "INSB",    type=type_system)

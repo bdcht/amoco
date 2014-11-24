@@ -96,10 +96,8 @@ def ia32_fpu_reg(obj, reg):
 @ispec_ia32("*>[ {0f}{ae} /0 ]", mnemonic = "FXSAVE",  _size = 512*8)
 @ispec_ia32("*>[ {0f}{ae} /1 ]", mnemonic = "FXRSTOR", _size = 512*8)
 def ia32_fpu_mem(obj, Mod, RM, data, _size):
-    # registers are not allowed
-    if Mod == 3:
-        raise InstructionError(obj)
     op1, data = getModRM(obj,Mod,RM,data)
+    if op1._is_reg: raise InstructionError(obj)
     op1.size = _size
     obj.operands = [op1]
     obj.type = type_data_processing

@@ -93,7 +93,7 @@ class mapper(object):
             if r._is_reg:
                 r = comp(loc.size)
                 r[0:loc.size] = loc
-            pos = 0 if k._is_reg else k.pos
+            pos = k.pos if k._is_slc else 0
             r[pos:pos+k.size] = v
         self.__map[loc] = r
 

@@ -370,17 +370,20 @@ class CoreExec(object):
 #------------------------------------------------------------------------------
 from collections import defaultdict
 
-def default_hook(m):
+# default stub:
+def default_hook(m,**kargs):
     pass
 
 stubs = defaultdict(lambda :default_hook)
 
 # decorators for ext() stub definition:
 
+# decorator to define a stub:
 def stub(f):
     stubs[f.__name__] = f
     return f
 
+# decorator to (re)define the default stub:
 def stub_default(f):
     stubs.default_factory = lambda :f
     return f

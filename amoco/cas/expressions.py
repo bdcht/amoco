@@ -563,13 +563,13 @@ class ext(reg):
     def stub(cls,ref):
         try:
             return cls.stubs[ref]
-        except KeyError:
+        except AttributeError,KeyError:
             logger.info('no stub defined for %s'%ref)
-            return (lambda env:None)
+            return (lambda env,**kargs:None)
 
-    def call(self,env):
+    def call(self,env,**kargs):
         logger.info('stub %s called'%self.ref)
-        res = self.stub(self.ref)(env)
+        res = self.stub(self.ref)(env,**kargs)
         if res is None:
             return top(self.size)
         else:
@@ -752,7 +752,7 @@ class mem(exp):
     def __init__(self,a,size=32,seg='',disp=0):
         self.size  = size
         self.sf    = False
-        self.a  = a if isinstance(a,ptr) else ptr(a,seg,disp)
+        self.a  = ptr(a,seg,disp)
 
     def __str__(self):
         return 'M%d%s'%(self.size,self.a)
@@ -779,6 +779,10 @@ class ptr(exp):
 
     def __init__(self,base,seg='',disp=0):
         assert base._is_def
+        if base._is_ptr:
+            if seg is '': seg=base.seg
+            disp = base.disp+disp
+            base = base.base
         self.base = base
         self.disp = disp
         self.seg  = seg
@@ -817,8 +821,10 @@ def slicer(x,pos,size):
         return x
     else:
         if x._is_mem:
-            a = ptr(x.a.base,x.a.seg,x.a.disp+pos)
-            return mem(a,size)
+            off,rst = divmod(pos,8)
+            if rst==0:
+                a = ptr(x.a.base,x.a.seg,x.a.disp+off)
+                return mem(a,size)
         return slc(x,pos,size)
 
 #------------------------------------------------------------------------------
@@ -871,8 +877,10 @@ class slc(exp):
     def simplify(self):
         self.x = self.x.simplify()
         if self.x._is_mem:
-            a = ptr(self.x.a.base,self.x.a.seg,self.x.a.disp+self.pos)
-            return mem(a,self.size)
+            off,rst = divmod(self.pos,8)
+            if rst==0:
+                a = ptr(self.x.a.base,self.x.a.seg,self.x.a.disp+off)
+                return mem(a,self.size)
         return self
 
     # slice of a slice: 

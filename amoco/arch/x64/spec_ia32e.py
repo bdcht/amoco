@@ -213,7 +213,7 @@ def ia32_push_pop(obj,_seg):
 @ispec_ia32("*>[ {0f}{18} /1 ]", mnemonic = "PREFETCHT0" , type=type_other)
 @ispec_ia32("*>[ {0f}{18} /2 ]", mnemonic = "PREFETCHT1" , type=type_other)
 @ispec_ia32("*>[ {0f}{18} /3 ]", mnemonic = "PREFETCHT2" , type=type_other)
-@ispec_ia32("*>[ {0f}{0d} /1 ]", mnemonic = "PRFCHW" ,     type=type_other)
+@ispec_ia32("*>[ {0f}{0d} /1 ]", mnemonic = "PREFETCHW" ,  type=type_other)
 def ia32_rm8(obj,Mod,RM,data):
     obj.misc['opdsz']=8
     op1,data = getModRM(obj,Mod,RM,data)
@@ -405,14 +405,6 @@ def ia32_rm8_op2(obj,Mod,RM,data,_op2):
 @ispec_ia32("*>[ {80} /5 ]", mnemonic = "SUB")
 @ispec_ia32("*>[ {80} /6 ]", mnemonic = "XOR")
 @ispec_ia32("*>[ {80} /7 ]", mnemonic = "CMP")
-@ispec_ia32("*>[ {c0} /0 ]", mnemonic = "ROL")
-@ispec_ia32("*>[ {c0} /1 ]", mnemonic = "ROR")
-@ispec_ia32("*>[ {c0} /2 ]", mnemonic = "RCL")
-@ispec_ia32("*>[ {c0} /3 ]", mnemonic = "RCR")
-@ispec_ia32("*>[ {c0} /4 ]", mnemonic = "SAL")
-@ispec_ia32("*>[ {c0} /5 ]", mnemonic = "SHR")
-@ispec_ia32("*>[ {c0} /6 ]", mnemonic = "SHL")
-@ispec_ia32("*>[ {c0} /7 ]", mnemonic = "SAR")
 @ispec_ia32("*>[ {c6} /0 ]", mnemonic = "MOV")
 @ispec_ia32("*>[ {f6} /0 ]", mnemonic = "TEST")
 def ia32_ptr_ib(obj,Mod,RM,data):
@@ -421,6 +413,27 @@ def ia32_ptr_ib(obj,Mod,RM,data):
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
     obj.operands = [op1, env.cst(imm.int(),8)]
+    obj.bytes += pack(imm)
+    obj.type = type_data_processing
+
+@ispec_ia32("*>[ {c0} /0 ]", mnemonic = "ROL")
+@ispec_ia32("*>[ {c0} /1 ]", mnemonic = "ROR")
+@ispec_ia32("*>[ {c0} /2 ]", mnemonic = "RCL")
+@ispec_ia32("*>[ {c0} /3 ]", mnemonic = "RCR")
+@ispec_ia32("*>[ {c0} /4 ]", mnemonic = "SAL")
+@ispec_ia32("*>[ {c0} /5 ]", mnemonic = "SHR")
+@ispec_ia32("*>[ {c0} /6 ]", mnemonic = "SHL")
+@ispec_ia32("*>[ {c0} /7 ]", mnemonic = "SAR")
+def ia32_ptr_ib(obj,Mod,RM,data):
+    obj.misc['opdsz']=8
+    REX = obj.misc['REX']
+    W=0
+    if REX: W=REX[0]
+    op1,data = getModRM(obj,Mod,RM,data)
+    if data.size<8: raise InstructionError(obj)
+    imm = data[0:8]
+    mask = 0x3f if W==1 else 0x1f
+    obj.operands = [op1, env.cst(imm.int()&mask,8)]
     obj.bytes += pack(imm)
     obj.type = type_data_processing
 
@@ -457,10 +470,14 @@ def ia32_mov_adr(obj,rb,data):
 @ispec_ia32("*>[ {c1} /6 ]", mnemonic = "SHL")
 @ispec_ia32("*>[ {c1} /7 ]", mnemonic = "SAR")
 def ia32_rm32_imm8(obj,Mod,RM,data):
+    REX = obj.misc['REX']
+    W=0
+    if REX: W=REX[0]
     op1,data = getModRM(obj,Mod,RM,data)
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
-    obj.operands = [op1, env.cst(imm.int(),8)]
+    mask = 0x3f if W==1 else 0x1f
+    obj.operands = [op1, env.cst(imm.int()&mask,8)]
     obj.bytes += pack(imm)
     obj.type = type_data_processing
 

@@ -684,6 +684,20 @@ Conditionals
 mapper
 ~~~~~~
 
+A ``mapper`` object captures the symbolic operations of a sequence of instructions by
+mapping left-value expressions to right-value expressions. It represents the transition
+function that allows to transform a memory state into another memory state that corresponds
+to the execution of the captured instructions.
+As shown in the ``i_MOVcc`` example above, the ``fmap`` object
+is the mapper on which every instruction semantics operate (see asm_).
+
+.. sourcecode:: python
+
+ >>> m = mapper()
+ >>> m[esp] = cst(0x10,32)
+ >>> print m
+
+
 main.py
 -------
 

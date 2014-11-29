@@ -115,6 +115,7 @@ def i_RET(i,fmap):
   pop(fmap,eip)
 
 def i_HLT(i,fmap):
+  fmap[eip] = fmap[eip]+i.length
   ext('halt').call(fmap)
 
 #------------------------------------------------------------------------------
@@ -245,7 +246,7 @@ def i_SAHF(i,fmap):
   fmap[eflags[0:8]] = fmap(ah)
 
 #------------------------------------------------------------------------------
-def _scas_(i,fmap):
+def _scas_(i,fmap,l):
   counter = cx if i.misc['adrsz'] else ecx
   a = {1:al, 2:ax, 4:eax}[l]
   src = mem(fmap(edi),l*8)
@@ -315,7 +316,7 @@ def i_STOSD(i,fmap):
   _stos_(i,fmap,4)
 
 #------------------------------------------------------------------------------
-def _movs_(i,fmap):
+def _movs_(i,fmap,l):
   counter = cx if i.misc['adrsz'] else ecx
   loc = mem(fmap(edi),l*8)
   src = mem(fmap(esi),l*8)
@@ -339,15 +340,15 @@ def i_MOVSD(i,fmap):
 #------------------------------------------------------------------------------
 def i_IN(i,fmap):
   fmap[eip] = fmap[eip]+i.length
-  op1 = fmap[i.operands[0]]
-  op2 = fmap[i.operands[1]]
-  fmap[op1] = ext('IN%s'%op2).call(fmap)
+  op1 = i.operands[0]
+  op2 = fmap(i.operands[1])
+  fmap[op1] = ext('IN%s'%op2,op1.size).call(fmap)
 
 def i_OUT(i,fmap):
   fmap[eip] = fmap[eip]+i.length
-  op1 = fmap[i.operands[0]]
-  op2 = fmap[i.operands[1]]
-  fmap[op1] = ext('OUT%s'%op2).call(fmap)
+  op1 = fmap(i.operands[0])
+  op2 = fmap(i.operands[1])
+  ext('OUT%s'%op1).call(fmap,arg=op2)
 
 #op1_src retreives fmap[op1] (op1 value): 
 def i_PUSH(i,fmap):
@@ -373,7 +374,7 @@ def i_CALL(i,fmap):
 
 
 def i_CALLF(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   pc = fmap[eip]+i.length
 
 def i_JMP(i,fmap):
@@ -385,7 +386,7 @@ def i_JMP(i,fmap):
   else: fmap[eip] = target
 
 def i_JMPF(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   pc = fmap[eip]+i.length
 
 #------------------------------------------------------------------------------
@@ -399,24 +400,27 @@ def _loop_(i,fmap,cond):
   fmap[eip] = tst(fmap(cond), loc, fmap[eip]+i.length)
 
 def i_LOOP(i,fmap):
+  counter = cx if i.misc['adrsz'] else ecx
   cond = (counter!=0)
   _loop_(i,fmap,cond)
 
 def i_LOOPE(i,fmap):
+  counter = cx if i.misc['adrsz'] else ecx
   cond = zf&(counter!=0)
   _loop_(i,fmap,cond)
 
 def i_LOOPNE(i,fmap):
+  counter = cx if i.misc['adrsz'] else ecx
   cond = (~zf)&(counter!=0)
   _loop_(i,fmap,cond)
 
 #------------------------------------------------------------------------------
 def i_LSL(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
 
 def i_LTR(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
 
 #######################
@@ -621,7 +625,7 @@ def i_TEST(i,fmap):
 def i_LEA(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   op1 = i.operands[0]
-  op2 = fmap(i.operands[1])
+  op2 = i.operands[1]
   adr = op2.addr(fmap)
   if   op1.size>adr.size: adr = adr.zeroextend(op1.size)
   elif op1.size<adr.size: adr = adr[0:op1.size]
@@ -637,74 +641,144 @@ def i_XCHG(i,fmap):
 
 def i_SHR(i,fmap):
   op1 = i.operands[0]
-  op2 = fmap(i.operands[1])
+  count = fmap(i.operands[1]&0x1f)
   fmap[eip] = fmap[eip]+i.length
   a = fmap(op1)
-  if op2._is_cst:
-    if op2.value==0: return
-    if (a.size>op2.value):
-      fmap[cf] = slc(a,op2.value-1,1)
+  if count._is_cst:
+    if count.value==0: return # flags unchanged
+    if count.value==1:
+        fmap[of] = a.bit(-1) # MSB of a
     else:
-      fmap[cf] = bit0
-  else:
-    fmap[cf] = top(1)
-  #shr must ignore sign:
-  a.sf = +1
-  fmap[op1] = a>>op2
-  #of is always MSB of a:
-  fmap[of] = slc(a,a.size-1,1)
-
-def i_SAR(i,fmap):
-  op1 = i.operands[0]
-  op2 = fmap(i.operands[1])
-  fmap[eip] = fmap[eip]+i.length
-  a = fmap(op1)
-  if op2._is_cst:
-    if op2.value==0: return
-    if (a.size>op2.value):
-      fmap[cf] = slc(a,op2.value-1,1)
-      #of is cleared if 1 was shifted, undefined otherwise (see intel 4-278). 
-      fmap[of] = tst(a[0:op2.value]<>0,bit0,top(1))
+        fmap[of] = top(1)
+    if count.value<=a.size:
+        fmap[cf] = a.bit(count.value-1)
     else:
-      fmap[cf] = slc(a,a.size-1,1)
-      fmap[of] = tst(a<>0,bit0,top(1))
+        fmap[cf] = bit0
   else:
     fmap[cf] = top(1)
     fmap[of] = top(1)
-  #sign of a is important because the result is filled with MSB(a)
-  fmap[op1] = a>>op2
+  fmap[op1] = a>>count
+
+def i_SAR(i,fmap):
+  op1 = i.operands[0]
+  count = fmap(i.operands[1]&0x1f)
+  fmap[eip] = fmap[eip]+i.length
+  a = fmap(op1)
+  if count._is_cst:
+    if count.value==0: return
+    if count.value==1:
+        fmap[of] = bit0
+    else:
+        fmap[of] = top(1)
+    if count.value<=a.size:
+        fmap[cf] = a.bit(count.value-1)
+    else:
+        fmap[cf] = a.bit(-1)
+  else:
+    fmap[cf] = top(1)
+    fmap[of] = top(1)
+  fmap[op1] = a//count # (// is used as arithmetic shift in cas.py)
 
 def i_SHL(i,fmap):
   op1 = i.operands[0]
-  op2 = fmap(i.operands[1])
+  count = fmap(i.operands[1]&0x1f)
   fmap[eip] = fmap[eip]+i.length
   a = fmap(op1)
-  if op2._is_cst:
-    if op2.value==0: return
-    if (a.size>op2.value):
-      fmap[cf] = slc(a,a.size-op2.value,1)
+  x = a<<count
+  if count._is_cst:
+    if count.value==0: return
+    if count.value==1:
+        fmap[of] = x.bit(-1)^fmap(cf)
     else:
-      fmap[cf] = bit0
+        fmap[of] = top(1)
+    if count.value<=a.size:
+        fmap[cf] = a.bit(a.size-count.value)
+    else:
+        fmap[cf] = bit0
   else:
     fmap[cf] = top(1)
-  x = a<<op2
+    fmap[of] = top(1)
   fmap[op1] = x
-  #of is cleared if MSB(x)==cf, set otherwise.
-  fmap[of] = tst(slc(x,x.size-1,1)==fmap[cf],bit0,bit1)
 
 i_SAL = i_SHL
 
 def i_ROL(i,fmap):
-  raise NotImplementedError
+  op1 = i.operands[0]
+  size = op1.size
+  count = fmap(i.operands[1]&0x1f)%size
+  fmap[eip] = fmap[eip]+i.length
+  a = fmap(op1)
+  x = ROL(a,count)
+  if count._is_cst:
+    if count.value==0: return
+    fmap[cf] = x.bit(0)
+    if count.value==1:
+        fmap[of] = x.bit(-1)^fmap(cf)
+    else:
+        fmap[of] = top(1)
+  else:
+    fmap[cf] = top(1)
+    fmap[of] = top(1)
+  fmap[op1] = x
 
 def i_ROR(i,fmap):
-  raise NotImplementedError
+  op1 = i.operands[0]
+  size = op1.size
+  count = fmap(i.operands[1]&0x1f)%size
+  fmap[eip] = fmap[eip]+i.length
+  a = fmap(op1)
+  x = ROR(a,count)
+  if count._is_cst:
+    if count.value==0: return
+    fmap[cf] = x.bit(-1)
+    if count.value==1:
+        fmap[of] = x.bit(-1)^x.bit(-2)
+    else:
+        fmap[of] = top(1)
+  else:
+    fmap[cf] = top(1)
+    fmap[of] = top(1)
+  fmap[op1] = x
 
 def i_RCL(i,fmap):
-  raise NotImplementedError
+  op1 = i.operands[0]
+  size = op1.size
+  if size<32: size=size+1 # count cf
+  count = fmap(i.operands[1]&0x1f)%size
+  fmap[eip] = fmap[eip]+i.length
+  a = fmap(op1)
+  x,carry = ROLWithCarry(a,count,fmap(cf))
+  if count._is_cst:
+    if count.value==0: return
+    fmap[cf] = carry
+    if count.value==1:
+        fmap[of] = x.bit(-1)^fmap(cf)
+    else:
+        fmap[of] = top(1)
+  else:
+    fmap[cf] = top(1)
+    fmap[of] = top(1)
+  fmap[op1] = x
 
 def i_RCR(i,fmap):
-  raise NotImplementedError
+  op1 = i.operands[0]
+  size = op1.size
+  if size<32: size=size+1 # count cf
+  count = fmap(i.operands[1]&0x1f)%size
+  fmap[eip] = fmap[eip]+i.length
+  a = fmap(op1)
+  x,carry = RORWithCarry(a,count,fmap(cf))
+  if count._is_cst:
+    if count.value==0: return
+    if count.value==1:
+        fmap[of] = a.bit(-1)^fmap(cf)
+    else:
+        fmap[of] = top(1)
+  else:
+    fmap[cf] = top(1)
+    fmap[of] = top(1)
+  fmap[cf] = carry
+  fmap[op1] = x
 
 def i_CMOVcc(i,fmap):
   op1 = i.operands[0]
@@ -773,76 +847,76 @@ def i_RDRAND(i,fmap):
    for f in (of,sf,zf,af,pf): fmap[f] = bit0
 
 def i_RDTSC(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
    fmap[edx] = top(32)
    fmap[eax] = top(32)
 
 def i_RDTSCP(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
    fmap[edx] = top(32)
    fmap[eax] = top(32)
    fmap[ecx] = top(32)
 
 def i_BOUND(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
    # #UD #BR exceptions not implemented
 
 def i_LFENCE(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
 def i_MFENCE(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
 def i_SFENCE(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
 def i_MWAIT(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
 def i_LGDT(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
 def i_SGDT(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
 def i_LIDT(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
 def i_SIDT(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
 def i_LLDT(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
 def i_SLDT(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
 def i_LMSW(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
    fmap[cr(0)[0:16]] = top(16)
 
 def i_SMSW(i,fmap):
-   logger.warning('%s semantic is not defined'%i.mnemonic)
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
    dst = i.operands[0]
    fmap[dst] = top(16)
 
 def i_BSF(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   dst,src = i.operands
   x = fmap(src)
@@ -850,7 +924,7 @@ def i_BSF(i,fmap):
   fmap[dst] = top(dst.size)
 
 def i_BSR(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   dst,src = i.operands
   x = fmap(src)
@@ -858,7 +932,7 @@ def i_BSR(i,fmap):
   fmap[dst] = top(dst.size)
 
 def i_POPCNT(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   dst,src = i.operands
   fmap[dst] = top(dst.size)
   fmap[cf] = bit0
@@ -869,121 +943,121 @@ def i_POPCNT(i,fmap):
   fmap[eip] = fmap[eip]+i.length
 
 def i_LZCNT(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   dst,src = i.operands
   fmap[dst] = top(dst.size)
   fmap[cf] = fmap[zf] = top(1)
   fmap[eip] = fmap[eip]+i.length
 
 def i_TZCNT(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   dst,src = i.operands
   fmap[dst] = top(dst.size)
   fmap[cf] = fmap[zf] = top(1)
   fmap[eip] = fmap[eip]+i.length
 
 def i_BT(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   dst,src = i.operands
   fmap[cf] = top(1)
 
 def i_BTC(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   dst,src = i.operands
   fmap[cf] = top(1)
   fmap[dst] = top(dst.size)
 
 def i_BTR(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   dst,src = i.operands
   fmap[cf] = top(1)
   fmap[dst] = top(dst.size)
 
 def i_BTS(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   dst,src = i.operands
   fmap[cf] = top(1)
   fmap[dst] = top(dst.size)
 
 def i_CLFLUSH(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   # cache not supported
 
 def i_INVD(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   # cache not supported
 
 def i_INVLPG(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   # cache not supported
 
 def i_CLI(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   # interruptions not supported
 
 def i_PREFETCHT0(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   # interruptions not supported
 def i_PREFETCHT1(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   # interruptions not supported
 def i_PREFETCHT2(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   # interruptions not supported
 def i_PREFETCHNTA(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   # interruptions not supported
 def i_PREFETCHW(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   # interruptions not supported
 
 def i_LAR(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   dst,src = i.operands
   fmap[zf] = top(1)
   fmap[dst] = top(dst.size)
 
 def i_STR(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
   dst = i.operands[0]
   fmap[dst] = top(dst.size)
 
 def i_RDMSR(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
 
 def i_RDPMC(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
 
 def i_RSM(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
 
 def i_SYSENTER(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = top(32)
   fmap[esp] = top(32)
   fmap[cs]  = top(16)
   fmap[ss]  = top(16)
 
 def i_SYSEXIT(i,fmap):
-  logger.warning('%s semantic is not defined'%i.mnemonic)
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = top(32)
   fmap[esp] = top(32)
   fmap[cs]  = top(16)

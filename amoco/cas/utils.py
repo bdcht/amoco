@@ -12,6 +12,7 @@ logger = Log(__name__)
 from .expressions import *
 
 def Abs(x):
+    if x.sf==False: return x
     y = x//(x.size-1)
     return (x+y)^y
 
@@ -37,10 +38,10 @@ def SubWithBorrow(x,y,c=None):
     return (result,carry,overflow)
 
 def ROR(x,n):
-    return (x>>n | x<<(x.size-n))
+    return oper('>>>',x,n) #(x>>n | x<<(x.size-n))
 
 def ROL(x,n):
-    return (x<<n | x>>(x.size-n))
+    return oper('<<<',x,n) #(x<<n | x>>(x.size-n))
 
 def RORWithCarry(x,n,c):
     y = composer([x,c])

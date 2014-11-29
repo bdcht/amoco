@@ -163,7 +163,7 @@ class disassembler(object):
                         i = s.decode(bytestring,e,i=self.__i,ival=b.ival)
                     except (DecodeError,InstructionError):
                         logger.debug('exception raised by disassembler:'
-                                     'decoding %s with spec %s'%(bytestring,s.format))
+                                     'decoding %s with spec %s'%(bytestring.encode('hex'),s.format))
                         continue
                     if i.spec.pfx is True:
                         if self.__i is None: self.__i = i

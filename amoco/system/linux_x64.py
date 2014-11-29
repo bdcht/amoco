@@ -129,7 +129,7 @@ class ELF(CoreExec):
 #----------------------------------------------------------------------------
 
 @stub_default
-def pop_eip(m):
+def pop_rip(m):
     cpu.pop(m,cpu.rip)
 
 @stub

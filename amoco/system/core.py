@@ -316,10 +316,11 @@ class CoreExec(object):
         self.cpu = cpu
         self.mmap = MemoryMap()
         self.load_binary()
-        cpu.ext.stubs = stubs
+        if cpu is not None:
+            cpu.ext.stubs = stubs
 
     def initenv(self):
-        pass
+        return None
 
     def load_binary(self):
         pass
@@ -328,6 +329,9 @@ class CoreExec(object):
         return self.mmap.read(vaddr,size)
 
     def read_instruction(self,vaddr,**kargs):
+        if self.cpu is None:
+            logger.error('no cpu imported')
+            raise ValueError
         maxlen = self.cpu.disassemble.maxlen
         try:
             istr = self.mmap.read(vaddr,maxlen)

@@ -26,7 +26,7 @@ class lsweep(object):
             try:
                 m = p.initenv()
                 loc = m(p.PC())
-            except TypeError,ValueError:
+            except (TypeError,ValueError):
                 loc = 0
         while True:
             i = p.read_instruction(loc)

@@ -563,7 +563,7 @@ class PE(PEcore):
     def __init__(self,filename):
         try:
             f = open(filename,'r')
-        except IOError:
+        except (TypeError,IOError):
             f = str(filename)
         data = DataIO(f)
         self.data = data

@@ -5,6 +5,7 @@
 from amoco.logger import *
 logger = Log(__name__)
 
+from amoco.system.core import DataIO
 from amoco.system import elf
 from amoco.system import pe
 
@@ -14,26 +15,30 @@ from amoco.system import pe
 # loading the associated "system" (Linux/Windows) and "environment" (x86/etc), 
 # based on information from its header.
 #------------------------------------------------------------------------------
-def read_program(file):
+def read_program(filename):
     obj = None
     try:
         # open file as a ELF object:
-        p = elf.Elf(file)
-        logger.info("ELF file detected")
+        p = elf.Elf(filename)
+        logger.info("ELF format detected")
         return p
     except elf.ElfError:
         pass
 
     try:
         # open file as a PE object:
-        p = pe.PE(file)
-        logger.info("PE file detected")
+        p = pe.PE(filename)
+        logger.info("PE format detected")
         return p
     except pe.PEError:
         pass
 
-    logger.error('unknown file format')
-    raise ValueError
+    logger.error('unknown format')
+    try:
+        data = file(filename,'rb')
+    except (TypeError,IOError):
+        data = filename
+    return DataIO(data)
     ## 
 ##
 
@@ -84,3 +89,8 @@ def load_program(file):
         else:
             logger.error('machine type not supported')
             raise ValueError
+
+    else:
+        assert isinstance(p,DataIO)
+        from amoco.system.raw import RawExec
+        return RawExec(p)

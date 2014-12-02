@@ -778,7 +778,6 @@ class ptr(exp):
     _is_ptr   = True
 
     def __init__(self,base,seg='',disp=0):
-        assert base._is_def
         if base._is_ptr:
             if seg is '': seg=base.seg
             disp = base.disp+disp

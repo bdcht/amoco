@@ -660,6 +660,7 @@ def ia32_reg_32_inv(obj,Mod,RM,REG,data):
 @ispec_ia32("*>[ {0f}{b5} /r ]", mnemonic = "LGS", _seg=env.gs)
 def ia32_r32_seg(obj,Mod,RM,REG,data,_seg):
     op2,data = getModRM(obj,Mod,RM,data)
+    if not op2._is_mem: raise InstructionError(obj)
     op1 = env.getreg(REG,op2.size)
     op2 = env.mem(op2.a,op1.size+16,_seg)
     obj.operands = [op1, op2]

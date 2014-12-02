@@ -602,7 +602,11 @@ class Elf32(object):
         return [self.Ehdr.e_entry]
 
     def __init__(self,filename):
-        self.__file = file(filename,'rb')
+        try:
+            self.__file = file(filename,'rb')
+        except (TypeError,IOError):
+            from amoco.system.core import DataIO
+            self.__file = DataIO(filename)
         data = self.__file.read(52)
         if len(data)<52: data = data.ljust(52,'\x00')
         self.Ehdr   = Elf32_Ehdr(data)
@@ -1122,7 +1126,11 @@ class Elf64(object):
         return [self.Ehdr.e_entry]
 
     def __init__(self,filename):
-        self.__file = file(filename,'rb')
+        try:
+            self.__file = file(filename,'rb')
+        except (TypeError,IOError):
+            from amoco.system.core import DataIO
+            self.__file = DataIO(filename)
         data = self.__file.read(64)
         if len(data)<64: data = data.ljust(64,'\x00')
         self.Ehdr   = Elf64_Ehdr(data)

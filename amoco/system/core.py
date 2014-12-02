@@ -405,16 +405,16 @@ class DataIO(object):
         self.f.seek(i.start,0)
         return self.f.read(i.stop-i.start)
 
-    def read(self,size=0):
+    def read(self,size=-1):
         return self.f.read(size)
 
-    def readline(self,size=0):
+    def readline(self,size=-1):
         return self.f.readline(size)
 
-    def readlines(self,size=0):
+    def readlines(self,size=-1):
         return self.f.readlines(size)
 
-    def xreadlines(self,size=0):
+    def xreadlines(self,size=-1):
         return self.f.xreadlines(size)
 
     def write(self,s):

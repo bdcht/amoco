@@ -20,6 +20,27 @@ def pop(fmap,l):
   fmap[l] = fmap(mem(esp,l.size))
   fmap[esp] = fmap[esp]+l.length
 
+def parity(x):
+  x = x ^ (x>>1)
+  x = (x ^ (x>>2)) & 0x11111111
+  x = x * 0x11111111
+  p = (x>>28).bit(0)
+  return p
+
+def parity8(x):
+  y = x ^ (x>>4)
+  y = cst(0x6996,16)>>(y[0:4])
+  p = y.bit(0)
+  return p
+
+def halfcarry(x,y,c=None):
+    s,carry,o = AddWithCarry(x[0:4],y[0:4],c)
+    return carry
+
+def halfborrow(x,y,c=None):
+    s,carry,o = SubWithBorrow(x[0:4],y[0:4],c)
+    return carry
+
 #------------------------------------------------------------------------------
 def i_AAA(i,fmap):
   fmap[eip] = fmap[eip]+i.length
@@ -246,12 +267,14 @@ def i_SAHF(i,fmap):
   fmap[eflags[0:8]] = fmap(ah)
 
 #------------------------------------------------------------------------------
-def _scas_(i,fmap,l):
+def _cmps_(i,fmap,l):
   counter = cx if i.misc['adrsz'] else ecx
-  a = {1:al, 2:ax, 4:eax}[l]
-  src = mem(fmap(edi),l*8)
-  x, carry, overflow = SubWithBorrow(a,src)
+  dst = mem(fmap(edi),l*8)
+  src = mem(fmap(esi),l*8)
+  x, carry, overflow = SubWithBorrow(dst,src)
   if i.misc['rep']:
+      fmap[af] = tst(fmap(counter)==0, fmap(af), halfborrow(dst,src))
+      fmap[pf] = tst(fmap(counter)==0, fmap(pf), parity8(x[0:8]))
       fmap[zf] = tst(fmap(counter)==0, fmap(zf), x==0)
       fmap[sf] = tst(fmap(counter)==0, fmap(sf), x<0)
       fmap[cf] = tst(fmap(counter)==0, fmap(cf), carry)
@@ -259,6 +282,41 @@ def _scas_(i,fmap,l):
       fmap[counter] = fmap(counter)-1
       fmap[eip] = tst(fmap(counter)==0, fmap[eip]+i.length, fmap[eip])
   else:
+      fmap[af] = halfborrow(dst,src)
+      fmap[pf] = parity8(x[0:8])
+      fmap[zf] = x==0
+      fmap[sf] = x<0
+      fmap[cf] = carry
+      fmap[of] = overflow
+      fmap[eip] = fmap[eip]+i.length
+  fmap[edi] = tst(fmap(df),fmap(edi)-l,fmap(edi)+l)
+  fmap[esi] = tst(fmap(df),fmap(esi)-l,fmap(esi)+l)
+
+def i_CMPSB(i,fmap):
+  _cmps_(i,fmap,1)
+def i_CMPSW(i,fmap):
+  _cmps_(i,fmap,2)
+def i_CMPSD(i,fmap):
+  _cmps_(i,fmap,4)
+
+#------------------------------------------------------------------------------
+def _scas_(i,fmap,l):
+  counter = cx if i.misc['adrsz'] else ecx
+  a = {1:al, 2:ax, 4:eax}[l]
+  src = mem(fmap(edi),l*8)
+  x, carry, overflow = SubWithBorrow(a,src)
+  if i.misc['rep']:
+      fmap[af] = tst(fmap(counter)==0, fmap(af), halfborrow(a,src))
+      fmap[pf] = tst(fmap(counter)==0, fmap(pf), parity8(x[0:8]))
+      fmap[zf] = tst(fmap(counter)==0, fmap(zf), x==0)
+      fmap[sf] = tst(fmap(counter)==0, fmap(sf), x<0)
+      fmap[cf] = tst(fmap(counter)==0, fmap(cf), carry)
+      fmap[of] = tst(fmap(counter)==0, fmap(of), overflow)
+      fmap[counter] = fmap(counter)-1
+      fmap[eip] = tst(fmap(counter)==0, fmap[eip]+i.length, fmap[eip])
+  else:
+      fmap[af] = halfborrow(a,src)
+      fmap[pf] = parity8(x[0:8])
       fmap[zf] = x==0
       fmap[sf] = x<0
       fmap[cf] = carry
@@ -449,6 +507,8 @@ def i_INC(i,fmap):
   b = cst(1,a.size)
   x,carry,overflow = AddWithCarry(a,b)
   #cf not affected
+  fmap[af] = halfcarry(a,b)
+  fmap[pf] = parity8(x[0:8])
   fmap[zf] = x==0
   fmap[sf] = x<0
   fmap[of] = overflow
@@ -461,6 +521,8 @@ def i_DEC(i,fmap):
   b = cst(1,a.size)
   x,carry,overflow = SubWithBorrow(a,b)
   #cf not affected
+  fmap[af] = halfborrow(a,b)
+  fmap[pf] = parity8(x[0:8])
   fmap[zf] = x==0
   fmap[sf] = x<0
   fmap[of] = overflow
@@ -472,6 +534,8 @@ def i_NEG(i,fmap):
   a = cst(0,op1.size)
   b = fmap(op1)
   x,carry,overflow = SubWithBorrow(a,b)
+  fmap[af] = halfborrow(a,b)
+  fmap[pf] = parity8(x[0:8])
   fmap[cf] = b!=0
   fmap[zf] = x==0
   fmap[sf] = x<0
@@ -524,7 +588,10 @@ def i_ADC(i,fmap):
   op2 = fmap(i.operands[1])
   fmap[eip] = fmap[eip]+i.length
   a=fmap(op1)
-  x,carry,overflow = AddWithCarry(a,op2,fmap(cf))
+  c=fmap(cf)
+  x,carry,overflow = AddWithCarry(a,op2,c)
+  fmap[pf]  = parity8(x[0:8])
+  fmap[af]  = halfcarry(a,op2,c)
   fmap[zf]  = x==0
   fmap[sf]  = x<0
   fmap[cf]  = carry
@@ -537,6 +604,8 @@ def i_ADD(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   a=fmap(op1)
   x,carry,overflow = AddWithCarry(a,op2)
+  fmap[pf]  = parity8(x[0:8])
+  fmap[af]  = halfcarry(a,op2)
   fmap[zf]  = x==0
   fmap[sf]  = x<0
   fmap[cf]  = carry
@@ -548,7 +617,10 @@ def i_SBB(i,fmap):
   op2 = fmap(i.operands[1])
   fmap[eip] = fmap[eip]+i.length
   a=fmap(op1)
-  x,carry,overflow = SubWithBorrow(a,op2,fmap(cf))
+  c=fmap(cf)
+  x,carry,overflow = SubWithBorrow(a,op2,c)
+  fmap[pf]  = parity8(x[0:8])
+  fmap[af]  = halfborrow(a,op2,c)
   fmap[zf]  = x==0
   fmap[sf]  = x<0
   fmap[cf]  = carry
@@ -561,6 +633,8 @@ def i_SUB(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   a=fmap(op1)
   x,carry,overflow = SubWithBorrow(a,op2)
+  fmap[pf]  = parity8(x[0:8])
+  fmap[af]  = halfborrow(a,op2)
   fmap[zf]  = x==0
   fmap[sf]  = x<0
   fmap[cf]  = carry
@@ -578,6 +652,7 @@ def i_AND(i,fmap):
   fmap[sf] = x<0
   fmap[cf] = bit0
   fmap[of] = bit0
+  fmap[pf] = parity8(x[0:8])
   fmap[op1] = x
 
 def i_OR(i,fmap):
@@ -589,6 +664,7 @@ def i_OR(i,fmap):
   fmap[sf] = x<0
   fmap[cf] = bit0
   fmap[of] = bit0
+  fmap[pf] = parity8(x[0:8])
   fmap[op1] = x
 
 def i_XOR(i,fmap):
@@ -600,6 +676,7 @@ def i_XOR(i,fmap):
   fmap[sf] = x<0
   fmap[cf] = bit0
   fmap[of] = bit0
+  fmap[pf] = parity8(x[0:8])
   fmap[op1] = x
 
 def i_CMP(i,fmap):
@@ -607,10 +684,12 @@ def i_CMP(i,fmap):
   op1 = fmap(i.operands[0])
   op2 = fmap(i.operands[1])
   x, carry, overflow = SubWithBorrow(op1,op2)
+  fmap[af] = halfborrow(op1,op2)
   fmap[zf] = x==0
   fmap[sf] = x<0
   fmap[cf] = carry
   fmap[of] = overflow
+  fmap[pf] = parity8(x[0:8])
 
 def i_TEST(i,fmap):
   fmap[eip] = fmap[eip]+i.length
@@ -621,6 +700,7 @@ def i_TEST(i,fmap):
   fmap[sf] = x[x.size-1:x.size]
   fmap[cf] = bit0
   fmap[of] = bit0
+  fmap[pf] = parity8(x[0:8])
 
 def i_LEA(i,fmap):
   fmap[eip] = fmap[eip]+i.length
@@ -657,7 +737,12 @@ def i_SHR(i,fmap):
   else:
     fmap[cf] = top(1)
     fmap[of] = top(1)
-  fmap[op1] = a>>count
+  res = a>>count
+  fmap[op1] = res
+  fmap[sf] = (res<0)
+  fmap[zf] = (res==0)
+  fmap[pf] = parity8(res[0:8])
+
 
 def i_SAR(i,fmap):
   op1 = i.operands[0]
@@ -677,7 +762,11 @@ def i_SAR(i,fmap):
   else:
     fmap[cf] = top(1)
     fmap[of] = top(1)
-  fmap[op1] = a//count # (// is used as arithmetic shift in cas.py)
+  res = a//count  # (// is used as arithmetic shift in cas.py)
+  fmap[op1] = res
+  fmap[sf] = (res<0)
+  fmap[zf] = (res==0)
+  fmap[pf] = parity8(res[0:8])
 
 def i_SHL(i,fmap):
   op1 = i.operands[0]
@@ -699,6 +788,9 @@ def i_SHL(i,fmap):
     fmap[cf] = top(1)
     fmap[of] = top(1)
   fmap[op1] = x
+  fmap[sf] = (x<0)
+  fmap[zf] = (x==0)
+  fmap[pf] = parity8(x[0:8])
 
 i_SAL = i_SHL
 
@@ -795,7 +887,11 @@ def i_SHRD(i,fmap):
   # op3 is a cst:
   n = op3.value
   r = op1.size-n
-  fmap[op1] = (fmap(op1)>>n) | (op2<<r)
+  x = (fmap(op1)>>n) | (op2<<r)
+  fmap[op1] = x
+  fmap[sf] = (x<0)
+  fmap[zf] = (x==0)
+  fmap[pf] = parity8(x[0:8])
 
 def i_SHLD(i,fmap):
   op1 = i.operands[0]
@@ -804,7 +900,11 @@ def i_SHLD(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   n = op3.value
   r = op1.size-n
-  fmap[op1] = (fmap(op1)<<n) | (op2>>r)
+  x = (fmap(op1)<<n) | (op2>>r)
+  fmap[op1] = x
+  fmap[sf] = (x<0)
+  fmap[zf] = (x==0)
+  fmap[pf] = parity8(x[0:8])
 
 def i_IMUL(i,fmap):
   fmap[eip] = fmap[eip]+i.length

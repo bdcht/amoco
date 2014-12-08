@@ -238,7 +238,7 @@ def i_POPFD(i,fmap):
 
 def i_LAHF(i,fmap):
   fmap[eip] = fmap[eip]+i.length
-  x = composer(map(fmap,(sf,zf,bit0,af,bit0,pf,bit1,cf)))
+  x = fmap(composer([cf,bit1,pf,bit0,zf,sf]))
   fmap[ah] = x
 
 def i_SAHF(i,fmap):

@@ -25,5 +25,11 @@ class RawExec(CoreExec):
         self.PC  = lambda :self.cpu.eip
 
     def relocate(self,vaddr):
+        from amoco.cas.mapper import mapper
+        m = mapper()
         mz = self.mmap._zones[None]
         for z in mz._map: z.vaddr += vaddr
+        pc = self.PC()
+        m[pc] = self.cpu.cst(vaddr,pc.size)
+        self._initmap = m
+        self.initenv = lambda : self._initmap

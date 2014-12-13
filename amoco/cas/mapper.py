@@ -78,6 +78,9 @@ class mapper(object):
 
     # define image v of antecedent k:
     def __setitem__(self,k,v):
+        if k._is_ptr:
+            self.__map[k] = v
+            return
         if k.size<>v.size: raise ValueError('size mismatch')
         try:
             loc = k.addr(self)
@@ -110,12 +113,33 @@ class mapper(object):
     def restruct(self):
         pass
 
-    def eval(self,m):
-        mm = mapper()
+    # return a new mapper instance where all input locations have
+    # been replaced by there corresponding values in m.
+    # example:
+    # in self: eax <- ebx
+    # in m   : ebx <- 4
+    # =>
+    # in mm  : eax <- 4
+    def eval(self,m,compose=False):
+        mm = mapper() if not compose else m.use()
         for loc,v in self:
-            if loc._is_ptr: loc = m(mem(loc,v.size))
+            if loc._is_ptr:
+                loc = m(loc)
             mm[loc] = m(v)
         return mm
+
+    # composition operator (°) returns a new mapper
+    # corresponding to function x -> self(m(x))
+    def rcompose(self,m):
+        return self.eval(m,compose=True)
+
+    # self << m : composition (self°m)
+    def __lshift__(self,m):
+        return self.rcompose(m)
+
+    # self >> m : composition (m°self)
+    def __rshift__(self,m):
+        return m.rcompose(self)
 
     def interact(self):
             pass

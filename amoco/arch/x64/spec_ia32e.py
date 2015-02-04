@@ -741,6 +741,20 @@ def ia32_rdrand(obj,Mod,RM,data):
     obj.operands = [op1]
     obj.type = type_other
 
+@ispec_ia32("*>[ {0f}{c7} /1 ]", mnemonic = "CMPXCHG8B")
+def ia32_cmpxchg(obj,Mod,RM,data):
+    op2,data = getModRM(obj,Mod,RM,data)
+    if not op2._is_mem: raise InstructionError(obj)
+    op2.size = 64
+    REX = obj.misc['REX']
+    if REX:
+        W=REX[0]
+        if W==1:
+            obj.mnemonic = "CMXCHG16B"
+            op2.size = 128
+    obj.operands = [op2]
+    obj.type = type_data_processing
+
 @ispec_ia32("*>[ {0f}{1f} /0  ]", mnemonic = "NOP",     type=type_cpu_state)
 @ispec_ia32("*>[ {0f}{ae} /4  ]", mnemonic = "XSAVE",   type=type_cpu_state)
 @ispec_ia32("*>[ {0f}{ae} /5  ]", mnemonic = "LFENCE",  type=type_cpu_state)

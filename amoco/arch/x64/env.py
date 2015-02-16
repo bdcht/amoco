@@ -20,6 +20,7 @@ rsi    = reg('rsi',64)     # ptr to data in segment pointed by DS; src ptr for s
 rdi    = reg('rdi',64)     # ptr to data in segment pointed by ES; dst ptr for strings
 rip    = reg('rip',64)     # instruction pointer in 64 bit mode
 rflags = reg('rflags',64)
+eflags = slc(rflags, 16, 32,'eflags')
 
 
 # 32bits registers :
@@ -60,6 +61,7 @@ dh = slc(rdx,8,8,'dh')
 
 cf = slc(rflags,0,1,'cf')   # carry/borrow flag
 pf = slc(rflags,2,1,'pf')   # parity flag
+af = slc(eflags,4,1,'pf')   # aux carry flag
 zf = slc(rflags,6,1,'zf')   # zero flag
 sf = slc(rflags,7,1,'sf')   # sign flag
 df = slc(rflags,10,1,'df')  # direction flag

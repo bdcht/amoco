@@ -184,7 +184,7 @@ def i_POPFQ(i,fmap):
 
 #------------------------------------------------------------------------------
 def _cmps_(i,fmap,l):
-  counter,d,s = ecx,edi,esi if i.misc['adrsz'] else rcx,rdi,rsi
+  counter,d,s = (ecx,edi,esi) if i.misc['adrsz'] else (rcx,rdi,rsi)
   dst = fmap(mem(d,l*8))
   src = fmap(mem(s,l*8))
   x, carry, overflow = SubWithBorrow(dst,src)
@@ -557,7 +557,8 @@ def i_SBB(i,fmap):
   op2 = fmap(i.operands[1])
   fmap[rip] = fmap[rip]+i.length
   a=fmap(op1)
-  x,carry,overflow = SubWithBorrow(a,op2,fmap(cf))
+  c=fmap(cf)
+  x,carry,overflow = SubWithBorrow(a,op2,c)
   fmap[pf]  = parity8(x[0:8])
   fmap[af]  = halfborrow(a,op2,c)
   fmap[zf]  = x==0
@@ -897,7 +898,7 @@ def i_IMUL(i,fmap):
 def i_MUL(i,fmap):
   fmap[rip] = fmap[rip]+i.length
   src = fmap(i.operands[0])
-  m,d = {8:(al,ah), 16:(ax,dx), 32:(eax,edx)}[src.size]
+  m,d = {8:(al,ah), 16:(ax,dx), 32:(eax,edx), 64:(rax,rdx)}[src.size]
   r = m**src
   lo = r[0:src.size]
   hi = r[src.size:r.size]

@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2013 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2013 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # spec_xxx files are providers for instruction objects.
@@ -41,7 +43,7 @@ def ExtendReg(r,etype,shift=0):
     return r[0:l].extend(signed,N)<<shift
 
 def System_Reg(*args):
-    # TODO: decode args into system register name (see §D.8). 
+    # TODO: decode args into system register name (see §D.8).
     return reg('sysreg{%s}'%(' '.join(['{:b}'.format(x) for x in args])),64)
 
 def sp2z(x):

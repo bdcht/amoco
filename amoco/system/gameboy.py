@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # This code is part of Amoco
-# Copyright (C) 2012 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2012 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from amoco.system.core import *
@@ -125,16 +125,14 @@ class z80GB(object):
         try:
             istr = self.mmap.read(vaddr,maxlen)
         except MemoryError,e:
-            ll = e.message
-            l = maxlen-ll
-            logger.warning("instruction fetch error: reducing fetch size (%d)"%l)
-            istr = self.mmap.read(vaddr,l)
-        if len(istr)>1:
-            logger.warning("read_instruction: can't fetch vaddr %s"%vaddr)
-            raise MemoryError
+            logger.warning("vaddr %s is not mapped"%vaddr)
+            raise MemoryError(e)
         i = self.cpu.disassemble(istr[0],**kargs)
         if i is None:
             logger.warning("disassemble failed at vaddr %s"%vaddr)
+            if len(istr)>1 and istr[1]._is_def:
+                logger.warning("symbol found in instruction buffer"%vaddr)
+                raise MemoryError(vaddr)
             return None
         else:
             i.address = vaddr

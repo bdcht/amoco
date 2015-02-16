@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 CONDB = {
   0b1000: 'ba',
   0b0000: 'bn',

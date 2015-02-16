@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from amoco.system.core import *
@@ -33,14 +35,14 @@ class ELF(CoreExec):
     # for now, the external libs are seen through the elf dynamic section:
     def load_shlib(self):
         for k,f in self.bin._Elf32__dynamic(None).iteritems():
-            self.mmap.write(k,cpu.ext(f))
+            self.mmap.write(k,cpu.ext(f,size=32))
 
     # lookup in bin if v is associated with a function or variable name:
     def check_sym(self,v):
         if v._is_cst:
             x = self.bin.functions.get(v.value,None) or self.bin.variables.get(v.value,None)
             if x is not None:
-                if isinstance(x,str): x=cpu.ext(x)
+                if isinstance(x,str): x=cpu.ext(x,size=32)
                 else: x=cpu.sym(x[0],v.value,v.size)
                 return x
         return None
@@ -103,7 +105,12 @@ class ELF(CoreExec):
                         else: i.misc[tag.FUNC_VAR]=1
                     elif op.a.base._is_cst:
                         x = self.check_sym(op.a.base)
-                        if x is not None: op.a.base=x
+                        if x is not None:
+                            op.a.base=x
+                            if i.mnemonic == 'JMP': # PLT jumps:
+                                i.address = i.address.to_sym('PLT%s'%x)
+                                i.misc[tag.FUNC_START]=1
+                                i.misc[tag.FUNC_END]=1
                 elif op._is_cst:
                     x = self.check_sym(op)
                     i.misc['imm_ref'] = x
@@ -129,28 +136,28 @@ class ELF(CoreExec):
 #----------------------------------------------------------------------------
 
 @stub_default
-def pop_eip(m):
+def pop_eip(m,**kargs):
     cpu.pop(m,cpu.eip)
 
 @stub
-def __libc_start_main(m):
+def __libc_start_main(m,**kargs):
     m[cpu.eip] = m(cpu.mem(cpu.esp+4,32))
-    cpu.push(m,cpu.ext('exit'))
+    cpu.push(m,cpu.ext('exit',size=32))
 
 @stub
-def exit(m):
+def exit(m,**kargs):
     m[cpu.eip] = top(32)
 @stub
-def abort(m):
+def abort(m,**kargs):
     m[cpu.eip] = top(32)
 @stub
-def __assert(m):
+def __assert(m,**kargs):
     m[cpu.eip] = top(32)
 @stub
-def __assert_fail(m):
+def __assert_fail(m,**kargs):
     m[cpu.eip] = top(32)
 @stub
-def _assert_perror_fail(m):
+def _assert_perror_fail(m,**kargs):
     m[cpu.eip] = top(32)
 
 #----------------------------------------------------------------------------

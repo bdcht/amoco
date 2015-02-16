@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # This code is part of Amoco
-# Copyright (C) 2006-2014 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2014 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from crysp.bits import *
@@ -32,7 +32,6 @@ type_other             : "other",
 }
 
 class icore(object):
-    __slots__ = ['bytes', 'type', 'mnemonic', 'operands']
 
     def __init__(self,istr=''):
         self.bytes    = istr
@@ -182,13 +181,13 @@ class disassembler(object):
 # ispec (parametrable) decorator
 # -----------------------------------------
 # @ispec allows to easily define instruction decoders based on architectures specifications.
-# The 'spec' argument is a human-friendly string that describes how the ispec object will 
+# The 'spec' argument is a human-friendly string that describes how the ispec object will
 # (on request) decode a given bytestring and how it will expose various decoded entities to
-# the decorated function in order to define an instruction instance. 
+# the decorated function in order to define an instruction instance.
 # It uses the following syntax :
-# 
+#
 #   'LEN<[ FORMAT ]' : LEN indicates the bit length corresponding to the FORMAT. Here,
-#                      FORMAT is interpreted as a list of directives ordered 
+#                      FORMAT is interpreted as a list of directives ordered
 #                      from MSB (bit index LEN-1) to LSB (bit index 0). This is the default
 #                      direction if the '<' indicator is missing. LEN%8!=0 is unsupported.
 # or
@@ -199,7 +198,7 @@ class disassembler(object):
 # possibly terminated with an optional '+' char to indicate that the spec is a prefix.
 # In this case, the bytestring prefix matching the ispec format is stacked temporarily
 # until the rest of the bytestring matches a non prefix ispec.
-# 
+#
 # The directives composing the FORMAT string are used to associate symbols to bits
 # located at dedicated offsets within the bitstring to be decoded. A directive has the
 # following syntax:
@@ -223,7 +222,7 @@ class disassembler(object):
 #    location: is an optional string matching the following expressions
 #      '( len )'    : indicates that the value is decoded from the next len bits starting
 #                     from the current position of the directive within the FORMAT string.
-#      '(*)'        : indicates a 'variable length directive' for which the value is decoded 
+#      '(*)'        : indicates a 'variable length directive' for which the value is decoded
 #                     from the current position with all remaining bits in the FORMAT.
 #                     If the FORMAT LEN is also variable then all remaining bits from the
 #                     instruction buffer input string are used.
@@ -234,7 +233,7 @@ class disassembler(object):
 #
 # Example:
 #
-# @ispec(32[ .cond(4) 101 1 imm24(24) ]", mnemonic="BL", _flag=True) 
+# @ispec(32[ .cond(4) 101 1 imm24(24) ]", mnemonic="BL", _flag=True)
 # def f(obj,imm24,_flag):
 #     [...]
 #
@@ -246,9 +245,9 @@ class disassembler(object):
 #  => will decode 4 bits at position [28,29,30,31] and provide this value as an integer
 #     in 'obj.cond' instruction instance attribute.
 #  => will decode 24 bits at positions 23..0 and provide this value as an integer as
-#     argument 'imm24' of the decorated function f. 
+#     argument 'imm24' of the decorated function f.
 #  => will set obj.mnemonic to 'BL' and pass argument _flag=True to f.
-#  => will call f(obj,...) 
+#  => will call f(obj,...)
 #  => will return obj
 
 # additional arguments to ispec decorator **must** be provided with symbol=value form and
@@ -257,6 +256,7 @@ class disassembler(object):
 # with value 'BL' when the function is called.
 # -----------------------------------------
 class ispec(object):
+    __slots__ = ['format','iattr','fargs','ast','fix','mask','pfx','size','hook']
 
     def __init__(self,format,**kargs):
         self.format = format

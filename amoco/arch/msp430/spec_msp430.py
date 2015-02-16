@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # This code is part of Amoco
-# Copyright (C) 2014 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2014 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # ref: MSP430x1xx User's Guide.
@@ -15,7 +15,7 @@ from amoco.arch.core import *
 # instruction MSP430 decoders
 #-------------------------------------------------------
 
-# get operand type/value based on addressing mode: 
+# get operand type/value based on addressing mode:
 def getopd(obj,mode,reg,data,CGR=False):
     r = env.R[reg]
     size = 8 if obj.BW else 16

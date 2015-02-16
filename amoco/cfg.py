@@ -1,14 +1,21 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # we wrap the grandalf classes here
+
+from amoco.logger import Log
+logger = Log(__name__)
 
 from grandalf.graphs import Vertex,Edge,Graph
 
 from amoco.system.core import MemoryZone
 
 #------------------------------------------------------------------------------
+# node class is a graph vertex that embeds a block instance and inherits its
+# name (default to the address of the block).
 class node(Vertex):
     # protect from None data node:
     def __init__(self,acode):
@@ -28,18 +35,18 @@ class node(Vertex):
         return self.data.length
 
     def __getitem__(self,i):
-        self.data = self.data.__getitem__(i)
+        res = node(self.data.__getitem__(i))
         return res
 
 #------------------------------------------------------------------------------
+# link is a direct graph edge between two nodes.
 class link(Edge):
-    def __init__(self,orig,dest):
-        Edge.__init__(self,orig,dest)
 
     def __str__(self):
         n0 = repr(self.v[0])
         n1 = repr(self.v[1])
-        return "%s -> %s"%(n0,n1)
+        c = '?' if self.data else '-'
+        return "%s -%s-> %s"%(n0,c,n1)
 
     def __repr__(self):
         return '<%s [%s] at 0x%x>'%(self.__class__.__name__,self.name,id(self))
@@ -54,10 +61,12 @@ class link(Edge):
         return cmp(self.name,e.name)
 
 #------------------------------------------------------------------------------
-class func(Graph):
+# graph is a Graph that represents a set of functions as individual components
+class graph(Graph):
 
     def __init__(self,*args,**kargs):
         self.support = MemoryZone()
+        self.overlay = None
         Graph.__init__(self,*args,**kargs)
 
     def spool(self,n=None):
@@ -66,38 +75,65 @@ class func(Graph):
             if len(v.e_out())==0: L.append(v)
         return L
 
-    def add_vertex(self,v):
-        vaddr=v.data.address
-        i = self.support.locate(vaddr)
-        if i is not None:
-            mo = self.support._map[i]
-            if vaddr in mo:
-                oldnode = mo.data.val
-                if oldnode==v: return 0
-                # so v cuts an existing node/block:
-                # repair oldblock and fix self
-                childs = oldnode.N(+1)
-                oldblock = oldnode.data
-                oldblock.cut(vaddr)
-                Graph.add_vertex(self,v) # ! avoid recursion for add_edge
-                self.support.write(vaddr,v)
-                self.add_edge(link(oldnode,v))
-                for n in childs:
-                    self.add_edge(link(v,n))
-                    self.remove_edge(oldnode.e_to(n))
+    def __cut_add_vertex(self,v,mz,vaddr,mo):
+        oldnode = mo.data.val
+        if oldnode==v: return 0
+        # so v cuts an existing node/block:
+        # repair oldblock and fix self
+        childs = oldnode.N(+1)
+        oldblock = oldnode.data
+        # if vaddr is aligned with an oldblock instr, cut it:
+        # this reduces oldblock up to vaddr if the cut is possible.
+        cutdone = oldblock.cut(vaddr)
+        if not cutdone:
+            if mz is self.overlay:
+                logger.warning("double overlay block at %s"%vaddr)
+                Graph.add_vertex(self,v)
+                v.data.misc['double-overlay'] = 1
                 return 1
+            overlay = self.overlay or MemoryZone()
+            return self.add_vertex(v,support=overlay)
+        else:
+            Graph.add_vertex(self,v) # ! avoid recursion for add_edge
+            mz.write(vaddr,v)
+            self.add_edge(link(oldnode,v))
+            for n in childs:
+                self.add_edge(link(v,n))
+                self.remove_edge(oldnode.e_to(n))
+        return 1
+
+    def add_vertex(self,v,support=None):
+        if len(v)==0: return Graph.add_vertex(self,v)
+        vaddr=v.data.address
+        if support is None:
+            support=self.support
+        else:
+            logger.verbose("add overlay block at %s"%vaddr)
+            self.overlay = support
+        i = support.locate(vaddr)
+        if i is not None:
+            mo = support._map[i]
+            if vaddr in mo:
+                return self.__cut_add_vertex(v,support,vaddr,mo)
             else: #v does not cut an existing block,
                 try: # but may swallow next one...
-                    nextmo = self.support._map[i+1]
+                    nextmo = support._map[i+1]
                 except IndexError:
                     # no more nodes here so back to default case:
                     pass
                 else:
                     nextnode = nextmo.data.val
-                    if vaddr+len(v)>=nextnode.data.address:
-                        v.data.cut(nextnode.data.address)
+                    if vaddr+len(v)>nextnode.data.address:
+                        cutdone = v.data.cut(nextnode.data.address)
+                        if not cutdone:
+                            if support is self.overlay:
+                                logger.warning("double overlay block at %s"%vaddr)
+                                Graph.add_vertex(self,v)
+                                v.data.misc['double-overlay'] = 1
+                                return 1
+                            support = self.overlay or MemoryZone()
         Graph.add_vertex(self,v) # before support write !!
-        self.support.write(vaddr,v)
+        support.write(vaddr,v)
         return 1
 
     def get_node(self,name):

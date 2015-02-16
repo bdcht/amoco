@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from amoco.arch.core import Formatter
 
 def pfx(i):
@@ -15,7 +17,7 @@ def deref(op):
     if not op._is_mem: return str(op)
     d = '%+d'%op.a.disp if op.a.disp else ''
     s = {8:'byte ptr ',16:'word ptr ', 64:'qword ptr ', 128:'xmmword ptr '}.get(op.size,'')
-    s += '%s:'%op.a.seg  if op.a.seg  else ''
+    s += '%s:'%op.a.seg  if (op.a.seg is not '')  else ''
     s += '[%s%s]'%(op.a.base,d)
     return s
 

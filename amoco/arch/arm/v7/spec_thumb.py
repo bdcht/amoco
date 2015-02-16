@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # spec_xxx files are providers for instruction objects.
@@ -117,7 +117,7 @@ def A_default(obj,Rm):
   obj.type = type_data_processing
   obj.cond = env.CONDITION_AL
 
-@ispec("16[ 1010 0 Rd(3) imm8(8) ]", mnemonic="ADR")
+@ispec("16[ 1010 0 Rd(3) imm8(8) ]", mnemonic="ADR", add=True)
 def A_adr(obj,Rd,imm8):
   obj.d = env.regs[Rd]
   obj.imm32 = env.cst(imm8<<2,32)

@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2007-2013 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2007-2013 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 
@@ -7,6 +9,8 @@ from amoco.logger import Log
 logger = Log(__name__)
 
 from bisect import bisect_left
+
+from amoco.cas.expressions import top
 
 #------------------------------------------------------------------------------
 # datadiv provides the API for manipulating data values extracted from memory.
@@ -33,7 +37,9 @@ class datadiv(object):
 
     def __repr__(self):
         s = repr(self.val)
-        if len(s)>32: s=s[:32]+'...'
+        if len(s)>32:
+            s=s[:32]+"..."
+            if isinstance(self.val,str): s+="'"
         return '<datadiv:%s>'%s
 
     def __str__(self):
@@ -43,9 +49,9 @@ class datadiv(object):
         if self._is_raw:
             self.val = self.val[l:]
         else:
-            self.val = self.val[8*l:]
+            self.val = self.val.bytes(l)
 
-    # returns (result, counter) where result is a part of val of length l 
+    # returns (result, counter) where result is a part of val of length l
     # located at offset o, and counter is the number of bytes that still
     # need to be read from another div.
     def getpart(self,o,l):
@@ -63,10 +69,8 @@ class datadiv(object):
             res = self.val[o:o+l]
             return (res,l-len(res))
         if o>=lv: return (None,l)
-        o,l = 8*o,8*l
-        n,r = divmod(o+l,s)
-        if n>0: return (self.val[o:s],r/8)
-        return (self.val[o:o+l],0)
+        res = self.val.bytes(o,o+l)
+        return (res,l-res.length)
 
     # returns a list of (contiguous) datadiv objects resulting from
     # overwriting self with data at offset o, possibly extending self.
@@ -114,7 +118,9 @@ class mo(object):
 
     def __repr__(self):
         data = str(self.data)
-        if len(data)>32: data=data[:32]+'...'
+        if len(data)>32:
+            data=data[:32]+"..."
+            if self.data._is_raw: data+="'"
         return '<mo [%08x,%08x] data:%s>'%(self.vaddr,self.end,data)
 
     # change current obj to start at provided vaddr
@@ -129,7 +135,7 @@ class mo(object):
         if vaddr in self:
             return self.data.getpart(vaddr-self.vaddr,l)
         else:
-            logger.warning('%s read out of bound (vaddr=%08x, l=%d)',repr(self),vaddr,l)
+            logger.debug('%s read out of bound (vaddr=%08x, l=%d)',repr(self),vaddr,l)
             return (None,l)
 
     # update current obj resulting from writing datadiv at vaddr, returning the
@@ -145,16 +151,17 @@ class mo(object):
                 vaddr += len(p)
             return O
         else:
-            logger.verbose('%s write out of bound (vaddr=%08x,data=%.32s)',repr(self),vaddr,repr(data))
+            logger.debug('%s write out of bound (vaddr=%08x,data=%.32s)',repr(self),vaddr,repr(data))
             return [mo(vaddr,data)]
 
 #------------------------------------------------------------------------------
 class MemoryZone(object):
-    __slot__ = ['rel','_map']
+    __slot__ = ['rel','_map','__cache']
 
     def __init__(self,rel=None,D=None):
         self.rel = rel
         self._map = []
+        self.__cache = [] # speedup locate method
         if D != None and isinstance(D,dict):
             for vaddr,data in D.iteritems():
                 self.addtomap(mo(vaddr,data))
@@ -169,30 +176,49 @@ class MemoryZone(object):
             l.append("\t %s"%str(z))
         return '\n'.join(l)+'>'
 
+    def __update_cache(self):
+        self.__cache = [z.vaddr for z in self._map]
+
     # locate the index that contains the given address in the mmap:
     def locate(self,vaddr):
-        p = [z.vaddr for z in self._map]
+        p = self.__cache
         if vaddr in p: return p.index(vaddr)
         i = bisect_left(p,vaddr)
         if i==0: return None
         else: return i-1
 
     # read l bytes starting at vaddr.
-    # A MemoryError is raised if some bytes are not mapped.
+    # return value is a list of datadiv values, unmapped areas
+    # are returned as 'top' expressions.
     def read(self,vaddr,l):
-        i = self.locate(vaddr)
-        if i is None: raise MemoryError(l)
-        ll = l
         res = []
+        i = self.locate(vaddr)
+        if i is None:
+            if len(self._map)==0: return [top(l*8)]
+            v0 = self._map[0].vaddr
+            if (vaddr+l)<=v0: return [top(l*8)]
+            res.append(top((v0-vaddr)*8))
+            l = (vaddr+l)-v0
+            vaddr = v0
+            i = 0
+        ll = l
         while ll>0:
             try:
                 data,ll = self._map[i].read(vaddr,ll)
             except IndexError:
-                data=None
+                res.append(top(ll*8))
+                ll=0
+                break
             if data is None:
-                raise MemoryError(ll)
-            vaddr += len(data)
-            res.append(data)
+                vi = self.__cache[i]
+                if vaddr < vi:
+                    l = min(vaddr+ll,vi)-vaddr
+                    data = top(l*8)
+                    ll -= l
+                    i -=1
+            if data is not None:
+                vaddr += len(data)
+                res.append(data)
             i += 1
         assert ll==0
         return res
@@ -210,6 +236,7 @@ class MemoryZone(object):
         if j is None:
             assert i is None
             self._map.insert(0,z)
+            self.__update_cache()
             return
         if j==i:
             Z = self._map[i].write(z.vaddr,z.data.val)
@@ -217,6 +244,7 @@ class MemoryZone(object):
             for newz in Z:
                 self._map.insert(i,newz)
                 i+=1
+            self.__update_cache()
             return
         # i!=j cases:
         # delete & update every overwritten zones
@@ -237,6 +265,7 @@ class MemoryZone(object):
         for newz in Z:
             self._map.insert(i,newz)
             i+=1
+        self.__update_cache()
 
     def restruct(self):
         if len(self._map)==0: return
@@ -251,6 +280,7 @@ class MemoryZone(object):
             else:
                 m.append(z)
         self._map = m
+        self.__update_cache()
 
 #------------------------------------------------------------------------------
 class MemoryMap(object):
@@ -264,10 +294,11 @@ class MemoryMap(object):
         z = MemoryZone()
         z.rel = label
         self._zones[label] = z
+        return z
 
     def locate(self,address):
         r, a = self.reference(address)
-        idx = self._zones[r].locate(address)
+        idx = self._zones[r].locate(a)
         return self._zones[r]._map[idx]
 
     def reference(self,address):
@@ -277,6 +308,8 @@ class MemoryMap(object):
             return (address,0)
         try:
             r,a = (address.base,address.disp)
+            if r._is_cst:
+                return (None,(r+a).v)
             return (r,a)
         except AttributeError:
             if address._is_cst:
@@ -301,11 +334,19 @@ class MemoryMap(object):
 
     def read(self,address,l):
         r,o = self.reference(address)
-        return self._zones[r].read(o,l)
+        if r in self._zones:
+            return self._zones[r].read(o,l)
+        else:
+            raise MemoryError(address)
 
     def write(self,address,expr):
         r,o = self.reference(address)
+        if not r in self._zones:
+            self.newzone(r)
         self._zones[r].write(o,expr)
+
+    def restruct(self):
+        for z in self._zones.itervalues(): z.restruct()
 
 #------------------------------------------------------------------------------
 class CoreExec(object):
@@ -336,15 +377,12 @@ class CoreExec(object):
         try:
             istr = self.mmap.read(vaddr,maxlen)
         except MemoryError,e:
-            ll = e.message
-            l = maxlen-ll
-            if l == 0:
+            logger.verbose("vaddr %s is not mapped"%vaddr)
+            raise MemoryError(e)
+        else:
+            if len(istr)>1 or not isinstance(istr[0],str):
+                logger.verbose("failed to read instruction at %s"%vaddr)
                 return None
-            logger.warning("instruction fetch error: reducing fetch size (%d)"%l)
-            istr = self.mmap.read(vaddr,l)
-        if len(istr)>1:
-            logger.warning("read_instruction: can't fetch vaddr %s"%vaddr)
-            raise MemoryError
         i = self.cpu.disassemble(istr[0],**kargs)
         if i is None:
             logger.warning("disassemble failed at vaddr %s"%vaddr)

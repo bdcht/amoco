@@ -1,15 +1,18 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from collections import defaultdict
 from amoco.cas.mapper import mapper
 
 from amoco.config import conf
+from amoco.logger import Log
+logger = Log(__name__)
 
 #------------------------------------------------------------------------------
-# A block instance is a 'continuous' (atomic) set of instructions.
-# It is build from a bytecode 
+# A block instance is a 'continuous' sequence of instructions.
 #------------------------------------------------------------------------------
 class block(object):
     __slots__=['_map','instr','_name','misc']
@@ -21,13 +24,13 @@ class block(object):
         self.instr = instrlist
         self._name = name
         self.misc  = defaultdict(lambda :0)
-        # translate into a interpreter:
-        #acode.__init__(self,mapper(self.instr))
 
     @property
     def map(self):
         if self._map is None:
             self._map = mapper(self.instr)
+        if self.misc['func']:
+            return self.misc['func'].map
         return self._map
     @map.setter
     def map(self,m):
@@ -57,23 +60,32 @@ class block(object):
         pos = [0]
         for i in self.instr:
             pos.append(pos[-1]+i.length)
-        ista = pos.index(sta)
-        isto = pos.index(sto)
+        try:
+            ista = pos.index(sta)
+            isto = pos.index(sto)
+        except ValueError:
+            logger.warning("can't slice block: indices must match instruction boudaries")
+            return None
         I = self.instr[ista:isto]
         if len(I)>0:
             return block(self.instr[ista:isto])
 
+    # cut the block at given address will remove instructions after this address,
+    # which needs to be aligned with instructions boundaries. The effect is thus to
+    # reduce the block size. The returned value is the number of instruction removed.
     def cut(self,address):
         I = [i.address for i in self.instr]
         try:
             pos = I.index(address)
         except ValueError:
-            pass
+            logger.warning("invalid attempt to cut block %s at %s"%(self.name,address))
+            return 0
         else:
             self.instr = self.instr[:pos]
             self.map.clear()
             for i in self.instr: i(self.map)
             # TODO: update misc annotations too
+            return len(I)-pos
 
     def __str__(self):
         L = []
@@ -103,19 +115,62 @@ class block(object):
 
 
 #------------------------------------------------------------------------------
-# A func instance is an acode where the map is build from a cfg by
-# unions and fixpoints on (sub)maps contained in this cfg.
+# func is a cfg connected component that generally represents a called function
+# It appears in the other graphs whenever the function is called and provides a
+# synthetic map that captures the semantics of the function.
 #------------------------------------------------------------------------------
-class func(object):
-    __slots__ = ['name','cfg']
-    def __init__(self,name,cfg):
-        self.name = name
-        self.cfg = cfg
+class func(block):
+    __slots__ = ['cfg']
+
+    # the init of a func takes a core_graph and creates a map of it:
+    def __init__(self, g=None, name=None):
+        self._map  = None
+        self.cfg = g
+        self.instr = []
+        # base/offset need to be defined before code (used in setcode)
+        self._name = name
+        self.misc  = defaultdict(lambda :0)
+
+    @property
+    def address(self):
+        return self.blocks[0].address
+
+    @property
+    def blocks(self):
+        V = self.cfg.sV.o
+        return [n.data for n in V]
+
+    @property
+    def support(self):
+        smin = self.address
+        smax = max((b.address+b.length for b in self.blocks))
+        return (smin,smax)
+
+    def makemap(self):
+        raise NotImplementedError
 
     def __str__(self):
-        s = '# --- func %s ---\n%s' % (self.name,str(self.cfg))
-        return s
+        return "%s{%d}"%(self.name,len(self.blocks))
 
+#------------------------------------------------------------------------------
+# xfunc represents external functions. It is associated with an ext expression.
+# The map provided by an xfunc instance is constructed by executing the stub
+# defined in the ext expression.
+#------------------------------------------------------------------------------
+class xfunc(object):
+    __slots__ = ['map','name','address','length','misc']
+
+    def __init__(self, x):
+        self.map = mapper()
+        x(self.map)
+        self.name = str(x)
+        self.address = x
+        self.length = 0
+        self.misc  = defaultdict(lambda :0)
+
+    @property
+    def support(self):
+        return (self.address,self.address)
 
 #------------------------------------------------------------------------------
 class tag:

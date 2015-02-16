@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # This code is part of Amoco
-# Copyright (C) 2013 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2013 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from .env import *
@@ -13,7 +13,7 @@ def autoinc(i,fmap):
     sz = 2 if i.BW else 1
     if rr is not None: fmap[rr] = fmap(rr+sz)
 
-# Ref: MSP430x1xx Family Users's Guide (Rev. F) 
+# Ref: MSP430x1xx Family Users's Guide (Rev. F)
 #------------------------------------------------------------------------------
 
 def i_MOV(i,fmap):

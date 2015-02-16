@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # This code is part of Amoco
-# Copyright (C) 2014 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2014 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # spec_xxx files are providers for instruction objects.
@@ -540,7 +540,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
-# 66 prefixed : 
+# 66 prefixed :
 # -------------
 # Note that thos specs MUST APPEAR AFTER f2/f3 prefixes which have priority over 66,
 # so that 66-related specs will be matched after identical f2/f3 specs

@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from amoco.logger import *
@@ -12,7 +14,7 @@ from amoco.system import pe
 #------------------------------------------------------------------------------
 # read_program is responsible of identifying the program header (ELF/PE).
 # It returns an ELF or PE class instance.
-# loading the associated "system" (Linux/Windows) and "environment" (x86/etc), 
+# loading the associated "system" (Linux/Windows) and "environment" (x86/etc),
 # based on information from its header.
 #------------------------------------------------------------------------------
 def read_program(filename):
@@ -33,13 +35,13 @@ def read_program(filename):
     except pe.PEError:
         pass
 
-    logger.error('unknown format')
+    logger.warning('unknown format')
     try:
         data = file(filename,'rb')
     except (TypeError,IOError):
         data = filename
     return DataIO(data)
-    ## 
+    ##
 ##
 
 #------------------------------------------------------------------------------

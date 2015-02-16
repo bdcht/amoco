@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # This code is part of Amoco
-# Copyright (C) 2012-2013 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2012-2013 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # spec_xxx files are providers for instruction objects.

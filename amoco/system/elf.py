@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 import struct
@@ -51,7 +53,7 @@ class Elf32_Ehdr(Elfcore):
         'e_shentsize',
         'e_shnum',
         'e_shstrndx')
-    # overload Elfcore methods to take into account the e_ident dict: 
+    # overload Elfcore methods to take into account the e_ident dict:
     def __init__(self, data):
         S = struct.unpack('B3sBBBBBxxxxxxx',data[:16])
         if S[0]!=0x7f or S[1]!='ELF':
@@ -974,7 +976,7 @@ class Elf64_Ehdr(Elfcore):
         'e_shentsize',
         'e_shnum',
         'e_shstrndx')
-    # overload Elfcore methods to take into account the e_ident dict: 
+    # overload Elfcore methods to take into account the e_ident dict:
     def __init__(self, data):
         S = struct.unpack('B3sBBBBBxxxxxxx',data[:16])
         if S[0]!=0x7f or S[1]!='ELF':

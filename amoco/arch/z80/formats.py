@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from amoco.arch.core import Formatter
 
 def mnemo(i):

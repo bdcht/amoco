@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from .env import *
 from .utils import *
 from amoco.arch.core import Formatter

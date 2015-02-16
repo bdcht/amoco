@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from amoco.logger import Log
@@ -13,13 +15,16 @@ def _checkarg1_exp(f):
         if len(args)>0 and isinstance(args[0],exp):
             return f(*args)
         else:
-            raise TypeError('arg is not an expression')
+            logger.error('first arg is not an expression')
+            raise TypeError(args)
     return checkarg1_exp
 
 def _checkarg_sizes(f):
     def checkarg_sizes(self,n):
         if self.size<>n.size:
-            if self.size>0 and n.size>0: raise ValueError,'size mismatch'
+            if self.size>0 and n.size>0:
+                logger.error('size mismatch')
+                raise ValueError,n
         return f(self,n)
     return checkarg_sizes
 
@@ -38,9 +43,13 @@ def _checkarg_slice(f):
         if isinstance(i,slice):
             if i.step<>None: raise ValueError,i
             if i.start<0 or i.stop>self.size:
-                    raise ValueError,i
-            if i.stop<=i.start: raise ValueError,i
+                logger.error('size mismatch')
+                raise ValueError,i
+            if i.stop<=i.start:
+                logger.error('invalid slice')
+                raise ValueError,i
         else:
+            logger.error('argument should be a slice')
             raise TypeError,i
         return f(self,*args)
     return checkarg_slice
@@ -55,6 +64,7 @@ def _checkarg_slice(f):
 #------------------------------------------------------------------------------
 class exp(object):
     __slots__ = ['size','sf']
+    _endian   = 1      # defaults to little-endian
     _is_def   = False
     _is_cst   = False
     _is_reg   = False
@@ -72,9 +82,22 @@ class exp(object):
 
     def __len__(self): return self.length
 
+    @classmethod
+    def setendian(cls,e):
+        assert e in (-1,+1)
+        cls._endian = e
+
     @property
     def length(self): # length value is in bytes
         return self.size/8
+
+    def bytes(self,sta=0,sto=None):
+        s = slice(sta,sto)
+        l = self.length
+        sta,sto,stp = s.indices(l)
+        if self._endian==-1:
+            sta,sto = l-sto,l-sta
+        return self[sta*8:sto*8]
 
     @property
     def mask(self):
@@ -99,10 +122,11 @@ class exp(object):
     def loads(self,s):
         from pickle import loads
         self = loads(s)
+        return self
 
     def __str__(self):
-        if self._is_def is 0: return 'T'
-        if self._is_def is False: return '_'
+        if self._is_def is 0: return 'T%d'%self.size
+        if self._is_def is False: return '⊥%d'%self.size
         raise ValueError("void expression")
 
     def bit(self,i):
@@ -110,11 +134,9 @@ class exp(object):
         return self[i:i+1]
 
     # get item allows to extract the expression of a slice of the exp
+    @_checkarg_slice
     def __getitem__(self,i)  :
-        if isinstance(i,slice):
-            return slicer(self,i.start,i.stop-i.start)
-        else:
-            raise TypeError,i
+        return slicer(self,i.start,i.stop-i.start)
 
     # set item allows to insert the expression of a slice in the exp
     @_checkarg_slice
@@ -143,9 +165,11 @@ class exp(object):
         return self.extend(False,size)
 
     # arithmetic / logic methods : These methods are shared by all nodes.
+    # unary operators:
     def __invert__(self): return oper('~',self)
-    def __neg__(self): return oper('*',self,cst(-1,self.size))
-
+    def __neg__(self): return oper('-',self)
+    def __pos__(self): return self
+    # binary operators:
     @_checkarg_numeric
     def __add__(self,n): return oper('+',self,n)
     @_checkarg_numeric
@@ -166,7 +190,7 @@ class exp(object):
     def __or__(self,n): return oper('|',self,n)
     @_checkarg_numeric
     def __xor__(self,n): return oper('^',self,n)
-
+    # reflected operand cases:
     @_checkarg_numeric
     def __radd__(self,n): return oper('+',n,self)
     @_checkarg_numeric
@@ -181,7 +205,7 @@ class exp(object):
     def __ror__(self,n): return oper('|',n,self)
     @_checkarg_numeric
     def __rxor__(self,n): return oper('^',n,self)
-
+    # shifts:
     @_checkarg_numeric
     def __lshift__(self,n): return oper('<<',self,n)
     @_checkarg_numeric
@@ -220,6 +244,10 @@ class exp(object):
     def __gt__(self,n):
         if exp.__cmp__(self,n)==0: return bit0
         return oper('>',self,n)
+
+    def to_smtlib(self):
+        logger.warning('no SMT solver defined')
+        raise NotImplementedError
 ##
 
 class top(exp):
@@ -262,6 +290,9 @@ class cst(exp):
     # defaults to signed hex base
     def __str__(self):
         return '{:#x}'.format(self.value)
+
+    def to_sym(self,ref):
+        return sym(ref,self.v,self.size)
 
     # eval of cst is always itself: (sf flag conserved)
     def eval(self,env): return cst(self.value,self.size)
@@ -373,12 +404,12 @@ class cst(exp):
     @_checkarg_numeric
     @_checkarg_sizes
     def __eq__(self,n):
-        if n._is_cst: return cst(self.value==n.value)
+        if n._is_cst: return cst(self.v==n.v)
         else : return exp.__eq__(self,n)
     @_checkarg_numeric
     @_checkarg_sizes
     def __ne__(self,n):
-        if n._is_cst: return cst(self.value!=n.value)
+        if n._is_cst: return cst(self.v!=n.v)
         else : return exp.__ne__(self,n)
 
     @_checkarg_numeric
@@ -417,9 +448,9 @@ class sym(cst):
         return "#%s"%self.ref
 
 #---------------------------------
-# flt holds float immediate values
+# cfp holds float immediate values
 #---------------------------------
-class flt(exp):
+class cfp(exp):
     __slots__ = ['v']
     _is_def   = True
     _is_cst   = True
@@ -548,6 +579,16 @@ class reg(exp):
         if a is 'size' and self.__protect is True:
             raise AttributeError,'protected attribute'
         exp.__setattr__(self,a,v)
+
+    #howto pickle/unpickle reg objects:
+    def __setstate__(self,state):
+        v = state[1]
+        self.__protect = False
+        self.size = v['size']
+        self.sf = v['sf']
+        self.ref = v['ref']
+        self._subrefs = v['_subrefs']
+        self.__protect = v['_reg__protect']
 ##
 
 #------------------------------------------------------------------------------
@@ -556,8 +597,17 @@ class reg(exp):
 class ext(reg):
     _is_ext = True
 
+    def __init__(self,refname,**kargs):
+        self.ref = refname
+        self._subrefs = kargs
+        self.size = kargs.get('size',None)
+        self.sf = False
+
     def __str__(self):
         return '@%s'%self.ref
+
+    def __setattr__(self,a,v):
+        exp.__setattr__(self,a,v)
 
     @classmethod
     def stub(cls,ref):
@@ -569,11 +619,15 @@ class ext(reg):
 
     def call(self,env,**kargs):
         logger.info('stub %s called'%self.ref)
+        if not 'size' in kargs: kargs.update(size=self.size)
         res = self.stub(self.ref)(env,**kargs)
-        if res is None:
-            return top(self.size)
-        else:
-            return res[0:self.size]
+        if res is None: return top(self.size)
+        return res[0:self.size]
+
+    # used when the expression is a target used to build a block
+    def __call__(self,env):
+        logger.info('stub %s called'%self.ref)
+        self.stub(self.ref)(env,**self._subrefs)
 ##
 
 # complex expressions are build with atoms attributes:
@@ -615,8 +669,11 @@ class comp(exp):
 
     def __str__(self):
         s = '{ |'
-        for nk,nv in self.parts.iteritems():
+        cur = 0
+        for nv in self:
+            nk = cur,cur+nv.size
             s += ' %s->%s |'%('[%d:%d]'%nk,str(nv))
+            cur += nv.size
         return s+' }'
 
     def eval(self,env):
@@ -716,6 +773,17 @@ class comp(exp):
         self.smask[start:stop] = [(start,stop)]*(stop-start)
     ##
 
+    def __iter__(self):
+        # gather cst as possible:
+        rcmp = lambda x,y: cmp(x[0],y[0])
+        part = self.parts.keys()
+        part.sort(rcmp)
+        cur = 0
+        for p in part:
+            assert p[0]==cur
+            yield self.parts[p]
+            cur = p[1]
+
     # restruct will concatenate cst expressions when possible
     # to minimize the number of parts.
     def restruct(self):
@@ -743,23 +811,32 @@ class comp(exp):
 #------------------------------------------------------------------------------
 # mem holds memory fetches, ie a read operation of length size, in segment seg,
 # at given address expression.
+# The mods list allows to handle aliasing issues detected at fetching time
+# and adjust the eval result accordingly.
 #------------------------------------------------------------------------------
 class mem(exp):
-    __slots__ = ['a']
+    __slots__ = ['a', 'mods']
     _is_def   = True
     _is_mem   = True
 
-    def __init__(self,a,size=32,seg='',disp=0):
+    def __init__(self,a,size=32,seg='',disp=0,mods=None):
         self.size  = size
         self.sf    = False
         self.a  = ptr(a,seg,disp)
+        self.mods = mods or []
 
     def __str__(self):
-        return 'M%d%s'%(self.size,self.a)
+        n = len(self.mods)
+        n = '$%d'%n if n>0 else ''
+        return 'M%d%s%s'%(self.size,n,self.a)
 
     def eval(self,env):
         a = self.a.eval(env)
-        return env[mem(a,self.size)]
+        m = env.use()
+        for loc,v in self.mods:
+            if loc._is_ptr: loc = env(loc)
+            m[loc] = env(v)
+        return m[mem(a,self.size)]
 
     def simplify(self):
         self.a.simplify()
@@ -768,8 +845,9 @@ class mem(exp):
     def addr(self,env):
         return self.a.eval(env)
 
+
 #------------------------------------------------------------------------------
-# ptr holds memory addresses with segment, base expressions and 
+# ptr holds memory addresses with segment, base expressions and
 # displacement integer (offset relative to base).
 #------------------------------------------------------------------------------
 class ptr(exp):
@@ -782,8 +860,8 @@ class ptr(exp):
             if seg is '': seg=base.seg
             disp = base.disp+disp
             base = base.base
-        self.base = base
-        self.disp = disp
+        self.base,offset = extract_offset(base)
+        self.disp = disp+offset
         self.seg  = seg
         self.size = base.size
         self.sf   = False
@@ -793,7 +871,8 @@ class ptr(exp):
         return '%s(%s%s)'%(self.seg,self.base,d)
 
     def simplify(self):
-        self.base = self.base.simplify()
+        self.base,offset = extract_offset(self.base)
+        self.disp += offset
         if isinstance(self.seg,exp):
             self.seg = self.seg.simplify()
         return self
@@ -816,10 +895,11 @@ class ptr(exp):
 #------------------------------------------------------------------------------
 def slicer(x,pos,size):
     if not isinstance(x,exp): raise TypeError,x
+    if not x._is_def: return top(size)
     if pos==0 and size==x.size:
         return x
     else:
-        if x._is_mem:
+        if x._is_mem and size%8==0:
             off,rst = divmod(pos,8)
             if rst==0:
                 a = ptr(x.a.base,x.a.seg,x.a.disp+off)
@@ -827,7 +907,7 @@ def slicer(x,pos,size):
         return slc(x,pos,size)
 
 #------------------------------------------------------------------------------
-# slc holds bit-slice of a non-cst (and non-slc) expressions 
+# slc holds bit-slice of a non-cst (and non-slc) expressions
 #------------------------------------------------------------------------------
 class slc(exp):
     __slots__ = ['x','pos','ref','__protect','_is_reg']
@@ -847,6 +927,7 @@ class slc(exp):
         self.setref(ref)
 
     def setref(self,ref):
+        self._is_reg = False
         if self.x._is_reg:
             self._is_reg = True
             if ref is None:
@@ -873,16 +954,18 @@ class slc(exp):
         n = self.x.eval(env)
         return n[self.pos:self.pos+self.size]
 
+    # slc of mem objects are simplified by adjusting the disp offset of
+    # the sliced mem object.
     def simplify(self):
         self.x = self.x.simplify()
-        if self.x._is_mem:
+        if self.x._is_mem and self.size%8==0:
             off,rst = divmod(self.pos,8)
             if rst==0:
                 a = ptr(self.x.a.base,self.x.a.seg,self.x.a.disp+off)
                 return mem(a,self.size)
         return self
 
-    # slice of a slice: 
+    # slice of a slice:
     @_checkarg_slice
     def __getitem__(self,i):
         if i.start==0 and i.stop==self.size:
@@ -902,6 +985,17 @@ class slc(exp):
             return self.x
         else:
             raise TypeError('this expression is not a location')
+
+    def __setstate__(self,state):
+        v = state[1]
+        self.__protect = False
+        self.size = v['size']
+        self.sf = v['sf']
+        self.x = v['x']
+        self.pos = v['pos']
+        self.ref = v['ref']
+        self._is_reg = v['_is_reg']
+        self.__protect = v['_slc__protect']
 ##
 
 #------------------------------------------------------------------------------
@@ -912,15 +1006,8 @@ class tst(exp):
     _is_def   = True
     _is_tst   = True
 
-    def __new__(cls,t,l,r):
-        if t is True or t==1: return l
-        if t is False or t==0: return r
-        obj=super(exp,cls).__new__(cls)
-        tst.__init__(obj,t,l,r)
-        return obj
-
     def __init__(self,t,l,r):
-        if t in [True,False]: t=cst(t)
+        if t is True or t is False: t=cst(t,1)
         self.tst = t   # the expression to test, probably a 'op' expressions.
         if l.size<>r.size: raise ValueError,(l,r)
         self.l  = l    # true (tst evals to val)
@@ -941,6 +1028,7 @@ class tst(exp):
         else          : return r
 
     def simplify(self):
+        if self.l is self.r: return self.l
         self.tst = self.tst.simplify()
         self.l   = self.l.simplify()
         self.r   = self.r.simplify()
@@ -953,22 +1041,22 @@ class tst(exp):
 # oper returns a possibly simplified op() object (see below)
 #------------------------------------------------------------------------------
 def oper(opsym,l,r=None):
+    if r is None: return uop(opsym,l).simplify()
     return op(opsym,l,r).simplify()
 
 #------------------------------------------------------------------------------
-# op holds binary operations, integer arithmetic and bitwise logic
-# internal representation is either in tree form or flat form (std=True).
+# op holds binary integer arithmetic and bitwise logic expressions
 #------------------------------------------------------------------------------
 class op(exp):
     __slots__ = ['op','l','r','prop']
     _is_def   = True
     _is_eqn   = True
 
-    def __init__(self,op,l,r=None):
+    def __init__(self,op,l,r):
         self.op = _operator(op)
         self.prop = self.op.type
-        if r is not None and self.prop<4 and l.size <> r.size:
-            raise ValueError,"size mismatch"
+        if self.prop<4:
+            if l.size <> r.size: raise ValueError,"size mismatch"
         self.l  = l
         self.r  = r
         self.size = self.l.size
@@ -976,10 +1064,9 @@ class op(exp):
             self.size=1
         elif self.op.symbol in ['**']: self.size *= 2
         self.sf = l.sf
+        if self.prop==1: self.sf |= r.sf
         if self.l._is_eqn: self.prop |= self.l.prop
-        if self.r is not None:
-            if self.prop==1: self.sf |= r.sf
-            if self.r._is_eqn : self.prop |= self.r.prop
+        if self.r._is_eqn : self.prop |= self.r.prop
 
     @classmethod
     def limit(cls,v):
@@ -988,34 +1075,89 @@ class op(exp):
     def eval(self,env):
         # single-operand :
         l = self.l.eval(env)
-        r = None
-        if self.r is not None:
-            r = self.r.eval(env)
+        r = self.r.eval(env)
         res = self.op(l,r)
         res.sf = self.sf
         return res
     ##
 
     def __str__(self):
-        if self.r is None:
-            return '(%s%s)'%(self.op.symbol,str(self.l))
-        else:
-            return '(%s%s%s)'%(str(self.l),self.op.symbol,str(self.r))
+        return '(%s%s%s)'%(str(self.l),self.op.symbol,str(self.r))
 
     def simplify(self):
-        self.l = self.l.simplify()
-        if self.r is not None:
-            self.r = self.r.simplify()
-            return eqn_helpers(self)
-        return self
+        minus = (self.op.symbol=='-')
+        l = self.l.simplify()
+        r = self.r.simplify()
+        if not l._is_def or not r._is_def:
+            return top(self.size)
+        if self.prop<4:
+            # arithm/logic normalisation:
+            # push cst to the right
+            if l._is_cst:
+                if r._is_cst: return self.op(l,r)
+                if minus:
+                    l,r = (-r),l
+                    self.op = _operator('+')
+                else:
+                    l,r = r,l
+            # lexical ordering of symbols:
+            elif not r._is_cst:
+                lh = ''.join(map(str,symbols_of(l)))
+                rh = ''.join(map(str,symbols_of(r)))
+                if lh>rh:
+                    if minus:
+                        l,r = (-r),l
+                        self.op = _operator('+')
+                    else:
+                        l,r=r,l
+        self.l = l
+        self.r = r
+        return eqn2_helpers(self)
 
     def depth(self):
-        if self.r is not None: d = self.r.depth()
-        else: d = 0.
-        return self.l.depth()+d
+        return self.l.depth()+self.r.depth()
 
 ##
 
+#------------------------------------------------------------------------------
+# uop holds unary operations (+x, -x, ~x)
+#------------------------------------------------------------------------------
+class uop(exp):
+    __slots__ = ['op','r','prop']
+    _is_def   = True
+    _is_eqn   = True
+
+    def __init__(self,op,r):
+        self.op = _operator(op,unary=1)
+        self.prop = self.op.type
+        self.r  = r
+        self.size = r.size
+        self.sf = r.sf
+        if self.r._is_eqn: self.prop |= self.r.prop
+
+    def eval(self,env):
+        # single-operand :
+        r = self.r.eval(env)
+        res = self.op(r)
+        res.sf = self.sf
+        return res
+    ##
+
+    @property
+    def l(self): return None
+
+    def __str__(self):
+        return '(%s%s)'%(self.op.symbol,str(self.r))
+
+    def simplify(self):
+        self.r = self.r.simplify()
+        if not self.r._is_def: return top(self.size)
+        return eqn1_helpers(self)
+
+    def depth(self):
+        return self.r.depth()
+
+##
 # operators:
 #-----------
 
@@ -1054,34 +1196,39 @@ OP_SHIFT = {'>>' : operator.rshift, # logical shift right (see cst.value)
            }
 
 class _operator(object):
-   def __init__(self,op):
-       self.symbol = op
-       if   op in OP_ARITH:
-           self.type = 1
-           self.impl = OP_ARITH[op]
-       elif op in OP_LOGIC:
-           self.type = 2
-           self.impl = OP_LOGIC[op]
-       elif op in OP_CONDT:
-           self.type = 4
-           self.impl = OP_CONDT[op]
-       elif op in OP_SHIFT:
-           self.type = 8
-           self.impl = OP_SHIFT[op]
-       else:
-           raise NotImplementedError
+    def __init__(self,op,unary=0):
+        self.symbol = op
+        self.unary = unary
+        if   op in OP_ARITH:
+            self.type = 1
+            if self.unary:
+                self.impl = {'+': operator.pos, '-': operator.neg}[op]
+            else:
+                self.impl = OP_ARITH[op]
+        elif op in OP_LOGIC:
+            self.type = 2
+            if self.unary: assert op == '~'
+            self.impl = OP_LOGIC[op]
+        elif op in OP_CONDT:
+            self.type = 4
+            self.impl = OP_CONDT[op]
+        elif op in OP_SHIFT:
+            self.type = 8
+            self.impl = OP_SHIFT[op]
+        else:
+            raise NotImplementedError
 
-   def __call__(self,l,r=None):
-       if r  is None:
-           impl = {'+': operator.pos, '-': operator.neg}.get(self.symbol,self.impl)
-           return impl(l)
-       return self.impl(l,r)
+    def __call__(self,l,r=None):
+        if r  is None:
+            assert self.unary
+            return self.impl(l)
+        return self.impl(l,r)
 
-   def __mul__(self,op):
-       ss = self.symbol+op.symbol
-       if ss in ('++','--'): return '+'
-       if ss in ('+-','-+'): return '-'
-       return None
+    def __mul__(self,op):
+        ss = self.symbol+op.symbol
+        if ss in ('++','--'): return '+'
+        if ss in ('+-','-+'): return '-'
+        return None
 
 # basic simplifier:
 #------------------
@@ -1089,53 +1236,76 @@ class _operator(object):
 op.limit(30)
 
 def symbols_of(e):
-   if e is None: return []
-   if e._is_cst: return []
-   if e._is_reg: return [e]
-   if e._is_mem: return symbols_of(e.a.base)
-   if e._is_eqn: return symbols_of(e.l)+symbols_of(e.r)
-   # tst/slc/comp cases:
-   if isinstance(e,tst): return sum(map(symbols_of,(e.tst,e.l,e.r)),[])
-   if isinstance(e,slc): return symbols_of(e.x)
-   return sum(map(symbols_of,e.parts.itervalues()),[])
+    if e is None: return []
+    if e._is_cst: return []
+    if e._is_reg: return [e]
+    if e._is_mem: return symbols_of(e.a.base)
+    if e._is_ptr: return symbols_of(e.base)
+    if e._is_eqn: return symbols_of(e.l)+symbols_of(e.r)
+    if e._is_tst: return sum(map(symbols_of,(e.tst,e.l,e.r)),[])
+    if e._is_slc: return symbols_of(e.x)
+    if e._is_cmp: return sum(map(symbols_of,e.parts.itervalues()),[])
+    if not e._is_def: return []
+    raise ValueError(e)
+
+def locations_of(e):
+    if e is None: return []
+    if e._is_cst: return []
+    if e._is_reg: return [e]
+    if e._is_mem: return [e]
+    if e._is_ptr: return [e]
+    if e._is_eqn: return locations_of(e.l)+locations_of(e.r)
+    if e._is_tst: return sum(map(locations_of,(e.tst,e.l,e.r)),[])
+    if e._is_slc: return locations_of(e.x)
+    if e._is_cmp: return sum(map(locations_of,e.parts.itervalues()),[])
+    if not e._is_def: return []
+    raise ValueError(e)
 
 def complexity(e):
-   return e.depth()+len(symbols_of(e))
+    factor = e.prop if e._is_eqn else 1
+    return (e.depth()+len(symbols_of(e)))*factor
 
-def eqn_helpers(e):
-    if e.r is None: return e
-    if hasattr(e,'threshold'):
-        if e.l.depth()>e.threshold: e.l = top(e.l.size)
-        if e.r.depth()>e.threshold: e.r = top(e.r.size)
+# helpers for unary expressions:
+def eqn1_helpers(e):
+    assert e.op.unary
+    if not e.r._is_def: return e.r
+    if e.r._is_eqn:
+        if e.r.op.unary:
+            ss = e.op*e.r.op
+            if   ss == '+': return e.r.r
+            elif ss == '-': return -e.r.r
+        elif e.op.symbol == '-':
+            if e.r.op.symbol in ('-','+'):
+                l = -e.r.l
+                r = e.r.r
+                return OP_ARITH[e.op*e.r.op](l,r)
+    return e
+
+# helpers for binary expressions:
+# reminder: be careful not to modify the internal structure of
+# e.l or e.r because these objects might be used also in other
+# expressions. See tests/test_cas_exp.py for details.
+def eqn2_helpers(e):
+    if e.r.depth()>e.threshold: e.r = top(e.r.size)
+    if e.l.depth()>e.threshold: e.l = top(e.l.size)
     if False in (e.l._is_def, e.r._is_def): return top(e.size)
-    if e.l._is_cst and e.r._is_cst:
-        return e.op(e.l,e.r)
-    if e.l is e.r:
-        if e.op.symbol in ('!=','<', '>' ): return bit0
-        if e.op.symbol in ('==','<=','>='): return bit1
-        if e.op.symbol is '-' : return cst(0,e.size)
-        if e.op.symbol is '^' : return cst(0,e.size)
-        if e.op.symbol is '&' : return e.l
-        if e.op.symbol is '|' : return e.l
-    if e.l._is_cst:
-        if e.l.value==0:
-            if e.op.symbol in ('*','&','>>','<<','>>>','<<<'):
-                return cst(0,e.size)
-            if e.op.symbol in ('|','^','+'):
-                return e.r
-        elif e.l.value==1 and e.op.symbol=='*':
-            return e.r
-        elif e.r._is_eqn:
-            xop = e.op*e.r.op
-            if xop:
-                if e.r.l._is_cst:
-                    cc = e.op(e.l,e.r.l)
-                    return op(xop, cc, e.r.r)
-                elif e.r.r._is_cst:
-                    cc = OP_ARITH[xop](e.l, e.r.r)
-                    e.l = cc
-                    e.r = e.r.l
-            return e
+    if e.l._is_eqn and e.l.r._is_cst:
+        assert e.l.op.unary==0
+        xop = e.op*e.l.op
+        if xop:
+            e.op,lop = e.l.op,e.op
+            lr,e.r   = e.r,e.l.r
+            e.l = lop(e.l.l,lr)
+    if e.r._is_eqn and e.r.op.unary:
+        if e.op.symbol == '+' and e.r.op.symbol == '-':
+            e.op = _operator('-')
+            e.r  = e.r.r
+    if e.r._is_eqn and e.r.r._is_cst:
+        xop = e.op*e.r.op
+        if xop:
+            e.l = e.op(e.l,e.r.l)
+            e.r = e.r.r
+            e.op = _operator(xop)
     if e.r._is_cst:
         if e.r.value==0:
             if e.op.symbol in ('|','^','+','-','>>','<<','>>>','<<<'):
@@ -1144,68 +1314,35 @@ def eqn_helpers(e):
                 return cst(0,e.size)
         elif e.r.value==1 and e.op.symbol in ('*','/'):
             return e.l
-        elif e.l._is_eqn:
+        if e.l._is_eqn:
             xop = e.op*e.l.op
             if xop:
-                if e.l.l._is_cst:
-                    cc = e.op(e.l.l,e.r)
-                    e.r = e.l.r
-                    e.op = e.l.op
-                    e.l = cc
-                elif e.l.r._is_cst:
+                if e.l.r._is_cst:
                     cc = OP_ARITH[xop](e.l.r,e.r)
                     e.op = e.l.op
-                    e.l = e.l.l
+                    if not e.l.op.unary: e.l = e.l.l
                     e.r = cc
+                return e
+        elif e.l._is_ptr:
+            if e.op.symbol in ('-','+'):
+                return ptr(e.l,disp=e.op(0,e.r.value))
+        elif e.l._is_cst:
+            return e.op(e.l,e.r)
+    if str(e.l)==str(e.r):
+        if e.op.symbol in ('!=','<', '>' ): return bit0
+        if e.op.symbol in ('==','<=','>='): return bit1
+        if e.op.symbol is '-' : return cst(0,e.size)
+        if e.op.symbol is '^' : return cst(0,e.size)
+        if e.op.symbol is '&' : return e.l
+        if e.op.symbol is '|' : return e.l
     return e
 
-# expression parser:
-#-------------------
-
-import pyparsing as pp
-
-#terminals:
-p_bottop  = pp.oneOf('_ T')
-p_symbol  = pp.Word(pp.alphas)
-p_extern  = pp.Suppress('@')+p_symbol
-p_cst     = pp.Suppress('0x')+pp.Combine(pp.Optional('-')+pp.Regex('[0-9a-f]+'))
-p_int     = pp.Word(pp.nums).setParseAction(lambda r:int(r[0]))
-p_slc     = '['+p_int.setResultsName('start')+':'+p_int.setResultsName('stop')+']'
-p_op1     = pp.oneOf('~ -')
-p_op2     = pp.oneOf('+ - / // * & | ^ << >> < > == <= >= != ? :')
-p_term    = p_bottop|p_symbol|p_extern|p_cst
-
-#nested expressions:
-p_expr    = pp.Forward()
-
-p_csl     = pp.Suppress('|')+p_slc+pp.Suppress('->')
-p_comp    = pp.Group(pp.Suppress('{')+pp.ZeroOrMore(p_expr)+pp.Suppress('| }'))
-p_mem     = 'M'+p_int+pp.Optional(p_symbol)
-
-operators = [(p_op1,1,pp.opAssoc.RIGHT),
-             (p_mem,1,pp.opAssoc.RIGHT),
-             (p_slc,1,pp.opAssoc.LEFT),
-             (p_op2,2,pp.opAssoc.LEFT),
-             (p_csl,1,pp.opAssoc.RIGHT),
-            ]
-
-p_expr   << pp.operatorPrecedence(p_term|p_comp,operators)
-
-p_bottop.setParseAction(lambda r: bot if r[0]=='_' else top)
-p_symbol.setParseAction(lambda r: reg(r[0]))
-p_extern.setParseAction(lambda r: ext(r[0]))
-p_cst.setParseAction(lambda r: int(r[0],16))
-p_slc.setParseAction(lambda r: slice(r['start'],r['stop']))
-
-
-def parse(s):
-    p_expr.parseString(s,True)
-
-def test_parser():
-    while 1:
-        try:
-            res = raw_input('amoco[test_parser]>')
-            E = p_expr.parseString(res,True)
-            print E
-        except EOFError:
-            return
+# separate expression e into (e' + C) with C cst offset.
+def extract_offset(e):
+    x = e.simplify()
+    if x._is_eqn and x.r._is_cst:
+        if e.op.symbol == '+':
+            return (x.l,x.r.v)
+        elif e.op.symbol == '-':
+            return (x.l,-x.r.v)
+    return (x,0)

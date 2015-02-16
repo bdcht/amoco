@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # import expressions:
@@ -10,15 +10,15 @@ from amoco.cas.expressions import *
 # 64bits registers :
 #-------------------
 
-rax    = reg('rax',64)     # accumulator for operands and results data                 
-rbx    = reg('rbx',64)     # pointer to data in the DS segment                         
-rcx    = reg('rcx',64)     # counter for string and loop operations                    
-rdx    = reg('rdx',64)     # I/O pointer                                               
-rbp    = reg('rbp',64)     # pointer to data in the stack (SS segment)                 
-rsp    = reg('rsp',64)     # stack pointer (SS segment)                                
-rsi    = reg('rsi',64)     # ptr to data in segment pointed by DS; src ptr for strings 
-rdi    = reg('rdi',64)     # ptr to data in segment pointed by ES; dst ptr for strings 
-rip    = reg('rip',64)     # instruction pointer in 64 bit mode                        
+rax    = reg('rax',64)     # accumulator for operands and results data
+rbx    = reg('rbx',64)     # pointer to data in the DS segment
+rcx    = reg('rcx',64)     # counter for string and loop operations
+rdx    = reg('rdx',64)     # I/O pointer
+rbp    = reg('rbp',64)     # pointer to data in the stack (SS segment)
+rsp    = reg('rsp',64)     # stack pointer (SS segment)
+rsi    = reg('rsi',64)     # ptr to data in segment pointed by DS; src ptr for strings
+rdi    = reg('rdi',64)     # ptr to data in segment pointed by ES; dst ptr for strings
+rip    = reg('rip',64)     # instruction pointer in 64 bit mode
 rflags = reg('rflags',64)
 
 
@@ -59,19 +59,19 @@ ch = slc(rcx,8,8,'ch')
 dh = slc(rdx,8,8,'dh')
 
 cf = slc(rflags,0,1,'cf')   # carry/borrow flag
-pf = slc(rflags,2,1,'pf')   # parity flag      
-zf = slc(rflags,6,1,'zf')   # zero flag        
-sf = slc(rflags,7,1,'sf')   # sign flag        
-df = slc(rflags,10,1,'df')  # direction flag   
-of = slc(rflags,11,1,'of')  # overflow flag    
+pf = slc(rflags,2,1,'pf')   # parity flag
+zf = slc(rflags,6,1,'zf')   # zero flag
+sf = slc(rflags,7,1,'sf')   # sign flag
+df = slc(rflags,10,1,'df')  # direction flag
+of = slc(rflags,11,1,'of')  # overflow flag
 
 # segment registers & other mappings:
 cs = reg('cs',16)      # segment selector for the code segment
-ds = reg('ds',16)      # segment selector to a data segment   
+ds = reg('ds',16)      # segment selector to a data segment
 ss = reg('ss',16)      # segment selector to the stack segment
-es = reg('es',16)      # (data)                               
-fs = reg('fs',16)      # (data)                               
-gs = reg('gs',16)      # (data)                               
+es = reg('es',16)      # (data)
+fs = reg('fs',16)      # (data)
+gs = reg('gs',16)      # (data)
 
 r8 = reg('r8',64); r8d = slc(r8,0,32,'r8d'); r8w = slc(r8,0,16,'r8w'); r8l = slc(r8,0,8,'r8l')
 r9 = reg('r9',64); r9d = slc(r9,0,32,'r9d'); r9w = slc(r9,0,16,'r9w'); r9l = slc(r9,0,8,'r9l')

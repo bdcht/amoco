@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # import expressions:
@@ -11,22 +13,22 @@ from amoco.cas.expressions import *
 #registers (application level, see B1.3.2) :
 #-------------------------------------------
 
-r0     = reg('r0',32)     # 
-r1     = reg('r1',32)     # 
-r2     = reg('r2',32)     # 
-r3     = reg('r3',32)     # 
-r4     = reg('r4',32)     # 
-r5     = reg('r5',32)     # 
-r6     = reg('r6',32)     # 
-r7     = reg('r7',32)     # 
-r8     = reg('r8',32)     # 
-r9     = reg('r9',32)     # 
-r10    = reg('r10',32)    # 
-r11    = reg('r11',32)    # 
-r12    = reg('r12',32)    # 
-r13    = reg('r13',32)    # 
-r14    = reg('r14',32)    # 
-r15    = reg('r15',32)    # 
+r0     = reg('r0',32)     #
+r1     = reg('r1',32)     #
+r2     = reg('r2',32)     #
+r3     = reg('r3',32)     #
+r4     = reg('r4',32)     #
+r5     = reg('r5',32)     #
+r6     = reg('r6',32)     #
+r7     = reg('r7',32)     #
+r8     = reg('r8',32)     #
+r9     = reg('r9',32)     #
+r10    = reg('r10',32)    #
+r11    = reg('r11',32)    #
+r12    = reg('r12',32)    #
+r13    = reg('r13',32)    #
+r14    = reg('r14',32)    #
+r15    = reg('r15',32)    #
 
 regs = [r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15]
 

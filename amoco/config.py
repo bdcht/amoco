@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from collections import defaultdict
 
 try:
@@ -15,7 +17,7 @@ if cp:
     conf.set('block', 'bytecode', 'True')
     conf.set('block', 'padding', '4')
     conf.add_section('log')
-    conf.set('log', 'level', '20')
+    conf.set('log', 'level', 'ERROR')
     conf.read([os.path.expanduser('~/.amocorc')])
 else:
     conf = None
@@ -58,6 +60,6 @@ else:
             self.mset('block', header=True)
             self.mset('block', bytecode=True)
             self.mset('block', padding=4)
-            self.mset('log', level=20)
+            self.mset('log', level='ERROR')
 
     conf = DefaultConf()

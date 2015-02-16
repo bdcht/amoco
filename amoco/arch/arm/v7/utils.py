@@ -1,12 +1,14 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from amoco.cas.expressions import *
 
 def LSL_C(x,shift):
-    assert shift>0
-    carry_out = x.bit(-shift)
+    assert shift>=0
+    carry_out = x.bit(-shift) if shift>0 else None
     return (x<<shift,carry_out)
 
 def LSL(x,shift):
@@ -14,7 +16,8 @@ def LSL(x,shift):
     return x<<shift
 
 def LSR_C(x,shift):
-    assert shift>0
+    assert shift>=0
+    if shift==0: return (x,None)
     carry_out = x.bit(shift-1) if shift<x.size else 0
     return (x>>shift,carry_out)
 
@@ -23,16 +26,17 @@ def LSR(x,shift):
     return x>>shift
 
 def ASR_C(x,shift):
-    assert shift>0
+    assert shift>=0
     n = x.size
     xx = x.signextend(n+shift)
-    return (xx[shift:shift+n-1],xx.bit(shift-1))
+    carry_out = xx.bit(shift-1) if shift>0 else None
+    return (xx[shift:shift+n],carry_out)
 
 def ASR(x,shift):
     assert shift>=0
     n = x.size
     xx = x.signextend(n+shift)
-    return xx[shift:shift+n-1]
+    return xx[shift:shift+n]
 
 def ROR_C(x,shift):
     assert shift != 0

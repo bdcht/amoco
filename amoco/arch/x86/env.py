@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # import expressions:
@@ -11,11 +11,11 @@ from amoco.cas.expressions import *
 #-------------------
 
 eax    = reg('eax',32)     # accumulator for operands and results data
-ebx    = reg('ebx',32)     # pointer to data in the DS segment        
-ecx    = reg('ecx',32)     # counter for string and loop operations   
-edx    = reg('edx',32)     # I/O pointer                              
-ebp    = reg('ebp',32)     # pointer to data in the stack (SS segment)                
-esp    = reg('esp',32)     # stack pointer (SS segment)                               
+ebx    = reg('ebx',32)     # pointer to data in the DS segment
+ecx    = reg('ecx',32)     # counter for string and loop operations
+edx    = reg('edx',32)     # I/O pointer
+ebp    = reg('ebp',32)     # pointer to data in the stack (SS segment)
+esp    = reg('esp',32)     # stack pointer (SS segment)
 esi    = reg('esi',32)     # ptr to data in segment pointed by DS; src ptr for strings
 edi    = reg('edi',32)     # ptr to data in segment pointed by ES; dst ptr for strings
 eip    = reg('eip',32)     # instruction pointer in 32 bit mode
@@ -41,21 +41,21 @@ ch = slc(ecx,8,8,'ch')
 dh = slc(edx,8,8,'dh')
 
 cf = slc(eflags,0,1,'cf')   # carry/borrow flag
-pf = slc(eflags,2,1,'pf')   # parity flag      
-af = slc(eflags,4,1,'pf')   # aux carry flag      
-zf = slc(eflags,6,1,'zf')   # zero flag        
-sf = slc(eflags,7,1,'sf')   # sign flag        
-tf = slc(eflags,8,1,'sf')   # trap flag        
-df = slc(eflags,10,1,'df')  # direction flag   
-of = slc(eflags,11,1,'of')  # overflow flag    
+pf = slc(eflags,2,1,'pf')   # parity flag
+af = slc(eflags,4,1,'pf')   # aux carry flag
+zf = slc(eflags,6,1,'zf')   # zero flag
+sf = slc(eflags,7,1,'sf')   # sign flag
+tf = slc(eflags,8,1,'sf')   # trap flag
+df = slc(eflags,10,1,'df')  # direction flag
+of = slc(eflags,11,1,'of')  # overflow flag
 
 # segment registers & other mappings:
 cs = reg('cs',16)      # segment selector for the code segment
-ds = reg('ds',16)      # segment selector to a data segment   
+ds = reg('ds',16)      # segment selector to a data segment
 ss = reg('ss',16)      # segment selector to the stack segment
-es = reg('es',16)      # (data)                               
-fs = reg('fs',16)      # (data)                               
-gs = reg('gs',16)      # (data)                               
+es = reg('es',16)      # (data)
+fs = reg('fs',16)      # (data)
+gs = reg('gs',16)      # (data)
 
 # fpu registers (80 bits holds double extended floats see Intel Vol1--4.4.2):
 def st(num):

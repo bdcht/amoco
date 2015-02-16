@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # spec_xxx files are providers for instruction objects.
@@ -147,8 +149,8 @@ def A_bits(obj,Rn,imm3,Rd,imm2,msb):
 
 @ispec("32[ 11 J1 0 J2 #imm10L(10) 0 11110 S #imm10H(10) ]", mnemonic="BLX")
 def A_label(obj,S,imm10H,J1,J2,imm10L):
-  I1, I2 = str(~(J1^S)), str(~(J2^S))
-  v = int(S+I1+I2+imm10H+imm10L+'00',2)
+  I1, I2 = str(~(J1^S)&0x1), str(~(J2^S)&0x1)
+  v = int(str(S)+I1+I2+imm10H+imm10L+'00',2)
   obj.imm32 = env.cst(v,25).signextend(32)
   obj.operands = [obj.imm32]
   obj.type = type_control_flow
@@ -564,7 +566,7 @@ def A_reglist(obj,Rt):
   obj.cond = env.CONDITION_AL
 
 @ispec("32[ 0 #M 0 #register_list(13) 11101 00 100 1 0 1101 ]", mnemonic="PUSH")
-def A_reglist(obj,P,M,register_list):
+def A_reglist(obj,M,register_list):
   obj.registers = [env.regs[i] for i,r in enumerate(register_list[::-1]+'0'+M+'0') if r=='1']
   if len(obj.registers)<2: raise InstructionError(obj)
   obj.operands = [obj.registers]

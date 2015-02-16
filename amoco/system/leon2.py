@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from amoco.system.core import *
@@ -11,6 +13,7 @@ class ELF(CoreExec):
 
     def __init__(self,p):
         CoreExec.__init__(self,p,cpu)
+        cpu.exp.setendian(-1) # set endianess to big-endian
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):

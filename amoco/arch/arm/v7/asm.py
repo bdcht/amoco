@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com) 
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from .env import *
@@ -32,7 +34,7 @@ def __check_state(i,fmap):
         if address._is_cst:
             raise InstructionError(i)
         else:
-            logger.warning('impossible to check isetstate (ARM/Thumb) until pc is cst')
+            logger.verbose('impossible to check isetstate (ARM/Thumb) until pc is cst')
 
 def __pre(i,fmap):
     fmap[pc] = fmap(pc+i.length)
@@ -49,6 +51,7 @@ def __pre(i,fmap):
     return cond,dest,op1
 
 def __setflags(fmap,cond,cout,result,overflow=None):
+    if cout is None: cout = fmap(C)
     fmap[C] = tst(cond,cout,fmap(C))
     fmap[Z] = tst(cond,(result==0),fmap(Z))
     fmap[N] = tst(cond,(result<0),fmap(N))
@@ -164,13 +167,13 @@ def i_BIC(i,fmap):
         __setflags(fmap,cond,cout,result)
 
 def i_CMN(i,fmap):
-    cond,dest,op1,op2 = __pre(i,fmap)
-    result,cout,overflow = AddWithCarry(fmap(op1),fmap(op2))
+    cond,dest,op1 = __pre(i,fmap)
+    result,cout,overflow = AddWithCarry(fmap(dest),fmap(op1))
     __setflags(fmap,cond,cout,result,overflow)
 
 def i_CMP(i,fmap):
-    cond,dest,op1,op2 = __pre(i,fmap)
-    result,cout,overflow = SubWithBorrow(fmap(op1),fmap(op2))
+    cond,dest,op1 = __pre(i,fmap)
+    result,cout,overflow = SubWithBorrow(fmap(dest),fmap(op1))
     __setflags(fmap,cond,cout,result,overflow)
 
 def i_EOR(i,fmap):
@@ -270,15 +273,15 @@ def i_SUB(i,fmap):
         __setflags(fmap,cond,cout,result,overflow)
 
 def i_TEQ(i,fmap):
-    cond,dest,op1,op2 = __pre(i,fmap)
-    result = fmap(op1 ^ op2)
-    cout = fmap(op2.bit(31))
+    cond,dest,op1 = __pre(i,fmap)
+    result = fmap(dest ^ op1)
+    cout = fmap(op1.bit(31))
     __setflags(fmap,cond,cout,result)
 
 def i_TST(i,fmap):
-    cond,dest,op1,op2 = __pre(i,fmap)
-    result = fmap(op1 & op2)
-    cout = fmap(op2.bit(31))
+    cond,dest,op1 = __pre(i,fmap)
+    result = fmap(dest & op1)
+    cout = fmap(op1.bit(31))
     __setflags(fmap,cond,cout,result)
 
 # shifts (4.4.2)
@@ -864,6 +867,7 @@ def i_PLI(i,fmap):
 def i_SETEND(i,fmap):
     fmap[pc] = fmap(pc+i.length)
     internals['endianstate'] = 1 if i.set_bigend else 0
+    exp.setendian(-1 if i.set_bigend else +1)
 
 # event hint
 def i_SEV(i,fmap):

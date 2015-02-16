@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from amoco.arch.sparc.asm import *
 # expose "microarchitecture" (instructions semantics)
 uarch = dict(filter(lambda kv:kv[0].startswith('i_'),locals().iteritems()))

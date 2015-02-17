@@ -61,7 +61,7 @@ dh = slc(rdx,8,8,'dh')
 
 cf = slc(rflags,0,1,'cf')   # carry/borrow flag
 pf = slc(rflags,2,1,'pf')   # parity flag
-af = slc(eflags,4,1,'pf')   # aux carry flag
+af = slc(eflags,4,1,'af')   # aux carry flag
 zf = slc(rflags,6,1,'zf')   # zero flag
 sf = slc(rflags,7,1,'sf')   # sign flag
 df = slc(rflags,10,1,'df')  # direction flag

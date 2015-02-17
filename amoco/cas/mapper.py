@@ -58,9 +58,9 @@ class mapper(object):
     def rw(self):
         r = filter(lambda x:x._is_mem, self.inputs())
         w = filter(lambda x:x._is_ptr, self.outputs())
-        sr = ''.join(("r%d"%x.size for x in r))
-        sw = ''.join(("w%d"%self.__map[x].size for x in w))
-        return sr+sw
+        sr = [x.size for x in r]
+        sw = [self.__map[x].size for x in w]
+        return (sr,sw)
 
     def clear(self):
         self.__map.clear()

@@ -1342,7 +1342,7 @@ def extract_offset(e):
     x = e.simplify()
     if x._is_eqn and x.r._is_cst:
         if e.op.symbol == '+':
-            return (x.l,x.r.v)
+            return (x.l,x.r.value)
         elif e.op.symbol == '-':
-            return (x.l,-x.r.v)
+            return (x.l,-x.r.value)
     return (x,0)

@@ -750,7 +750,7 @@ def ia32_cmpxchg(obj,Mod,RM,data):
     if REX:
         W=REX[0]
         if W==1:
-            obj.mnemonic = "CMXCHG16B"
+            obj.mnemonic = "CMPXCHG16B"
             op2.size = 128
     obj.operands = [op2]
     obj.type = type_data_processing

@@ -684,6 +684,28 @@ def i_CMP(i,fmap):
   fmap[of] = overflow
   fmap[pf] = parity8(x[0:8])
 
+def i_CMPXCHG(i,fmap):
+  fmap[eip] = fmap[eip]+i.length
+  dst,src = i.operands
+  acc = {8:al,16:ax,32:eax}[dst.size]
+  t = fmap(acc==dst)
+  fmap[zf] = tst(t,bit1,bit0)
+  v = fmap(dst)
+  fmap[dst] = tst(t,fmap(src),v)
+  fmap[acc] = v
+
+def i_CMPXCHG8B(i,fmap):
+  fmap[eip] = fmap[eip]+i.length
+  dst = i.operands[0]
+  src = composer([ebx,ecx])
+  acc = composer([eax,edx])
+  t = fmap(acc==dst)
+  fmap[zf] = tst(t,bit1,bit0)
+  v = fmap(dst)
+  fmap[dst] = tst(t,fmap(src),v)
+  fmap[eax] = v[0:32]
+  fmap[edx] = v[32:64]
+
 def i_TEST(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   op1 = fmap(i.operands[0])

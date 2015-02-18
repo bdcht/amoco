@@ -911,17 +911,17 @@ def i_SHLD(i,fmap):
 def i_IMUL(i,fmap):
   fmap[rip] = fmap[rip]+i.length
   if len(i.operands)==1:
-    src = fmap(i.operands[0])
+    src = i.operands[0]
     m,d = {8:(al,ah), 16:(ax,dx), 32:(eax,edx)}[src.size]
-    r = m**src
+    r = fmap(m**src)
   elif len(i.operands)==2:
     dst,src = i.operands
     m = d = dst
-    r = dst**src
+    r = fmap(dst**src)
   else:
     dst,src,imm = i.operands
     m = d = dst
-    r = src**imm.signextend(src.size)
+    r = fmap(src**imm.signextend(src.size))
   lo = r[0:src.size]
   hi = r[src.size:r.size]
   fmap[d]  = hi
@@ -931,9 +931,9 @@ def i_IMUL(i,fmap):
 
 def i_MUL(i,fmap):
   fmap[rip] = fmap[rip]+i.length
-  src = fmap(i.operands[0])
+  src = i.operands[0]
   m,d = {8:(al,ah), 16:(ax,dx), 32:(eax,edx), 64:(rax,rdx)}[src.size]
-  r = m**src
+  r = fmap(m**src)
   lo = r[0:src.size]
   hi = r[src.size:r.size]
   fmap[d]  = hi

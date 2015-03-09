@@ -380,7 +380,7 @@ class CoreExec(object):
             logger.verbose("vaddr %s is not mapped"%vaddr)
             raise MemoryError(e)
         else:
-            if len(istr)>1 or not isinstance(istr[0],str):
+            if len(istr)<=0 or not isinstance(istr[0],str):
                 logger.verbose("failed to read instruction at %s"%vaddr)
                 return None
         i = self.cpu.disassemble(istr[0],**kargs)

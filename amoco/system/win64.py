@@ -52,8 +52,6 @@ class PE(CoreExec):
             m[k] = v
         return m
 
-    def PC(self): return self.cpu.rip
-
     # lookup in bin if v is associated with a function or variable name:
     def check_sym(self,v):
         if v._is_cst:

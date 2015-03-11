@@ -14,3 +14,6 @@ from amoco.arch.x64 import spec_ia32e
 
 disassemble = disassembler([spec_ia32e])
 disassemble.maxlen = 15
+
+def PC():
+    return rip

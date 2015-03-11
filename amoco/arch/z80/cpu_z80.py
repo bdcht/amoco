@@ -16,3 +16,6 @@ instruction.set_formatter(Mostek_full)
 from amoco.arch.z80 import spec_mostek
 
 disassemble = disassembler([spec_mostek])
+
+def PC():
+    return pc

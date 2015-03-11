@@ -391,11 +391,6 @@ class CoreExec(object):
             i.address = vaddr
             return i
 
-    # mandatory method PC (needs to be overloaded by each arch-dependent child class)
-    def PC(self):
-        logger.error("CoreExec PC not defined")
-        raise ValueError
-
     # optional codehelper method allows platform-specific analysis of
     # either a (raw) list of instruction, a block/func object (see amoco.code)
     # the default helper is a no-op:

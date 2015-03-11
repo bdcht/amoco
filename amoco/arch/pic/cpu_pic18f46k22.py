@@ -16,3 +16,6 @@ instruction.set_formatter(PIC_full)
 from amoco.arch.pic.F46K22 import spec_pic18
 
 disassemble = disassembler([spec_pic18])
+
+def PC():
+    return pc

@@ -47,8 +47,6 @@ class PIC18(CoreExec):
         m[self.cpu.pc] = self.cpu.cst(0,21)
         return m
 
-    def PC(self): return self.cpu.pc
-
     def codehelper(self,**kargs):
         if 'seq' in kargs: return self.seqhelper(kargs['seq'])
         if 'block' in kargs: return self.blockhelper(kargs['block'])

@@ -30,7 +30,7 @@ class lsweep(object):
         if loc is None:
             try:
                 m = p.initenv()
-                loc = m(p.PC())
+                loc = m(p.cpu.PC())
             except (TypeError,ValueError):
                 loc = 0
         while True:
@@ -72,7 +72,7 @@ class lsweep(object):
     # return the block located at address val provided as Python Int.
     def getblock(self,val):
         p = self.prog
-        target = p.cpu.cst(val,p.PC().size)
+        target = p.cpu.cst(val,p.cpu.PC().size)
         return next(self.iterblocks(target))
 
     # poorman's cfg builder that only groups blocks that belong to the
@@ -138,7 +138,7 @@ class fforward(lsweep):
     def get_targets(self,node,parent):
         blk = node.data
         m = code.mapper()
-        pc = self.prog.PC()
+        pc = self.prog.cpu.PC()
         m[pc] = blk.address
         pc = (blk.map(pc)).eval(m)
         return _target(pc,node).expand()
@@ -227,7 +227,7 @@ class lforward(fforward):
 
     def get_targets(self,node,parent):
         blk = node.data
-        pc = self.prog.PC()
+        pc = self.prog.cpu.PC()
         if parent is None:
             pc = blk.map.use((pc,blk.address))(pc)
         else:
@@ -251,7 +251,7 @@ class fbackward(lforward):
     policy = {'depth-first': True, 'branch-lazy': False, 'frame-aliasing':False}
 
     def get_targets(self,node,parent):
-        pc = self.prog.PC()
+        pc = self.prog.cpu.PC()
         n = node
         mpc = pc
         while True:

@@ -28,9 +28,6 @@ class MSP430(CoreExec):
         m[self.cpu.pc] = self.cpu.cst(0x4400,16)
         return m
 
-    def PC(self):
-        return self.cpu.pc
-
     # optional codehelper method allows platform-specific analysis of
     # either a (raw) list of instruction, a block/func object (see amoco.code)
     # the default helper is a no-op:

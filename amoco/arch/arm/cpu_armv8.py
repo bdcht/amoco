@@ -21,3 +21,6 @@ instruction.set_formatter(ARM_V8_full)
 endian = (lambda : 1 if internals['endianstate']==0 else -1)
 
 disassemble = disassembler([spec_armv8],endian=endian)
+
+def PC():
+    return pc

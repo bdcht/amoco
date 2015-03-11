@@ -42,9 +42,6 @@ class ELF(CoreExec):
             m[k] = v
         return m
 
-    def PC(self):
-        return self.cpu.pc
-
 # LIBC HOOKS DEFINED HERE :
 #----------------------------------------------------------------------------
 

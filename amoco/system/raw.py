@@ -15,8 +15,6 @@ class RawExec(CoreExec):
         CoreExec.__init__(self,p,cpu)
         if cpu is None:
             logger.warning('a cpu module must be imported')
-        else:
-            self.PC  = lambda :self.cpu.eip
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):
@@ -27,14 +25,13 @@ class RawExec(CoreExec):
     def use_x86(self):
         from amoco.arch.x86 import cpu_x86
         self.cpu = cpu_x86
-        self.PC  = lambda :self.cpu.eip
 
     def relocate(self,vaddr):
         from amoco.cas.mapper import mapper
         m = mapper()
         mz = self.mmap._zones[None]
         for z in mz._map: z.vaddr += vaddr
-        pc = self.PC()
+        pc = self.cpu.PC()
         m[pc] = self.cpu.cst(vaddr,pc.size)
         self._initmap = m
         self.initenv = lambda : self._initmap

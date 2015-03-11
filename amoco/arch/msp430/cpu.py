@@ -17,3 +17,6 @@ from amoco.arch.msp430 import spec_msp430
 
 disassemble = disassembler([spec_msp430])
 disassemble.maxlen = 6
+
+def PC():
+    return pc

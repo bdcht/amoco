@@ -151,9 +151,6 @@ class z80GB(object):
             m[k] = v
         return m
 
-    def PC(self):
-        return self.cpu.pc
-
     # optional codehelper method allows platform-specific analysis of
     # either a (raw) list of instruction, a block/func object (see amoco.code)
     # the default helper is a no-op:

@@ -47,5 +47,3 @@ class ELF(CoreExec):
             m[k] = v
         return m
 
-    def PC(self): return cpu.pc
-

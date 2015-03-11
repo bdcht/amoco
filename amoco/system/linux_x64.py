@@ -61,8 +61,6 @@ class ELF(CoreExec):
             m[k] = v
         return m
 
-    def PC(self): return self.cpu.rip
-
     def codehelper(self,**kargs):
         if 'seq' in kargs: return self.seqhelper(kargs['seq'])
         if 'block' in kargs: return self.blockhelper(kargs['block'])

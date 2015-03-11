@@ -16,3 +16,6 @@ instruction.set_formatter(GB_full)
 from amoco.arch.z80 import spec_gb
 
 disassemble = disassembler([spec_gb])
+
+def PC():
+    return pc

@@ -14,3 +14,6 @@ from amoco.arch.x86 import spec_ia32
 
 disassemble = disassembler([spec_ia32])
 disassemble.maxlen = 15
+
+def PC():
+    return eip

@@ -92,6 +92,10 @@ def op_to_z3(e):
     z3l = l.to_smtlib()
     if r is None: return op(z3l)
     z3r = r.to_smtlib()
+    if z3l.size() != z3r.size():
+        greatest = max(z3l.size(), z3r.size())
+        z3l = z3.ZeroExt(greatest - z3l.size(), z3l)
+        z3r = z3.ZeroExt(greatest - z3r.size(), z3r)
     return op(z3l,z3r)
 
 cst.to_smtlib  = cst_to_z3

@@ -80,7 +80,11 @@ def mem_to_z3(e):
 
 def tst_to_z3(e):
     e.simplify()
-    return z3.If(e.tst.to_smtlib() != z3.BitVecVal(0, e.tst.size), e.l.to_smtlib(), e.r.to_smtlib())
+    z3t = e.tst.to_smtlib()
+    if not z3.is_bool(z3t):
+        assert z3t.size()==1
+        z3t = (z3t==z3.BitVecVal(1,1))
+    return z3.If( z3t , e.l.to_smtlib(), e.r.to_smtlib())
 
 def op_to_z3(e):
     e.simplify()
@@ -91,13 +95,25 @@ def op_to_z3(e):
     elif op.symbol == '>>>': op = z3.RotateRight
     elif op.symbol == '<<<': op = z3.RotateLeft
     z3l = l.to_smtlib()
-    if r is None: return op(z3l)
     z3r = r.to_smtlib()
+    if z3.is_bool(z3l):
+        z3l = z3.If(z3l,z3.BitVecVal(1,1),z3.BitVecVal(0,1))
+    if z3.is_bool(z3r):
+        z3r = z3.If(z3r,z3.BitVecVal(1,1),z3.BitVecVal(0,1))
     if z3l.size() != z3r.size():
         greatest = max(z3l.size(), z3r.size())
         z3l = z3.ZeroExt(greatest - z3l.size(), z3l)
         z3r = z3.ZeroExt(greatest - z3r.size(), z3r)
     return op(z3l,z3r)
+
+def uop_to_z3(e):
+    e.simplify()
+    r = e.r
+    op = e.op
+    z3r = r.to_smtlib()
+    if z3.is_bool(z3r):
+        z3r = z3.If(z3r,z3.BitVecVal(1,1),z3.BitVecVal(0,1))
+    return op(z3r)
 
 cst.to_smtlib  = cst_to_z3
 cfp.to_smtlib  = cfp_to_z3
@@ -108,6 +124,7 @@ ptr.to_smtlib  = ptr_to_z3
 mem.to_smtlib  = mem_to_z3
 tst.to_smtlib  = tst_to_z3
 op.to_smtlib   = op_to_z3
+uop.to_smtlib   = uop_to_z3
 
 def to_smtlib(e):
     return e.to_smtlib()

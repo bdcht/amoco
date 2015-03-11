@@ -75,11 +75,12 @@ def mem_to_z3(e):
     for i in range(0,e.length):
         b.insert(0,M[p+i])
     if e._endian==-1: b.reverse() # big-endian case
-    return z3.Concat(*b)
+    if len(b) > 1: return z3.Concat(*b)
+    return b[0]
 
 def tst_to_z3(e):
     e.simplify()
-    return z3.If(e.tst.to_smtlib(), e.l.to_smtlib(), e.r.to_smtlib())
+    return z3.If(e.tst.to_smtlib() != z3.BitVecVal(0, e.tst.size), e.l.to_smtlib(), e.r.to_smtlib())
 
 def op_to_z3(e):
     e.simplify()
@@ -92,6 +93,10 @@ def op_to_z3(e):
     z3l = l.to_smtlib()
     if r is None: return op(z3l)
     z3r = r.to_smtlib()
+    if z3l.size() != z3r.size():
+        greatest = max(z3l.size(), z3r.size())
+        z3l = z3.ZeroExt(greatest - z3l.size(), z3l)
+        z3r = z3.ZeroExt(greatest - z3r.size(), z3r)
     return op(z3l,z3r)
 
 cst.to_smtlib  = cst_to_z3

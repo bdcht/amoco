@@ -13,7 +13,10 @@ class RawExec(CoreExec):
 
     def __init__(self,p,cpu=None):
         CoreExec.__init__(self,p,cpu)
-        if cpu is None: logger.warning('a cpu module must be imported')
+        if cpu is None:
+            logger.warning('a cpu module must be imported')
+        else:
+            self.PC  = lambda :self.cpu.eip
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):

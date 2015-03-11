@@ -142,7 +142,7 @@ def i_HLT(i,fmap):
 def _ins_(i,fmap,l):
   counter = cx if i.misc['adrsz'] else ecx
   loc = mem(edi,l*8)
-  src = ext('IN',size=l*8).call(port=fmap(dx))
+  src = ext('IN',size=l*8).call(fmap,port=fmap(dx))
   if i.misc['rep']:
       fmap[loc] = tst(fmap(counter)==0, fmap(loc), src)
       fmap[counter] = fmap(counter)-1
@@ -395,7 +395,7 @@ def i_IN(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[op1] = ext('IN',size=op1.size).call(port=op2)
+  fmap[op1] = ext('IN',size=op1.size).call(fmap,port=op2)
 
 def i_OUT(i,fmap):
   fmap[eip] = fmap[eip]+i.length

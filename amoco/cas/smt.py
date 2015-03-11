@@ -79,7 +79,7 @@ def mem_to_z3(e):
 
 def tst_to_z3(e):
     e.simplify()
-    return z3.If(e.tst.to_smtlib(), e.l.to_smtlib(), e.r.to_smtlib())
+    return z3.If(e.tst.to_smtlib() != z3.BitVecVal(0, e.tst.size), e.l.to_smtlib(), e.r.to_smtlib())
 
 def op_to_z3(e):
     e.simplify()

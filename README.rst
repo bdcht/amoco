@@ -1412,6 +1412,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _zodb: http://www.zodb.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.4.1: https://github.com/bdcht/amoco/releases/tag/v2.4.1
 .. _v2.4.0: https://github.com/bdcht/amoco/releases/tag/v2.4.0
 .. _v2.3.5: https://github.com/bdcht/amoco/releases/tag/v2.3.5
 .. _v2.3.4: https://github.com/bdcht/amoco/releases/tag/v2.3.4

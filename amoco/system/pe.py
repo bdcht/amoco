@@ -559,8 +559,12 @@ class PE(PEcore):
     def entrypoints(self):
         l = [ self.Opt.AddressOfEntryPoint + self.basemap ]
         if self.tls:
-            l.extend(self.tls.callbacks)
+            l.extend(list(set(self.tls.callbacks)))
         return l
+
+    @property
+    def filename(self):
+        return self.data.name
 
     def __init__(self,filename):
         try:

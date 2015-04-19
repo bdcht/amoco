@@ -135,7 +135,6 @@ class mo(object):
         if vaddr in self:
             return self.data.getpart(vaddr-self.vaddr,l)
         else:
-            logger.debug('%s read out of bound (vaddr=%08x, l=%d)',repr(self),vaddr,l)
             return (None,l)
 
     # update current obj resulting from writing datadiv at vaddr, returning the
@@ -151,7 +150,6 @@ class mo(object):
                 vaddr += len(p)
             return O
         else:
-            logger.debug('%s write out of bound (vaddr=%08x,data=%.32s)',repr(self),vaddr,repr(data))
             return [mo(vaddr,data)]
 
 #------------------------------------------------------------------------------
@@ -498,7 +496,12 @@ class DataIO(object):
 
     @property
     def name(self):
-        return self.f.name
+        try:
+            return self.f.name
+        except AttributeError:
+            return self.f.getvalue()
+
+    filename = name
 
     @property
     def newlines(self):

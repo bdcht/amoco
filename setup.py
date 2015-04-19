@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name = 'Amoco',
-    version = '2.x',
+    version = '2.4.1',
     packages=['amoco','amoco/arch','amoco/system','amoco/cas',
               'amoco/arch/x86',
               'amoco/arch/x64',
@@ -22,4 +22,5 @@ setup(
     description = 'yet another binary analysis framework',
     license = 'GPLv2',
     url = 'https://github.com/bdcht/amoco',
+    requires = ['grandalf (>=0.555)', 'crysp (>0.1)']
 )

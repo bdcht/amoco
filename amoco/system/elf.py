@@ -603,6 +603,10 @@ class Elf32(object):
     def entrypoints(self):
         return [self.Ehdr.e_entry]
 
+    @property
+    def filename(self):
+        return self.__file.name
+
     def __init__(self,filename):
         try:
             self.__file = file(filename,'rb')
@@ -622,6 +626,7 @@ class Elf32(object):
             n,l = self.Ehdr.e_phnum,self.Ehdr.e_phentsize
             data = self.__file.read(n*l)
             for pht in range(n):
+                logger.progress(pht,n,'parsing Phdrs ')
                 self.Phdr.append(Elf32_Phdr(data[pht*l:]))
                 if self.Phdr[-1].p_type == PT_LOAD:
                     if not self.basemap: self.basemap = self.Phdr[-1].p_vaddr
@@ -639,6 +644,7 @@ class Elf32(object):
                 n,l = self.Ehdr.e_shnum,self.Ehdr.e_shentsize
                 data = self.__file.read(n*l)
                 for sht in range(n):
+                    logger.progress(sht,n,'parsing Shdrs ')
                     S = Elf32_Shdr(data[sht*l:])
                     if S.sh_type in SHT_legal:
                         self.Shdr.append(S)
@@ -1127,6 +1133,10 @@ class Elf64(object):
     def entrypoints(self):
         return [self.Ehdr.e_entry]
 
+    @property
+    def filename(self):
+        return self.__file.name
+
     def __init__(self,filename):
         try:
             self.__file = file(filename,'rb')
@@ -1146,6 +1156,7 @@ class Elf64(object):
             n,l = self.Ehdr.e_phnum,self.Ehdr.e_phentsize
             data = self.__file.read(n*l)
             for pht in range(n):
+                logger.progress(pht,n,'parsing Phdrs ')
                 self.Phdr.append(Elf64_Phdr(data[pht*l:]))
                 if self.Phdr[-1].p_type == PT_LOAD:
                     if not self.basemap: self.basemap = self.Phdr[-1].p_vaddr
@@ -1163,6 +1174,7 @@ class Elf64(object):
                 n,l = self.Ehdr.e_shnum,self.Ehdr.e_shentsize
                 data = self.__file.read(n*l)
                 for sht in range(n):
+                    logger.progress(sht,n,'parsing Shdrs ')
                     S = Elf64_Shdr(data[sht*l:])
                     if S.sh_type in SHT_legal:
                         self.Shdr.append(S)

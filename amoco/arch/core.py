@@ -9,6 +9,7 @@ from crysp.bits import *
 from collections import defaultdict
 import pyparsing as pp
 import inspect
+import importlib
 
 from amoco.logger import Log
 logger = Log(__name__)
@@ -66,6 +67,7 @@ class icore(object):
     @property
     def length(self):
         return len(self.bytes)
+
 ##
 
 # instruction class
@@ -99,6 +101,26 @@ class instruction(icore):
 
     def __str__(self):
         return self.formatter(i=self)
+
+    def __getstate__(self):
+        return (self.bytes,
+                self.type,
+                self.spec,
+                self.address,
+                self.mnemonic,
+                self.operands,
+                dict(self.misc))
+
+    def __setstate__(self,state):
+        b,t,s,a,m,o,D = state
+        self.bytes = b
+        self.type = t
+        self.spec = s
+        self.address = a
+        self.mnemonic = m
+        self.operands = o
+        self.misc = defaultdict(lambda: None)
+        self.misc.update(D.iteritems())
 
 class InstructionError(Exception):
     def __init__(self,i):
@@ -263,6 +285,22 @@ class ispec(object):
         self.setup(kargs)
         # when ispec is used as a function decorator, hook holds the decorated function
         self.hook = None
+
+    def __getstate__(self):
+        D = {}
+        D['format'] = self.format
+        D['module'] = self.hook.__module__
+        return D
+
+    def __setstate__(self,state):
+        self.format = state['format']
+        modname = state['module']
+        m = importlib.import_module(modname)
+        self.hook = None
+        for h in m.ISPECS:
+            if h.format==self.format:
+                self.hook = h.hook
+                break
 
     def setup(self,kargs):
         self.iattr = {}
@@ -462,6 +500,7 @@ def ispec_register(x,module):
     except AttributeError:
         logger.error("spec modules must declare ISPECS=[] before @ispec decorators")
         raise AttributeError
+    logger.progress(len(S),pfx='loading %s instructions '%module.__name__)
     f = x.fixed()
     if f in F:
         logger.error('ispec conflict for %s (vs. %s)'%(x.format,S[F.index(f)].format))

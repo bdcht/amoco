@@ -102,9 +102,10 @@ class ELF(CoreExec):
                         if op.a.disp<0: i.misc[tag.FUNC_ARG]=1
                         else: i.misc[tag.FUNC_VAR]=1
                     elif op.a.base._is_cst:
-                        x = self.check_sym(op.a.base)
+                        x = self.check_sym(op.a.base+op.a.disp)
                         if x is not None:
                             op.a.base=x
+                            op.a.disp=0
                             if i.mnemonic == 'JMP': # PLT jumps:
                                 i.address = i.address.to_sym('PLT%s'%x)
                                 i.misc[tag.FUNC_START]=1
@@ -129,6 +130,22 @@ class ELF(CoreExec):
             block.misc[tag.FUNC_CALL]=1
         return block
 
+    def funchelper(self,f):
+        roots = f.cfg.roots()
+        if len(roots)==0:
+            roots = filter(lambda n:n.data.misc[tag.FUNC_START],f.cfg.sV)
+            if len(roots)==0:
+                logger.warning("no entry to function %s found"%f)
+        if len(roots)>1:
+            logger.verbose('multiple entries into function %s ?!'%f)
+        rets = f.cfg.leaves()
+        if len(rets)==0:
+            logger.warning("no exit to function %s found"%f)
+        if len(rets)>1:
+            logger.verbose('multiple exits in function %s'%f)
+        for r in rets:
+            if r.data.misc[tag.FUNC_CALL]: f.misc[tag.FUNC_CALL] += 1
+
 
 # HOOKS DEFINED HERE :
 #----------------------------------------------------------------------------
@@ -139,6 +156,7 @@ def pop_eip(m,**kargs):
 
 @stub
 def __libc_start_main(m,**kargs):
+    "tags: func_call"
     m[cpu.eip] = m(cpu.mem(cpu.esp+4,32))
     cpu.push(m,cpu.ext('exit',size=32))
 

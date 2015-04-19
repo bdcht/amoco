@@ -124,6 +124,23 @@ class PE(CoreExec):
             block.misc[tag.FUNC_CALL]=1
         return block
 
+    def funchelper(self,f):
+        roots = f.cfg.roots()
+        if len(roots)==0:
+            roots = filter(lambda n:n.data.misc[tag.FUNC_START],f.cfg.sV)
+            if len(roots)==0:
+                logger.warning("no entry to function %s found"%f)
+        if len(roots)>1:
+            logger.verbose('multiple entries into function %s ?!'%f)
+        rets = f.cfg.leaves()
+        if len(rets)==0:
+            logger.warning("no exit to function %s found"%f)
+        if len(rets)>1:
+            logger.verbose('multiple exits in function %s'%f)
+        for r in rets:
+            if r.data.misc[tag.FUNC_CALL]: f.misc[tag.FUNC_CALL] += 1
+
+
 # HOOKS DEFINED HERE :
 #----------------------------------------------------------------------------
 

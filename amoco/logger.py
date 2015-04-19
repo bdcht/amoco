@@ -47,6 +47,20 @@ class Log(logging.Logger):
     def verbose(self,msg,*args,**kargs):
         return self.log(VERBOSE,msg,*args,**kargs)
 
+    def progress(self,count,total=0,pfx=''):
+        term = self.handlers[0].stream
+        if not term.isatty(): return
+        if total>0:
+            barlen = 40
+            fillr = min((count+1.)/total,1.)
+            done = int(round(barlen*fillr))
+            ratio = round(100. * fillr, 1)
+            s = ('='*done).ljust(barlen,'-')
+            term.write('%s[%s] %s%%\r'%(pfx,s,ratio))
+        else:
+            s = ("%s[%d]"%(pfx,count)).ljust(80,' ')
+            term.write("%s\r"%s)
+
     def setLevel(self,lvl):
         self.handlers[0].setLevel(lvl)
 

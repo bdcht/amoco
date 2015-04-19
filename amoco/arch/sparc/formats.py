@@ -4,46 +4,83 @@ from .env import *
 from .utils import *
 from amoco.arch.core import Formatter
 
+whitespace = '  '
+
 def regs(i):
     return ['%{0}'.format(r) for r in i.operands]
 
 def address(a):
-    if not (a._is_mem or a._is_ptr):
-        a = ptr(a)
-    if not a.base._is_eqn:
-        return '%'+str(a.base)
-    l = '%'+str(a.base.l)
-    op = a.base.op.symbol
-    if a.base.r._is_cst:
-        r = '%d'%a.base.r.value
-    else:
-        r = '%'+str(a.base.r)
+    if not a._is_eqn:
+        return '%'+str(a)
+    l = reg_or_imm(a.l)
+    op = a.op.symbol
+    r = reg_or_imm(a.r)
     return '{0}{1}{2}'.format(l,op,r)
 
 def deref(a):
-    adr = address(a)
-    return '[%s]%s'%(adr,a.seg)
+    return '[%s]%s'%(address(a.base),a.seg)
 
 def mnemo_icc(i):
-    return i.mnemonic+'cc ' if i.misc['icc'] else i.mnemonic+' '
+    s = i.mnemonic
+    if i.mmisc['icc']: s += 'cc'
+    return s+whitespace
 
 def mnemo_cond(i):
     s = CONDxB[i.mnemonic][i.cond]
     if i.misc['annul']:
-        s+=',a '
-    else:
-        s+=' '
-    return s
+        s+=',a'
+    return s+whitespace
+
+def hilo_imm(x):
+    hilo = None
+    if x._is_cmp:
+        if sorted(x.parts.keys()) == [(0,10),(10,32)]:
+            if str(x.parts[(10,32)]) == "0x0":
+                hilo = ['%lo', x.parts[(0,10)].x]
+            if str(x.parts[(0,10)]) == "0x0":
+                hilo = ['%hi', x.parts[(10,32)].x]
+    if type(x) == slc:
+        if x.pos == 10 and x.size == 22:
+             hilo = ['%hi', x.x]
+        if x.pos == 0 and x.size == 10:
+             hilo = ['%lo', x.x]
+    if hilo is not None:
+         if hilo[1]._is_eqn:
+             hilo[1] = address(hilo[1])
+         elif hilo[1]._is_cst:
+             pass
+         else:
+             hilo[1] = hilo[1].ref
+         return '%s(%s)'%tuple(hilo)
+    return str(x)
 
 def reg_or_imm(x,t='%d'):
-    if x._is_reg: return '%'+str(x)
-    return t%x.value
+    if x._is_ext:
+        return x.ref
+    if x._is_reg:
+        return '%'+x.ref
+    if x._is_cst:
+        return t%x.value
+    if x._is_eqn:
+        if x.r is not None:
+            return (t+"%s"+t)%(x.l,x.op.symbol,x.r)
+        else:
+            return ("%s"+t)%(x.op.symbol,x.l)
+    return hilo_imm(x)
+
 
 def label(i):
     _pc = i.address
     if _pc is None: _pc=pc
-    offset = i.operands[0].signextend(32)
-    return str(_pc+(offset*4))
+    if i.operands[0]._is_ext:
+        return str(i.operands[0].ref)
+    if i.operands[0]._is_reg:
+        return "%"+str(i.operands[0].ref)
+    if i.operands[0]._is_cst:
+        return "%s"%i.misc['dst']
+    offset = i.operands[0].signextend(32)*4
+    return str(_pc+offset)
+
 
 CONDB = {
   0b1000: 'ba',
@@ -120,21 +157,21 @@ CONDT = {
 
 CONDxB = {'b': CONDB, 'fb': CONDFB, 'cb': CONDCB}
 
-mnemo = '{i.mnemonic} '
+mnemo = '{i.mnemonic}'+whitespace
 format_mn     = [mnemo]
 format_regs   = [mnemo, lambda i: ', '.join(regs(i))]
 format_ld     = [mnemo, lambda i: deref(i.operands[0]), ', %{i.operands[1]}']
 format_st     = [mnemo, '%{i.operands[0]}, ', lambda i: deref(i.operands[1])]
-format_logic  = [mnemo_icc, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'0x%x'), ', %{i.operands[2]}']
-format_sethi  = [mnemo, lambda i: '%hi({0})'.format(i.operands[0]), ', %{i.operands[1]}']
+format_logic  = [mnemo_icc, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'%#x'), ', %{i.operands[2]}']
+format_sethi  = [mnemo, lambda i: reg_or_imm(i.operands[0]), ', %{i.operands[1]}']
 format_arith  = [mnemo_icc, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'%d'), ', %{i.operands[2]}']
 format_xb     = [mnemo_cond, label]
-format_call   = [mnemo, label]
+format_call   = [mnemo, label, ', 0']
 format_jmpl   = [mnemo, lambda i: address(i.operands[0]), ', %{i.operands[1]}']
 format_addr   = [mnemo, lambda i: address(i.operands[0])]
-format_t      = [lambda i: CONDT[i.cond]+' ', label]
+format_t      = [lambda i: CONDT[i.cond]+whitespace, lambda i: reg_or_imm(i.operands[0])]
 format_rd     = format_regs
-format_wr     = [mnemo, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'0x%x'), ', %{i.operands[2]}']
+format_wr     = [mnemo, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'%#x'), ', %{i.operands[2]}']
 format_fpop   = format_regs
 format_cpop   = [mnemo, '{i.operands[0]:d}', lambda i: ', '.join(regs(i)[1:])]
 
@@ -168,8 +205,17 @@ SPARC_V8_full = Formatter(SPARC_V8_full_formats)
 
 def SPARC_V8_synthetic(null,i):
     s = SPARC_V8_full(i)
+    return SPARC_Synthetic_renaming(s, i)
+
+def SPARC_Synthetic_renaming(s, i):
+    if i.mnemonic=='sethi' and i.operands[0]==cst(0,22) and i.operands[1]==g0:
+        return 'nop'
+    if i.mnemonic=='or' and not i.misc['icc'] and i.operands[0]==i.operands[1]==g0:
+        return s.replace('or','clr').replace('%g0, ','')
     if i.mnemonic=='or' and not i.misc['icc'] and i.operands[0]==g0:
-        return s.replace('or','mov').replace('%g0,','')
+        return s.replace('or','mov').replace('%g0, ','')
+    if i.mnemonic=='or' and not i.misc['icc'] and i.operands[0]==i.operands[2]:
+        return s.replace('or','bset').replace('%%%s,'%i.operands[0],'',1)
     if i.mnemonic=='rd':
         op1 = str(i.operands[0])
         if op1.startswith('asr') or op1 in ('y','psr','wim','tbr'):
@@ -178,56 +224,54 @@ def SPARC_V8_synthetic(null,i):
         return s.replace('wr','mov').replace('%g0,','')
     if i.mnemonic=='sub' and i.misc['icc'] and i.operands[2]==g0:
         return s.replace('subcc','cmp').replace(', %g0','')
-    if s=='jmpl %i7+8, %g0':
-        return 'ret'
-    if s=='jmpl %o7+8, %g0':
-        return 'retl'
     if i.mnemonic=='jmpl' and i.operands[1]==g0:
+        if i.operands[0] == (i7+cst(8)):
+            return 'ret'
+        if i.operands[0] == (o7+cst(8)):
+            return 'retl'
         return s.replace('jmpl','jmp').replace(', %g0','')
     if i.mnemonic=='jmpl' and i.operands[1]==o7:
         return s.replace('jmpl','call').replace(', %o7','')
     if i.mnemonic=='or' and i.misc['icc'] and i.operands[1]._is_reg and i.operands[0]==i.operands[2]==g0:
         return s.replace('orcc','tst').replace('%g0,','').replace(', %g0','')
-    if s=='restore %g0, %g0, %g0': return 'restore'
-    if s=='save %g0, %g0, %g0': return 'save'
+    if i.mnemonic=='restore' and i.operands[0]==i.operands[1]==i.operands[2]==g0:
+        return 'restore'
+    if i.mnemonic=='save' and i.operands[0]==i.operands[1]==i.operands[2]==g0:
+        return 'save'
     if i.mnemonic=='xnor' and i.operands[1]==g0:
-        s = s.replace('xnor','not').replace('%g0,','')
+        s = s.replace('xnor','not').replace('%g0,','',1)
         if i.operands[0]==i.operands[2]:
             return s.rpartition(',')[0]
         return s
     if i.mnemonic=='sub' and i.operands[0]==g0 and i.operands[1]._is_reg:
-        s = s.replace('sub','neg').replace('%g0,','')
-        if i.operands[0]==i.operands[2]:
+        s = s.replace('sub','neg').replace('%g0,','',1)
+        if i.operands[1]==i.operands[2]:
             return s.rpartition(',')[0]
         return s
     if i.mnemonic=='add' and i.operands[0]==i.operands[2] and i.operands[1]._is_cst:
         m = 'inccc' if i.misc['icc'] else 'inc'
         if i.operands[1]==1:
-            return '{} %{}'.format(m,i.operands[0])
+            return '{}{}%{}'.format(m,whitespace,i.operands[0])
         else:
-            return '{} {}, %{}'.format(m,i.operands[1],i.operands[0])
+            return '{}{}{}, %{}'.format(m,whitespace,i.operands[1],i.operands[0])
     if i.mnemonic=='sub' and i.operands[0]==i.operands[2] and i.operands[1]._is_cst:
         m = 'deccc' if i.misc['icc'] else 'dec'
         if i.operands[1]==1:
             return '{} %{}'.format(m,i.operands[0])
         else:
-            return '{} {}, %{}'.format(m,i.operands[1],i.operands[0])
+            return '{}{}{}, %{}'.format(m,whitespace,i.operands[1],i.operands[0])
     if i.mnemonic=='and' and i.misc['icc'] and i.operands[2]==g0:
         s = s.replace('andcc','btst').replace(', %g0','')
         m = s.split()
-        return '{} {}, {}'.format(m[0],m[2],m[1].replace(',',''))
-    if i.mnemonic=='or' and not i.misc['icc'] and i.operands[0]==i.operands[2]:
-        return s.replace('or','bset').replace('%%%s,'%i.operands[0],'',1)
+        return '{}{}{}, {}'.format(m[0],whitespace,m[2],m[1].replace(',',''))
     if i.mnemonic=='andn' and not i.misc['icc'] and i.operands[0]==i.operands[2]:
         return s.replace('andn','bclr').replace('%%%s,'%i.operands[0],'',1)
     if i.mnemonic=='xor' and not i.misc['icc'] and i.operands[0]==i.operands[2]:
         return s.replace('xor','btog').replace('%%%s,'%i.operands[0],'',1)
-    if i.mnemonic=='or' and not i.misc['icc'] and i.operands[0]==i.operands[1]==g0:
-        return s.replace('or','clr').replace('%g0,','')
     if i.mnemonic=='stb' and i.operands[0]==g0:
-        return s.replace('stb','clrb').replace('%g0,','')
+        return s.replace('stb','clrb').replace('%g0, ','')
     if i.mnemonic=='sth' and i.operands[0]==g0:
-        return s.replace('sth','clrh').replace('%g0,','')
+        return s.replace('sth','clrh').replace('%g0, ','')
     if i.mnemonic=='st' and i.operands[0]==g0:
-        return s.replace('st','clr').replace('%g0,','')
+        return s.replace('st','clr').replace('%g0, ','')
     return s

@@ -368,6 +368,7 @@ def i_CALLF(i,fmap):
 
 def i_JMP(i,fmap):
   pc = fmap[rip]+i.length
+  fmap[rip] = pc
   op1 = fmap(i.operands[0])
   op1 = op1.signextend(pc.size)
   target = pc+op1 if not i.misc['absolute'] else op1
@@ -418,7 +419,8 @@ def i_Jcc(i,fmap):
   fmap[rip] = fmap[rip]+i.length
   op1 = fmap(i.operands[0])
   op1 = op1.signextend(rip.size)
-  fmap[rip] = tst(i.cond[1],fmap[rip]+op1,fmap[rip])
+  cond = i.cond[1]
+  fmap[rip] = tst(fmap(cond),fmap[rip]+op1,fmap[rip])
 
 def i_RETN(i,fmap):
   src = i.operands[0].v

@@ -91,6 +91,7 @@ Amoco is tested on python 2.7 and depends on the following python packages:
 - pygments_ (not in current release, planned for 2.4.2 release)
 - pyparsing_ for parsing instruction decoder formats
 - ply_ (optional), for parsing *GNU as* files
+- zodb_ (optional), provides persistence of amoco objects in a database
 
 
 Quickstart
@@ -1333,6 +1334,20 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.4.1`_
+
+  * add lbackward analysis and func.makemap() implementations
+  * add vec expression class to represent a set of expressions
+  * add mapper merge and widening functions
+  * allow to pass smt solver instance in exp.to_smtlib()
+  * add funchelpers methods in x86-based system classes
+  * add session/db classes and pickle-specific methods
+  * add "progress" method in Log class to provide feedback
+  * add required external packages in setup.py
+  * fix some x86/x64 semantics
+  * improve sparc v8 formats
+  * update README
+
 - `v2.4.0`_
 
   * merge Z3 solver interface, see smt.py and smtlib() exp method
@@ -1395,6 +1410,7 @@ Changelog
 .. _armv8: http://www.cs.utexas.edu/~peterson/arm/DDI0487A_a_armv8_arm_errata.pdf
 .. _pyparsing: http://pyparsing.wikispaces.com/
 .. _ply: http://www.dabeaz.com/ply/
+.. _zodb: http://www.zodb.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
 .. _v2.4.0: https://github.com/bdcht/amoco/releases/tag/v2.4.0
 .. _v2.3.5: https://github.com/bdcht/amoco/releases/tag/v2.3.5

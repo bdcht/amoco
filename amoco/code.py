@@ -5,7 +5,7 @@
 # published under GPLv2 license
 
 from collections import defaultdict
-from amoco.cas.mapper import mapper
+from amoco.cas.mapper import *
 
 from amoco.config import conf
 from amoco.logger import Log
@@ -113,6 +113,8 @@ class block(object):
     def __cmp__(self,b):
         return cmp(self.raw(),b.raw())
 
+    def __hash__(self):
+        return hash(self.name)
 
 #------------------------------------------------------------------------------
 # func is a cfg connected component that generally represents a called function
@@ -124,7 +126,7 @@ class func(block):
 
     # the init of a func takes a core_graph and creates a map of it:
     def __init__(self, g=None, name=None):
-        self._map  = None
+        self._map = None
         self.cfg = g
         self.instr = []
         # base/offset need to be defined before code (used in setcode)
@@ -146,8 +148,98 @@ class func(block):
         smax = max((b.address+b.length for b in self.blocks))
         return (smin,smax)
 
-    def makemap(self):
-        raise NotImplementedError
+    def backward(self,node):
+        D = self.cfg.dijkstra(node,f_io=-1)
+        logger.verbose('computing backward map from %s',node.name)
+        return self.makemap(tagged=D.keys())
+
+    #(re)compute the map of the entire function cfg:
+    def makemap(self,tagged=None,withmap=None):
+        _map = None
+        if tagged is None: tagged = self.cfg.sV
+        if self.cfg.order()==0: return
+        # get entrypoint:
+        t0 = self.cfg.roots()
+        if len(t0)==0:
+            logger.warning("function %s seems recursive: first block taken as entrypoint",self)
+            t0 = [self.cfg.sV.o[0]]
+        if len(t0)>1:
+            logger.warning("%s map computed with first entrypoint",self)
+        t0 = t0[0]
+        assert (t0 in tagged)
+        t0map = t0.data._map
+        if withmap is not None:
+            t0map <<= withmap
+        # init structs:
+        # spool is the list of current walking "heads" each having a mapper that captures
+        # execution up to this point, waitl is the list of nodes that have been reach
+        # by a path but are waiting for some other paths to reach them in order to collect
+        # and ultimately merge associated mappers before going into spool.
+        spool = [(t0,t0map)]
+        waitl = defaultdict(lambda :[])
+        visit = defaultdict(lambda :0)
+        dirty = defaultdict(lambda :0)
+        count = 0
+        # lets walk func cfg:
+        while len(spool)>0:
+            n,m = spool.pop(0)
+            if dirty[n]: continue
+            count += 1
+            logger.progress(count,pfx='in %s makemap: '%self.name)
+            E = n.e_out()
+            exit = True
+            # we update spool/waitl with target nodes
+            for e in E:
+                visit[e]=1
+                if e.data and any([m(c)==0 for c in e.data]): continue
+                tn = e.v[1]
+                if not (tn in tagged): continue
+                exit = False
+                # if tn is a loop entry, n is marked as a loop end:
+                if tn.data.misc[tag.LOOP_START] and self.cfg.path(tn,n,f_io=1):
+                    if not n.data.misc[tag.LOOP_END]:
+                        logger.verbose('loop end at node %s'%n.name)
+                    n.data.misc[tag.LOOP_END] += 1
+                tm = tn.data.map.assume(e.data)
+                try:
+                    waitl[tn].append(m>>tm)
+                except ValueError:
+                    logger.warning("link %s ignored"%e)
+                # if target node has been reach by all parent path, we
+                # can merge its mappers and proceed, otherwise it stays
+                # in wait list and we take next node from spool
+                if all(visit[x] for x in tn.e_in()):
+                    wtn = waitl[tn]
+                    if len(wtn)>0:
+                        spool.append((tn,reduce(merge,wtn)))
+                    del waitl[tn]
+            # if its an exit node, we update _map and check if widening is possible
+            if exit:
+                _map = merge(_map,m) if _map else m
+                if widening(_map):
+                    # if widening has occured, we stop walking the loop by
+                    # removing the associated spool node:
+                    for s in spool:
+                        if self.cfg.path(s[0],n,f_io=1):
+                            dirty[s[0]] = 1
+                    logger.verbose('widening needed at node %s'%n.name)
+            # if spool is empty but wait list is not then we check if
+            # its a loop entry and update spool:
+            if len(spool)==0 and len(waitl)>0:
+                tn = waitl.keys()[0]
+                # if tn has output edges its a loop entry:
+                if len(tn.e_out())>0:
+                    if not tn.data.misc[tag.LOOP_START]:
+                        logger.verbose('loop start at node %s'%tn.name)
+                    tn.data.misc[tag.LOOP_START] = 1
+                spool.append((tn,reduce(merge,waitl[tn])))
+                del waitl[tn]
+        assert len(waitl)==0
+        if len(tagged)<self.cfg.order() or sum(visit.values())<self.cfg.norm():
+            self.misc['partial']=True
+        else:
+            logger.verbose('map of function %s computed'%self)
+        return _map
 
     def __str__(self):
         return "%s{%d}"%(self.name,len(self.blocks))
@@ -167,6 +259,11 @@ class xfunc(object):
         self.address = x
         self.length = 0
         self.misc  = defaultdict(lambda :0)
+        doc = x.stub(x.ref).func_doc
+        if doc:
+            for (k,v) in tag.list():
+                if (k in doc) or (v in doc):
+                    self.misc[v] = 1
 
     @property
     def support(self):
@@ -186,4 +283,8 @@ class tag:
     LOOP_START   = 'loop_start'
     LOOP_END     = 'loop_end'
     LOOP_COND    = 'loop_cond'
+
+    @classmethod
+    def list(cls):
+        return filter(lambda kv: kv[0].startswith('FUNC_'), cls.__dict__.items())
 

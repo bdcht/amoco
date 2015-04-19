@@ -75,6 +75,7 @@ class exp(object):
     _is_ptr   = False
     _is_tst   = False
     _is_eqn   = False
+    _is_vec   = False
 
     def __init__(self,size=0,sf=False):
         self.size = size
@@ -630,9 +631,6 @@ class ext(reg):
         self.stub(self.ref)(env,**self._subrefs)
 ##
 
-# complex expressions are build with atoms attributes:
-# ----------------------------------------------------
-
 #------------------------------------------------------------------------------
 # composer returns a comp object (see below) constructed with parts from low
 # significant bits parts to most significant bits parts. The last part sf flag
@@ -806,6 +804,9 @@ class comp(exp):
                     self.restruct()
                     break
     ##
+
+    def depth(self):
+        return sum((p.depth() for p in self))
 ##
 
 #------------------------------------------------------------------------------
@@ -1018,13 +1019,28 @@ class tst(exp):
     def __str__(self):
         return '(%s ? %s : %s)'%(str(self.tst),str(self.l),str(self.r))
 
-    def eval(self,env):
+    # default verify method if smt module is not loaded.
+    # here we check if tst or its negation exist in env.conds but we can
+    # only rely on "syntaxic" features unless we have a solver.
+    # see smt.py: tst_verify() for a SMT-based implementation.
+    def verify(self,env):
         flag = self.tst.eval(env)
+        for c in env.conds:
+            if c==flag:
+                flag=bit1
+                break
+            if c==(~flag):
+                flag=bit0
+                break
+        return flag
+
+    def eval(self,env):
+        cond = self.verify(env)
         l = self.l.eval(env)
         r = self.r.eval(env)
-        if not flag._is_cst:
-            return tst(flag,l,r)
-        if flag.v == 1: return l
+        if not cond._is_cst:
+            return tst(cond,l,r)
+        if cond.v == 1: return l
         else          : return r
 
     def simplify(self):
@@ -1056,7 +1072,8 @@ class op(exp):
         self.op = _operator(op)
         self.prop = self.op.type
         if self.prop<4:
-            if l.size <> r.size: raise ValueError,"size mismatch"
+            if l.size <> r.size:
+                raise ValueError("Size mismatch %d <> %d"%(l.size,r.size))
         self.l  = l
         self.r  = r
         self.size = self.l.size
@@ -1245,6 +1262,7 @@ def symbols_of(e):
     if e._is_tst: return sum(map(symbols_of,(e.tst,e.l,e.r)),[])
     if e._is_slc: return symbols_of(e.x)
     if e._is_cmp: return sum(map(symbols_of,e.parts.itervalues()),[])
+    if e._is_vec: return sum(map(symbols_of,e.l),[])
     if not e._is_def: return []
     raise ValueError(e)
 
@@ -1258,17 +1276,20 @@ def locations_of(e):
     if e._is_tst: return sum(map(locations_of,(e.tst,e.l,e.r)),[])
     if e._is_slc: return locations_of(e.x)
     if e._is_cmp: return sum(map(locations_of,e.parts.itervalues()),[])
+    if e._is_vec: return sum(map(locations_of,e.l),[])
     if not e._is_def: return []
     raise ValueError(e)
 
 def complexity(e):
     factor = e.prop if e._is_eqn else 1
-    return (e.depth()+len(symbols_of(e)))*factor
+    return (e.depth()+len(locations_of(e)))*factor
 
 # helpers for unary expressions:
 def eqn1_helpers(e):
     assert e.op.unary
     if not e.r._is_def: return e.r
+    if e.r._is_vec:
+        return vec(map(e.op,e.r.l))
     if e.r._is_eqn:
         if e.r.op.unary:
             ss = e.op*e.r.op
@@ -1279,6 +1300,11 @@ def eqn1_helpers(e):
                 l = -e.r.l
                 r = e.r.r
                 return OP_ARITH[e.op*e.r.op](l,r)
+        elif e.op.symbol == '~' and e.r.op.type==4:
+            notop = {'==':'!=', '!=':'==',
+                     '<':'>=' , '>' :'<=',
+                     '<=':'>' , '>=':'<'}[e.r.op.symbol]
+            return OP_CONDT[notop](e.r.l,e.r.r)
     return e
 
 # helpers for binary expressions:
@@ -1289,6 +1315,8 @@ def eqn2_helpers(e):
     if e.r.depth()>e.threshold: e.r = top(e.r.size)
     if e.l.depth()>e.threshold: e.l = top(e.l.size)
     if False in (e.l._is_def, e.r._is_def): return top(e.size)
+    if e.l._is_vec: return vec([e.op(l,e.r) for l in e.l.l])
+    if e.r._is_vec: return vec([e.op(e.l,r) for r in e.r.l])
     if e.l._is_eqn and e.l.r._is_cst:
         assert e.l.op.unary==0
         xop = e.op*e.l.op
@@ -1323,6 +1351,11 @@ def eqn2_helpers(e):
                     if not e.l.op.unary: e.l = e.l.l
                     e.r = cc
                 return e
+            elif e.r.size==1:
+                if e.op.symbol == '==':
+                    return e.l if e.r.value==1 else ~(e.l)
+                if e.op.symbol == '!=':
+                    return ~(e.l) if e.r.value==1 else ~(e.l)
         elif e.l._is_ptr:
             if e.op.symbol in ('-','+'):
                 return ptr(e.l,disp=e.op(0,e.r.value))
@@ -1346,3 +1379,86 @@ def extract_offset(e):
         elif e.op.symbol == '-':
             return (x.l,-x.r.value)
     return (x,0)
+
+# vec holds a list of expressions each being a possible
+# representation of the current expression. A vec object
+# is obtained by merging several execution paths using
+# the merge function in the mapper module.
+# The simplify method uses the complexity measure to
+# eventually "reduce" the expression to top with a hard-limit
+# currently set to >30.
+# -----------------------------------------------------
+class vec(exp):
+    __slots__ = ['l','w']
+    _is_def = True
+    _is_vec = True
+
+    def __init__(self,l=None,w=False):
+        if l is None: l = []
+        self.l = l
+        self.w = w
+        size = 0
+        for e in self.l:
+            if e.size>size: size=e.size
+        if any([e.size!=size for e in self.l]):
+            raise ValueError,'size mismatch'
+        self.size = size
+        self.sf = any([e.sf for e in self.l])
+
+    def __str__(self):
+        s = ','.join(map(str,self.l))
+        w = ',...' if self.w else ''
+        return '[%s%s]'%(s,w)
+
+    def simplify(self):
+        l = []
+        for e in self.l:
+            ee = e.simplify()
+            if ee._is_vec: l.extend(ee.l)
+            else: l.append(ee)
+        self.l = []
+        for e in l:
+            if e in self.l: continue
+            self.l.append(e)
+        if len(self.l)==0: return exp(self.size)
+        cl = map(complexity,self.l)
+        if max(cl)>30.:
+            return top(self.size)
+        if self.w or (len(self.l)>1):
+            return self
+        else:
+            return self.l[0]
+
+    def eval(self,env):
+        l = []
+        for e in self.l:
+            l.append(e.eval(env))
+        return vec(l,self.w)
+
+    def addr(self,env):
+        l = []
+        for e in self.l:
+            l.append(e.addr(env))
+        return vec(l,self.w)
+
+    def depth(self):
+        if self.size==0: return 0.
+        return max([e.depth() for e in self.l])
+
+    @_checkarg_slice
+    def __getitem__(self,i):
+        sta,sto,stp = i.indices(self.size)
+        l = []
+        for e in self.l:
+            l.append(slicer(e,sta,sto-sta))
+        return vec(l,self.w)
+
+    def __contains__(self,x):
+        return (x in self.l)
+
+    # the only atom that is considered True is the cst(1,1) (ie bit1 below)
+    def __nonzero__(self):
+        return all([e.__nonzero__() for e in self.l])
+
+##
+

@@ -141,7 +141,7 @@ def ia32_strings(obj):
 @ispec_ia32("16>[ {e2} ib(8) ]", mnemonic = "LOOP",   type=type_control_flow)
 @ispec_ia32("16>[ {e1} ib(8) ]", mnemonic = "LOOPE",  type=type_control_flow)
 @ispec_ia32("16>[ {e0} ib(8) ]", mnemonic = "LOOPNE", type=type_control_flow)
-def ia32_ib8(obj,ib):
+def ia32_imm_rel(obj,ib):
     obj.operands = [env.cst(ib,8)]
 
 @ispec_ia32("16>[ {e3} cb(8) ]", mnemonic = "JECXZ", type=type_control_flow)

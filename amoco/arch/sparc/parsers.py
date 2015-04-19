@@ -64,7 +64,8 @@ class sparc_syntax:
 
     def action_reg(toks):
         rname = toks[0]
-        return env.reg(rname.ref)
+        if rname.ref.startswith('asr'): return env.reg(rname.ref)
+        return env.__dict__[rname.ref]
 
     def action_hilo(toks):
         v = toks[1]

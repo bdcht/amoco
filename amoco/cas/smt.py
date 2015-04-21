@@ -181,19 +181,20 @@ def vec_to_z3(e,solver=None):
 def _bool2bv1(z):
     return z3.If(z,z3.BitVecVal(1,1),z3.BitVecVal(0,1))
 
-top.to_smtlib  = top_to_z3
-cst.to_smtlib  = cst_to_z3
-cfp.to_smtlib  = cfp_to_z3
-reg.to_smtlib  = reg_to_z3
-comp.to_smtlib = comp_to_z3
-slc.to_smtlib  = slc_to_z3
-ptr.to_smtlib  = ptr_to_z3
-mem.to_smtlib  = mem_to_z3
-tst.to_smtlib  = tst_to_z3
-tst.verify     = tst_verify
-op.to_smtlib   = op_to_z3
-uop.to_smtlib   = uop_to_z3
-vec.to_smtlib  = vec_to_z3
+if has_solver:
+    top.to_smtlib  = top_to_z3
+    cst.to_smtlib  = cst_to_z3
+    cfp.to_smtlib  = cfp_to_z3
+    reg.to_smtlib  = reg_to_z3
+    comp.to_smtlib = comp_to_z3
+    slc.to_smtlib  = slc_to_z3
+    ptr.to_smtlib  = ptr_to_z3
+    mem.to_smtlib  = mem_to_z3
+    tst.to_smtlib  = tst_to_z3
+    tst.verify     = tst_verify
+    op.to_smtlib   = op_to_z3
+    uop.to_smtlib   = uop_to_z3
+    vec.to_smtlib  = vec_to_z3
 
 def to_smtlib(e):
     return e.to_smtlib()

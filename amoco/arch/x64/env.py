@@ -50,9 +50,9 @@ cl = slc(rcx,0,8,'cl')
 dl = slc(rdx,0,8,'dl')
 
 spl = slc(rsp,0,8,'spl')
-bpl = slc(rsp,0,8,'bpl')
-sil = slc(rsp,0,8,'sil')
-dil = slc(rsp,0,8,'dil')
+bpl = slc(rbp,0,8,'bpl')
+sil = slc(rsi,0,8,'sil')
+dil = slc(rdi,0,8,'dil')
 
 ah = slc(rax,8,8,'ah')
 bh = slc(rbx,8,8,'bh')

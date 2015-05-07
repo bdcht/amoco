@@ -76,7 +76,7 @@ def reg_to_z3(e,solver=None):
 
 def comp_to_z3(e,solver=None):
     e.simplify()
-    parts = [x.to_smtlib() for x in e]
+    parts = [x.to_smtlib(solver) for x in e]
     parts.reverse()
     if len(parts)>1:
         return z3.Concat(*parts)
@@ -84,16 +84,16 @@ def comp_to_z3(e,solver=None):
         return parts[0]
 
 def slc_to_z3(e,solver=None):
-    x = e.x.to_smtlib()
+    x = e.x.to_smtlib(solver)
     return z3.Extract(int(e.pos+e.size-1),int(e.pos),x)
 
 def ptr_to_z3(e,solver=None):
-    return e.base.to_smtlib()+e.disp
+    return e.base.to_smtlib(solver)+e.disp
 
 def mem_to_z3(e,solver=None):
     e.simplify()
     M = z3.Array('M',z3.BitVecSort(e.a.size),z3.BitVecSort(8))
-    p = e.a.to_smtlib()
+    p = e.a.to_smtlib(solver)
     b = []
     for i in range(0,e.length):
         b.insert(0,M[p+i])
@@ -101,8 +101,8 @@ def mem_to_z3(e,solver=None):
     if len(b) > 1: return z3.Concat(*b)
     return b[0]
 
-def cast_z3_bool(x):
-    b = x.to_smtlib()
+def cast_z3_bool(x,solver=None):
+    b = x.to_smtlib(solver)
     if not z3.is_bool(b):
         assert b.size()==1
         b = (b==z3.BitVecVal(1,1))
@@ -110,8 +110,8 @@ def cast_z3_bool(x):
 
 def tst_to_z3(e,solver=None):
     e.simplify()
-    z3t = cast_z3_bool(e.tst)
-    return z3.If( z3t , e.l.to_smtlib(), e.r.to_smtlib())
+    z3t = cast_z3_bool(e.tst,solver)
+    return z3.If( z3t , e.l.to_smtlib(solver), e.r.to_smtlib(solver))
 
 def tst_verify(e,env):
     t = e.tst.eval(env).simplify()
@@ -139,8 +139,8 @@ def op_to_z3(e,solver=None):
     elif op.symbol == '//' : op = operator.rshift
     elif op.symbol == '>>>': op = z3.RotateRight
     elif op.symbol == '<<<': op = z3.RotateLeft
-    z3l = l.to_smtlib()
-    z3r = r.to_smtlib()
+    z3l = l.to_smtlib(solver)
+    z3r = r.to_smtlib(solver)
     if z3.is_bool(z3l):
         z3l = _bool2bv1(z3l)
     if z3.is_bool(z3r):
@@ -155,7 +155,7 @@ def uop_to_z3(e,solver=None):
     e.simplify()
     r = e.r
     op = e.op
-    z3r = r.to_smtlib()
+    z3r = r.to_smtlib(solver)
     if z3.is_bool(z3r):
         z3r = _bool2bv1(z3r)
     return op(z3r)

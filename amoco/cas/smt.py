@@ -161,21 +161,28 @@ def uop_to_z3(e,solver=None):
     return op(z3r)
 
 def vec_to_z3(e,solver=None):
+    # flatten vec:
     e.simplify()
+    # translate vec list to z3:
     beqs = []
     for x in e.l:
         zx = x.to_smtlib()
         beqs.append(zx)
     if len(beqs)==0: return exp(e.size)
     if solver is None:
+        # if no solver is provided, it needs to be
+        # a list of boolean equations
         if all([z3.is_bool(x) for x in beqs]):
             if len(beqs)==1: return beqs[0]
             return z3.Or(*beqs)
         else:
             return top_to_z3(top(e.size))
     else:
+        # if the solver is provided (default)
+        # then a new local variable is added which
+        # should equal one of the z3 expression.
         var = newvar('_var',e,solver)
-        solver.add(z3.Or([var==x for x in beqs]))
+        solver.solver.add(z3.Or([var==x for x in beqs]))
     return var
 
 def _bool2bv1(z):

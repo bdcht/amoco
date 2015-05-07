@@ -30,10 +30,13 @@ else:
 
         def add(self,eqns):
             for e in eqns:
-                assert e._is_eqn
                 self.eqns.append(e)
-                self.solver.add(e.to_smtlib(solver=self))
                 self.locs.extend(locations_of(e))
+
+                if e._is_eqn:
+                    self.solver.add(e.to_smtlib(solver=self))
+                else:  # reduced to "0x0" or "0x1"
+                    self.solver.add(bool(e))
 
         def check(self):
             logger.verbose('z3 check...')

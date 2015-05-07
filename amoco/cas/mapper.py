@@ -236,6 +236,9 @@ class mapper(object):
     # composition operator returns a new mapper
     # corresponding to function x -> self(m(x))
     def rcompose(self,m):
+        if m is None:  # convenient special case
+            return self.use()
+
         mcopy = m.use()
         for c in self.conds:
             cc = c.eval(m)

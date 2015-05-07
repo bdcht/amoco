@@ -30,9 +30,8 @@ else:
 
         def add(self,eqns):
             for e in eqns:
-                assert e._is_eqn
                 self.eqns.append(e)
-                self.solver.add(e.to_smtlib(solver=self))
+                self.solver.add(cast_z3_bool(e,self))
                 self.locs.extend(locations_of(e))
 
         def check(self):

@@ -22,7 +22,7 @@ def deref(a):
 
 def mnemo_icc(i):
     s = i.mnemonic
-    if i.mmisc['icc']: s += 'cc'
+    if i.misc['icc']: s += 'cc'
     return s+whitespace
 
 def mnemo_cond(i):

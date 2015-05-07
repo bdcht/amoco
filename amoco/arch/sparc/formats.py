@@ -18,7 +18,7 @@ def address(a):
     return '{0}{1}{2}'.format(l,op,r)
 
 def deref(a):
-    return '[%s]%s'%(address(a.base),a.seg)
+    return '[%s]%s'%(address(a.base+a.disp),a.seg)
 
 def mnemo_icc(i):
     s = i.mnemonic

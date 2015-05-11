@@ -148,3 +148,10 @@ class graph(Graph):
             if v.name==name: return v
         return None
 
+    def get_with_address(self,vaddr):
+        i = self.support.locate(vaddr)
+        if i is not None:
+            mo = self.support._map[i]
+            if vaddr in mo:
+                return mo.data.val
+        return None

@@ -107,7 +107,7 @@ def cast_z3_bool(x,solver=None):
         b = (b==z3.BitVecVal(1,1))
     return b
 
-def cast_z3_int(x,solver=None):
+def cast_z3_bv(x,solver=None):
     b = x.to_smtlib(solver)
     if z3.is_bool(b):
         b = z3.If(b, z3.BitVecVal(1,1), z3.BitVecVal(0,1))
@@ -116,8 +116,8 @@ def cast_z3_int(x,solver=None):
 def tst_to_z3(e,solver=None):
     e.simplify()
     z3t = cast_z3_bool(e.tst,solver)
-    l = cast_z3_int(e.l,solver)
-    r = cast_z3_int(e.r,solver)
+    l = cast_z3_bv(e.l,solver)
+    r = cast_z3_bv(e.r,solver)
     return z3.If(z3t, l, r)
 
 def tst_verify(e,env):

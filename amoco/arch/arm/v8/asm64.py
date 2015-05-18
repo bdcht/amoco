@@ -170,7 +170,7 @@ def i_BIC(i,fmap):
 
 def i_BRK(i,fmap):
     fmap[pc] = fmap[pc]+i.length
-    ext('BRK %s'%i.imm,pc.size).eval(fmap)
+    ext('BRK %s'%i.imm,size=pc.size).call(fmap)
 
 def i_CBNZ(i,fmap):
     fmap[pc] = tst(fmap(i.t!=0), fmap[pc]+i.offset, fmap[pc]+i.length)
@@ -560,11 +560,11 @@ i_STURH  = i_STR
 
 def i_SMC(i,fmap):
     fmap[pc] = fmap[pc]+i.length
-    ext('EXCEPTION.EL3 %s'%i.imm,pc.size).eval(fmap)
+    ext('EXCEPTION.EL3 %s'%i.imm,size=pc.size).call(fmap)
 
 def i_SVC(i,fmap):
     fmap[pc] = fmap[pc]+i.length
-    ext('EXCEPTION.EL1 %s'%i.imm,pc.size).eval(fmap)
+    ext('EXCEPTION.EL1 %s'%i.imm,size=pc.size).call(fmap)
 
 def i_SYS(i,fmap):
     fmap[pc] = fmap[pc]+i.length

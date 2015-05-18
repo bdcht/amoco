@@ -37,10 +37,10 @@ def i_NOP(i_,fmap):
   fmap[pc] = fmap[pc]+i_.length
 
 def i_HALT(i_,fmap):
-  fmap[pc] = ext('HALT')
+  fmap[pc] = ext('HALT',size=pc.size).call(fmap)
 
 def i_STOP(i_,fmap):
-  fmap[pc] = ext('STOP')
+  fmap[pc] = ext('STOP',size=pc.size).call(fmap)
 
 def i_DI(i_,fmap):
   fmap[pc] = fmap[pc]+i_.length

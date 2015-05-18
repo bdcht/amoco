@@ -22,7 +22,7 @@ class msp430_syntax:
     noprefix = False
 
     comment = pp.Regex(r'\#.*')
-    symbol  = pp.Regex(r'[A-Za-z_.$][A-Za-z0-9_.$]*').setParseAction(lambda r: env.ext(r[0]))
+    symbol  = pp.Regex(r'[A-Za-z_.$][A-Za-z0-9_.$]*').setParseAction(lambda r: env.ext(r[0],size=32))
     mnemo   = pp.LineStart() + symbol + pp.Optional(pp.Literal(',a'))
     mnemo.setParseAction(lambda r: r[0].ref.lower()+''.join(r[1:]))
     integer = pp.Regex(r'[1-9][0-9]*').setParseAction(lambda r: int(r[0],10))

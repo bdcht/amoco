@@ -62,10 +62,12 @@ def reg_or_imm(x,t='%d'):
     if x._is_cst:
         return t%x.value
     if x._is_eqn:
-        if x.r is not None:
-            return (t+"%s"+t)%(x.l,x.op.symbol,x.r)
-        else:
+        if x.r is None:
             return ("%s"+t)%(x.op.symbol,x.l)
+        elif x.l is None:
+            return ("%s"+t)%(x.op.symbol,x.r)
+        else:
+            return (t+"%s"+t)%(x.l,x.op.symbol,x.r)
     return hilo_imm(x)
 
 

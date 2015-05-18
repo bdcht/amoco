@@ -465,10 +465,12 @@ class Formatter(object):
         except KeyError:
             fmts = self.formats.get(i.spec.hook.func_name,self.default)
         for f in fmts:
-            try:
-                s.append(f(i))
-            except TypeError:
+            if hasattr(f,'format'):
+                # It is a string
                 s.append(f.format(i=i))
+            else:
+                # It is a function
+                s.append(f(i))
         return ''.join(s)
 
 

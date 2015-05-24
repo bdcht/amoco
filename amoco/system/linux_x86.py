@@ -74,14 +74,14 @@ class ELF(CoreExec):
             if i.mnemonic.startswith('RET'):
                 i.misc[tag.FUNC_END]=1
                 continue
-            elif i.mnemonic == 'PUSH':
+            elif i.mnemonic in ('PUSH','ENTER'):
                 i.misc[tag.FUNC_STACK]=1
-                if i.operands[0] is cpu.ebp:
+                if i.operands and i.operands[0] is cpu.ebp:
                     i.misc[tag.FUNC_START]=1
                     continue
-            elif i.mnemonic == 'POP':
+            elif i.mnemonic in ('POP','LEAVE'):
                 i.misc[tag.FUNC_UNSTACK]=1
-                if i.operands[0] is cpu.ebp:
+                if i.operands and i.operands[0] is cpu.ebp:
                     i.misc[tag.FUNC_END]=1
                     continue
             # provide hints of absolute location from relative offset:
@@ -89,6 +89,10 @@ class ELF(CoreExec):
                 if i.mnemonic == 'CALL':
                     i.misc[tag.FUNC_CALL]=1
                     i.misc['retto'] = i.address+i.length
+                else:
+                    i.misc[tag.FUNC_GOTO]=1
+                    if i.mnemonic == 'Jcc':
+                        i.misc['cond'] = i.cond
                 if (i.address is not None) and i.operands[0]._is_cst:
                     v = i.address+i.operands[0].signextend(32)+i.length
                     x = self.check_sym(v)
@@ -99,8 +103,8 @@ class ELF(CoreExec):
             for op in i.operands:
                 if op._is_mem:
                     if op.a.base is cpu.ebp:
-                        if op.a.disp<0: i.misc[tag.FUNC_ARG]=1
-                        else: i.misc[tag.FUNC_VAR]=1
+                        if   op.a.disp<0: i.misc[tag.FUNC_ARG]=1
+                        elif op.a.disp>4: i.misc[tag.FUNC_VAR]=1
                     elif op.a.base._is_cst:
                         x = self.check_sym(op.a.base+op.a.disp)
                         if x is not None:
@@ -118,16 +122,19 @@ class ELF(CoreExec):
     def blockhelper(self,block):
         for i in self.seqhelper(block.instr):
             block.misc.update(i.misc)
-        # compute mapper:
-        m = block.map
-        # annotations based on block semantics:
-        sta,sto = block.support
-        if m[cpu.mem(cpu.ebp-4,32)] == cpu.ebp:
-            block.misc[tag.FUNC_START]=1
-        if m[cpu.eip]==cpu.mem(cpu.esp-4,32):
-            block.misc[tag.FUNC_END]=1
-        if m[cpu.mem(cpu.esp,32)]==sto:
-            block.misc[tag.FUNC_CALL]=1
+        # delayed computation of block.map:
+        def _helper(block,m):
+            # update block.misc based on semantics:
+            sta,sto = block.support
+            if m[cpu.mem(cpu.ebp-4,32)] == cpu.ebp:
+                block.misc[tag.FUNC_START]=1
+            if m[cpu.eip]==cpu.mem(cpu.esp-4,32):
+                block.misc[tag.FUNC_END]=1
+            if m[cpu.mem(cpu.esp,32)]==sto:
+                block.misc[tag.FUNC_CALL]=1
+        # register the block helper that will be called
+        # only when the map is computed.
+        block._helper = _helper
         return block
 
     def funchelper(self,f):

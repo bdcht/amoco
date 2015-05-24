@@ -15,7 +15,7 @@ logger = Log(__name__)
 # A block instance is a 'continuous' sequence of instructions.
 #------------------------------------------------------------------------------
 class block(object):
-    __slots__=['_map','instr','_name','misc']
+    __slots__=['_map','instr','_name','misc','_helper']
 
     # the init of a block takes a list of instructions and creates a map of it:
     def __init__(self, instrlist, name=None):
@@ -24,17 +24,22 @@ class block(object):
         self.instr = instrlist
         self._name = name
         self.misc  = defaultdict(lambda :0)
+        self._helper = None
 
     @property
     def map(self):
         if self._map is None:
             self._map = mapper(self.instr)
+            self.helper(self._map)
         if self.misc['func']:
             return self.misc['func'].map
         return self._map
     @map.setter
     def map(self,m):
         self._map = m
+
+    def helper(self,m):
+        if self._helper: self._helper(self,m)
 
     @property
     def address(self):
@@ -82,8 +87,10 @@ class block(object):
             return 0
         else:
             self.instr = self.instr[:pos]
-            self.map.clear()
-            for i in self.instr: i(self.map)
+            if self._map:
+                self._map.clear()
+                for i in self.instr:
+                    i(self._map)
             # TODO: update misc annotations too
             return len(I)-pos
 
@@ -116,6 +123,14 @@ class block(object):
     def __hash__(self):
         return hash(self.name)
 
+    def sig(self):
+        misc = defaultdict(lambda :None)
+        misc.update(self.misc)
+        if len(misc)==0:
+            for i in self.instr: misc.update(i.misc)
+        s = [tag.sig(k) for k in misc]
+        return '(%s)'%(''.join(s))
+
 #------------------------------------------------------------------------------
 # func is a cfg connected component that generally represents a called function
 # It appears in the other graphs whenever the function is called and provides a
@@ -139,8 +154,7 @@ class func(block):
 
     @property
     def blocks(self):
-        V = self.cfg.sV.o
-        return [n.data for n in V]
+        return [n.data for n in self.cfg.sV]
 
     @property
     def support(self):
@@ -162,7 +176,7 @@ class func(block):
         t0 = self.cfg.roots()
         if len(t0)==0:
             logger.warning("function %s seems recursive: first block taken as entrypoint",self)
-            t0 = [self.cfg.sV.o[0]]
+            t0 = [self.cfg.sV[0]]
         if len(t0)>1:
             logger.warning("%s map computed with first entrypoint",self)
         t0 = t0[0]
@@ -276,6 +290,7 @@ class tag:
     FUNC_STACK   = 'func_stack'
     FUNC_UNSTACK = 'func_unstack'
     FUNC_CALL    = 'func_call'
+    FUNC_GOTO    = 'func_goto'
     FUNC_ARG     = 'func_arg'
     FUNC_VAR     = 'func_var'
     FUNC_IN      = 'func_in'
@@ -287,4 +302,22 @@ class tag:
     @classmethod
     def list(cls):
         return filter(lambda kv: kv[0].startswith('FUNC_'), cls.__dict__.items())
+
+    @classmethod
+    def sig(cls,name):
+        return {
+         'cond'           : '?',
+         'func'           : 'F',
+         cls.FUNC_START   : 'e',
+         cls.FUNC_END     : 'r',
+         cls.FUNC_STACK   : '+',
+         cls.FUNC_UNSTACK : '-',
+         cls.FUNC_CALL    : 'c',
+         cls.FUNC_GOTO    : 'j',
+         cls.FUNC_ARG     : 'a',
+         cls.FUNC_VAR     : 'v',
+         cls.FUNC_IN      : 'i',
+         cls.FUNC_OUT     : 'o',
+         cls.LOOP_START   : 'l' }.get(name,'')
+
 

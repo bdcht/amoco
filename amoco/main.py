@@ -43,7 +43,7 @@ class lsweep(object):
     # iterator over basic blocks using the instruction.type attribute
     # to detect the end of block (type_control_flow). The returned block
     # object is enhanced with plateform-specific infos (see block.misc).
-    def iterblocks(self,loc=None,codehelper=True):
+    def iterblocks(self,loc=None):
         inblock = (lambda i: INSTRUCTION_TYPES[i.type]!='control_flow')
         l = []
         seq = self.sequence(loc)
@@ -62,13 +62,14 @@ class lsweep(object):
                         logger.warning('no instruction in delay slot')
                 # create block instance:
                 b = code.block(l)
+                b.misc['cfi'] = i
                 l = []
                 # return block with additional platform-specific misc infos
-                if codehelper: b=self.prog.codehelper(block=b)
+                b=self.prog.codehelper(block=b)
                 yield b
         if len(l)>0:
             b = code.block(l)
-            if codehelper: b=self.prog.codehelper(block=b)
+            b=self.prog.codehelper(block=b)
             yield b
 
     # getblock is a handy wrapper of iterblocks to
@@ -81,54 +82,50 @@ class lsweep(object):
     # poorman's cfg builder that assumes calls return to next block.
     # and link blocks based on direct concrete targets without computing
     # the block semantics (map). => Fast but possibly wrong...
-    def getcfg(self,loc=None,codehelper=False):
+    def getcfg(self,loc=None):
         from collections import OrderedDict,defaultdict
         D = OrderedDict()
         C = defaultdict(lambda: [])
-        for b in self.iterblocks(loc,codehelper):
+        for b in self.iterblocks(loc):
             n = cfg.node(b)
             D[n.data.address] = n
         # now we have collected an overapprox. of all blocks,
         # lets link those "super-blocks" together:
         while len(D)>0:
             k,n = D.popitem(last=False)
-            # we only care about the last (possibly delayed) instruction
-            s = n.data.instr[-2:]
-            i=s[0] if s[0].misc['delayed'] else s[-1]
-            s = self.prog.seqhelper([i])
-            i = s[0]
             # add node (does nothing if n is already in G)
             n = self.G.add_vertex(n)
+            b = n.data
             # find its links:
-            if i.misc['func_call']:
-                aret = i.misc['retto']+0
+            if b.misc['func_call']:
+                aret = b.misc['retto']+0
                 nret = D.get(aret,None) or self.G.get_with_address(aret)
                 if nret is not None:
                     e = cfg.link(n,nret)
                     self.G.add_edge(e)
-                    ato  = i.misc['to']
-                    if ato is not None: C[ato+0].append((n,'func_call'))
-            elif i.misc['to'] is not None:
-                ato = i.misc['to']+0
+                    ato  = b.misc['to']
+                    if ato is not 0: C[ato+0].append((e,'func_call'))
+            elif b.misc['func_goto'] and b.misc['to'] is not 0:
+                ato = b.misc['to']+0
                 nto = D.get(ato,None) or self.G.get_with_address(ato)
                 if nto is not None:
                     e = cfg.link(n,nto)
                     self.G.add_edge(e)
                 else:
                     C[ato].append((n,'to'))
-                if hasattr(i,'cond'):
+                if b.misc['cond']:
                     ato = n.data.support[1]
                     nto = D.get(ato,None) or self.G.get_with_address(ato)
                     if nto is not None:
-                        e = cfg.link(n,nto,data=i.cond[1])
+                        e = cfg.link(n,nto,data=b.misc['cond'][1])
                         self.G.add_edge(e)
                     else:
-                        C[ato].append((n,i.cond))
+                        C[ato].append((n,b.misc['cond']))
         # now all super-blocks have been processed, but some may need
         # to be cut, lets handle those missed targets:
         while len(C)>0:
             ato,L = C.popitem()
-            n = cfg.node(next(self.iterblocks(ato,codehelper=False)))
+            n = cfg.node(next(self.iterblocks(ato)))
             n = self.G.add_vertex(n)
             for (p,why) in L:
                 if why is 'func_call':
@@ -139,6 +136,19 @@ class lsweep(object):
                 else:
                     e = cfg.link(p,n)
                     self.G.add_edge(e)
+        # finally create func objects and insert nodes:
+        for n in self.G.V():
+            if n.data.misc['callers']:
+                n.data.misc['func'] = f = code.func(n.c)
+                calls = []
+                for e in n.data.misc['callers']:
+                    fn = cfg.node(f)
+                    p = e.v[0]
+                    p.c.add_edge(cfg.link(p,fn))
+                    p.c.add_edge(cfg.link(fn,e.v[1]))
+                    p.c.remove_edge(e)
+                    calls.append(p)
+                n.data.misc['callers'] = calls
         return self.G
 
 # -----------------------------------------------------------------------------

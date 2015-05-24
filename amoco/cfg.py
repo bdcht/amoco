@@ -155,3 +155,16 @@ class graph(Graph):
             if vaddr in mo:
                 return mo.data.val
         return None
+
+    def signature(self):
+        return ''.join([signature(g) for g in self.C])
+
+def signature(g):
+    P = g.partition()
+    S = []
+    for p in P:
+        s = []
+        for n in p:
+            s.append(n.data.sig())
+        S.append(''.join(s))
+    return '{[%s]}'%']['.join(S)

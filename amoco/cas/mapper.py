@@ -20,19 +20,21 @@ from amoco.arch.core   import Bits
 # __Mem  : is a memory model where symbolic memory pointers are using
 # individual separated zones.
 # conds  : is the list of conditions that must be True for the mapper
+# csi    : is the optional interface to a "concrete" state
 # to be valid.
 class mapper(object):
     assume_no_aliasing = False
 
-    __slots__ = ['__map','__Mem','conds']
+    __slots__ = ['__map','__Mem','conds', 'csi']
 
     # a mapper is inited with a list of instructions
     # provided by a disassembler
-    def __init__(self,instrlist=None):
+    def __init__(self,instrlist=None,csi=None):
         self.__map = generation()
         self.__map.lastw = 0
         self.__Mem = MemoryMap()
         self.conds = []
+        self.csi = csi
         icache = []
         # if the __map needs to be inited before executing instructions
         # one solution is to prepend the instrlist with a function dedicated
@@ -51,9 +53,9 @@ class mapper(object):
         return '\n'.join(["%s <- %s"%x for x in self])
 
     def __getstate__(self):
-        return self.__map
+        return (self.__map,self.csi)
     def __setstate__(self,state):
-        self.__map = state
+        self.__map,self.csi = state
         self.__Mem = MemoryMap()
         for loc,v in self:
             if loc._is_ptr: self._Mem_write(loc,v)
@@ -88,6 +90,9 @@ class mapper(object):
     def memory(self):
         return self.__Mem
 
+    def generation(self):
+        return self.__map
+
     # compare self with mapper m:
     def __cmp__(self,m):
         d = cmp(self.__map.lastdict(),m.__map.lastdict())
@@ -100,7 +105,10 @@ class mapper(object):
 
     # get a (plain) register value:
     def R(self,x):
-        return self.__map.get(x,x)
+        if self.csi:
+            return self.__map.get(x,self.csi(x))
+        else:
+            return self.__map.get(x,x)
 
     # get a memory location value (fetch) :
     # k must be mem expressions
@@ -143,8 +151,13 @@ class mapper(object):
         cur = 0
         for p in res:
             plen = len(p)
-            if isinstance(p,str): p = cst(Bits(p[::c._endian],bitorder=1).int(),plen*8)
-            elif not p._is_def: p = mem(a,p.size,disp=cur)
+            if isinstance(p,exp) and not p._is_def:
+                if self.csi:
+                    p = self.csi(mem(a,p.size,disp=cur))
+                else:
+                    p = mem(a,p.size,disp=cur)
+            if isinstance(p,str):
+                p = cst(Bits(p[::exp._endian],bitorder=1).int(),plen*8)
             P.append(p)
             cur += plen
         return composer(P)
@@ -219,7 +232,7 @@ class mapper(object):
     # =>
     # result : eax <- 4
     def eval(self,m):
-        mm = mapper()
+        mm = mapper(csi=self.csi)
         for c in self.conds:
             cc = c.eval(m)
             if cc==1: continue
@@ -268,7 +281,7 @@ class mapper(object):
     # sizes for all arguments.
     # if kargs is empty, a copy of the result is just a copy of current mapper.
     def use(self,*args,**kargs):
-        m = mapper()
+        m = mapper(csi=self.csi)
         for loc,v in args:
             m[loc] = v
         if len(kargs)>0:
@@ -279,7 +292,7 @@ class mapper(object):
 
     # attach/apply conditions to the output mapper
     def assume(self,conds):
-        m = mapper()
+        m = mapper(csi=self.csi)
         if conds is None: conds=[]
         for c in conds:
             if not c._is_eqn: continue
@@ -323,3 +336,4 @@ def widening(m):
             w = True
             v.w = w
     return w
+

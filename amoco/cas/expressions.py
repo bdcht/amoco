@@ -603,6 +603,7 @@ class ext(reg):
         self._subrefs = kargs
         self.size = kargs.get('size',None)
         self.sf = False
+        self._reg__protect = False
 
     def __str__(self):
         return '@%s'%self.ref

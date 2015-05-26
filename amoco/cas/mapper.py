@@ -66,7 +66,11 @@ class mapper(object):
 
     # list image locations (modified in the mapping)
     def outputs(self):
-        return sum(map(locations_of,self.__map.iterkeys()),[])
+        L = []
+        for l in sum(map(locations_of,self.__map.iterkeys()),[]):
+            if l._is_ptr: l = mem(l,self.__map[l].size)
+            L.append(l)
+        return L
 
     def has(self,loc):
         for l in self.__map.keys():
@@ -78,9 +82,9 @@ class mapper(object):
 
     def rw(self):
         r = filter(lambda x:x._is_mem, self.inputs())
-        w = filter(lambda x:x._is_ptr, self.outputs())
+        w = filter(lambda x:x._is_mem, self.outputs())
         sr = [x.size for x in r]
-        sw = [self.__map[x].size for x in w]
+        sw = [x.size for x in w]
         return (sr,sw)
 
     def clear(self):

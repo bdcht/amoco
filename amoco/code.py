@@ -15,6 +15,21 @@ logger = Log(__name__)
 # A block instance is a 'continuous' sequence of instructions.
 #------------------------------------------------------------------------------
 class block(list):
+    """
+    A block instance is a 'continuous' sequence of instructions.
+
+    Example usage:
+
+        .. code-block:: python
+
+            block  = amoco.code.block()
+
+            while address < len(bytes):
+              i = cpu.disassemble(bytes[address:], address=address)
+              address += i.length
+              block.append(i)
+    """
+
     __slots__=['_map','instr','_name','misc','_helper']
 
     # the init of a block takes a list of instructions and creates a map of it:

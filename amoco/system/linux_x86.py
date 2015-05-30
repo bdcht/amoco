@@ -120,7 +120,7 @@ class ELF(CoreExec):
         return seq
 
     def blockhelper(self,block):
-        for i in self.seqhelper(block.instr):
+        for i in self.seqhelper(block):
             block.misc.update(i.misc)
         # delayed computation of block.map:
         def _helper(block,m):

@@ -167,9 +167,9 @@ Lets proceed with getting some basic blocks...
  0x8048396  56                             push        esi
  0x8048397  68fd840408                     push        #main
  0x804839c  e8cfffffff                     call        *0x8048370
- >>> b.instr
+ >>> list(b)
  [<amoco.arch.x86.spec_ia32 [0x8048380]  XOR ( length=2 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048382]  POP ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048383]  MOV ( length=2 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048385]  AND ( length=3 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048388]  PUSH ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048389]  PUSH ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x804838a]  PUSH ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x804838b]  PUSH ( length=5 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048390]  PUSH ( length=5 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048395]  PUSH ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048396]  PUSH ( length=1 type=1 )>, <amoco.arch.x86.spec_ia32 [0x8048397]  PUSH ( length=5 type=1 )>, <amoco.arch.x86.spec_ia32 [0x804839c]  CALL ( length=5 type=2 )>]
- >>> i = b.instr[-1]
+ >>> i = b[-1]
  >>> i
  <amoco.arch.x86.spec_ia32 [0x804839c]  CALL ( length=5 type=2 )>
  >>> print i

@@ -74,22 +74,6 @@ class block(list):
         self._name = name
     name = property(getname,setname)
 
-    def __getitem__(self,i):
-        sta,sto,stp = i.indices(self.length)
-        assert stp==1
-        pos = [0]
-        for i in self:
-            pos.append(pos[-1]+i.length)
-        try:
-            ista = pos.index(sta)
-            isto = pos.index(sto)
-        except ValueError:
-            logger.warning("can't slice block: indices must match instruction boudaries")
-            return None
-        I = self[ista:isto]
-        if len(I)>0:
-            return block(self[ista:isto])
-
     # cut the block at given address will remove instructions after this address,
     # which needs to be aligned with instructions boundaries. The effect is thus to
     # reduce the block size. The returned value is the number of instruction removed.

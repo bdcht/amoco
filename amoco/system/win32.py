@@ -114,7 +114,7 @@ class PE(CoreExec):
         return seq
 
     def blockhelper(self,block):
-        for i in self.seqhelper(block.instr):
+        for i in self.seqhelper(block):
             block.misc.update(i.misc)
         def _helper(block,m):
             # update block.misc based on semantics:

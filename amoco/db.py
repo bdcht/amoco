@@ -52,17 +52,17 @@ class db_mapper(db_core):
         return m
 
 #------------------------------------------------------------------------------
-class db_block(db_core):
+class db_block(db_core, list):
 
     def __init__(self,b):
         self.name = b.name
         self.misc = dict(b.misc)
-        self.instr = [db_instruction(i) for i in b.instr]
+        self.extend(db_instruction(i) for i in b)
         self.map = db_mapper(b.map)
         self.view = str(b)
 
     def build(self,cpu):
-        instr = [i.build(cpu) for i in self.instr]
+        instr = [i.build(cpu) for i in self]
         b = block(instr)
         b.map = self.map.build()
         b.misc.update(self.misc)

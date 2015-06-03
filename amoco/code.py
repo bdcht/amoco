@@ -14,14 +14,29 @@ logger = Log(__name__)
 #------------------------------------------------------------------------------
 # A block instance is a 'continuous' sequence of instructions.
 #------------------------------------------------------------------------------
-class block(object):
+class block(list):
+    """
+    A block instance is a 'continuous' sequence of instructions.
+
+    Example usage:
+
+        .. code-block:: python
+
+            block  = amoco.code.block()
+
+            while address < len(bytes):
+              i = cpu.disassemble(bytes[address:], address=address)
+              address += i.length
+              block.append(i)
+    """
+
     __slots__=['_map','instr','_name','misc','_helper']
 
     # the init of a block takes a list of instructions and creates a map of it:
-    def __init__(self, instrlist, name=None):
+    def __init__(self, instrlist=[], name=None):
+        super(block, self).__init__(instrlist)
         self._map  = None
         # base/offset need to be defined before code (used in setcode)
-        self.instr = instrlist
         self._name = name
         self.misc  = defaultdict(lambda :0)
         self._helper = None
@@ -29,7 +44,7 @@ class block(object):
     @property
     def map(self):
         if self._map is None:
-            self._map = mapper(self.instr)
+            self._map = mapper(self)
             self.helper(self._map)
         if self.misc['func']:
             return self.misc['func'].map
@@ -43,15 +58,15 @@ class block(object):
 
     @property
     def address(self):
-        return self.instr[0].address if len(self.instr)>0 else None
+        return self[0].address if len(self)>0 else None
 
     @property
     def length(self):
-        return sum([i.length for i in self.instr],0)
+        return sum([i.length for i in self],0)
 
     @property
     def support(self):
-        return (self.address,self.address+self.length) if len(self.instr)>0 else (None,None)
+        return (self.address,self.address+self.length) if len(self)>0 else (None,None)
 
     def getname(self):
         return str(self.address) if not self._name else self._name
@@ -59,54 +74,38 @@ class block(object):
         self._name = name
     name = property(getname,setname)
 
-    def __getitem__(self,i):
-        sta,sto,stp = i.indices(self.length)
-        assert stp==1
-        pos = [0]
-        for i in self.instr:
-            pos.append(pos[-1]+i.length)
-        try:
-            ista = pos.index(sta)
-            isto = pos.index(sto)
-        except ValueError:
-            logger.warning("can't slice block: indices must match instruction boudaries")
-            return None
-        I = self.instr[ista:isto]
-        if len(I)>0:
-            return block(self.instr[ista:isto])
-
     # cut the block at given address will remove instructions after this address,
     # which needs to be aligned with instructions boundaries. The effect is thus to
     # reduce the block size. The returned value is the number of instruction removed.
     def cut(self,address):
-        I = [i.address for i in self.instr]
+        I = [i.address for i in self]
         try:
             pos = I.index(address)
         except ValueError:
             logger.warning("invalid attempt to cut block %s at %s"%(self.name,address))
             return 0
         else:
-            self.instr = self.instr[:pos]
+            self = self[:pos]
             if self._map:
                 self._map.clear()
-                for i in self.instr:
+                for i in self:
                     i(self._map)
             # TODO: update misc annotations too
             return len(I)-pos
 
     def __str__(self):
         L = []
-        n = len(self.instr)
+        n = len(self)
         if conf.getboolean('block','header'):
             L.append('# --- block %s ---' % self.name)
         if conf.getboolean('block','bytecode'):
-            bcs = [ "'%s'"%(i.bytes.encode('hex')) for i in self.instr ]
+            bcs = [ "'%s'"%(i.bytes.encode('hex')) for i in self ]
             pad = conf.getint('block','padding') or 0
             maxlen = max(map(len,bcs))+pad
             bcs = [ s.ljust(maxlen) for s in bcs ]
         else:
             bcs = ['']*n
-        ins = [ ('{:<10}'.format(i.address),i.formatter(i)) for i in self.instr ]
+        ins = [ ('{:<10}'.format(i.address),i.formatter(i)) for i in self ]
         for j in range(n):
             L.append('%s %s %s'%(ins[j][0],bcs[j],ins[j][1]))
         return '\n'.join(L)
@@ -115,7 +114,7 @@ class block(object):
         return '<%s object (name=%s) at 0x%08x>'%(self.__class__.__name__,self.name,id(self))
 
     def raw(self):
-        return ''.join([i.bytes for i in self.instr])
+        return ''.join([i.bytes for i in self])
 
     def __cmp__(self,b):
         return cmp(self.raw(),b.raw())
@@ -127,7 +126,7 @@ class block(object):
         misc = defaultdict(lambda :None)
         misc.update(self.misc)
         if len(misc)==0:
-            for i in self.instr: misc.update(i.misc)
+            for i in self: misc.update(i.misc)
         s = [tag.sig(k) for k in misc]
         return '(%s)'%(''.join(s))
 
@@ -143,7 +142,6 @@ class func(block):
     def __init__(self, g=None, name=None):
         self._map = None
         self.cfg = g
-        self.instr = []
         # base/offset need to be defined before code (used in setcode)
         self._name = name
         self.misc  = defaultdict(lambda :0)

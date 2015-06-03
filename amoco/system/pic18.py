@@ -75,7 +75,7 @@ class PIC18(CoreExec):
         return seq
 
     def blockhelper(self,blk):
-        self.seqhelper(blk.instr)
+        self.seqhelper(blk)
         return blk
 
     def pic_seg_handler(self,env,seg,base_disp):

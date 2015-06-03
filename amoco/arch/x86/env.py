@@ -42,7 +42,7 @@ dh = slc(edx,8,8,'dh')
 
 cf = slc(eflags,0,1,'cf')   # carry/borrow flag
 pf = slc(eflags,2,1,'pf')   # parity flag
-af = slc(eflags,4,1,'pf')   # aux carry flag
+af = slc(eflags,4,1,'af')   # aux carry flag
 zf = slc(eflags,6,1,'zf')   # zero flag
 sf = slc(eflags,7,1,'sf')   # sign flag
 tf = slc(eflags,8,1,'sf')   # trap flag

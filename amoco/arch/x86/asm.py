@@ -254,12 +254,15 @@ def i_POPFD(i,fmap):
 
 def i_LAHF(i,fmap):
   fmap[eip] = fmap[eip]+i.length
-  x = fmap(composer([cf,bit1,pf,bit0,zf,sf]))
+  x = fmap(composer([cf,bit1,pf,bit0,af,bit0,zf,sf]))
   fmap[ah] = x
 
 def i_SAHF(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   fmap[eflags[0:8]] = fmap(ah)
+  fmap[eflags[1:2]] = bit1
+  fmap[eflags[3:4]] = bit0
+  fmap[eflags[5:6]] = bit0
 
 #------------------------------------------------------------------------------
 def _cmps_(i,fmap,l):

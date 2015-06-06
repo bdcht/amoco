@@ -156,7 +156,10 @@ def op_to_z3(e,solver=None):
         greatest = max(z3l.size(), z3r.size())
         z3l = z3.ZeroExt(greatest - z3l.size(), z3l)
         z3r = z3.ZeroExt(greatest - z3r.size(), z3r)
-    return op(z3l,z3r)
+    res = op(z3l,z3r)
+    if z3.is_bool(res):
+        res = _bool2bv1(res)
+    return res
 
 def uop_to_z3(e,solver=None):
     e.simplify()

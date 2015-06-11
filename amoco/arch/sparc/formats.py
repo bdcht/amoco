@@ -31,7 +31,8 @@ def mnemo_cond(i):
         s+=',a'
     return s+whitespace
 
-def hilo_imm(x):
+def reg_or_imm(x,t='%d'):
+    # Special detections for %hi or %lo
     hilo = None
     if x._is_cmp:
         if sorted(x.parts.keys()) == [(0,10),(10,32)]:
@@ -39,37 +40,35 @@ def hilo_imm(x):
                 hilo = ['%lo', x.parts[(0,10)].x]
             if str(x.parts[(0,10)]) == "0x0":
                 hilo = ['%hi', x.parts[(10,32)].x]
-    if type(x) == slc:
+    elif x._is_slc:
         if x.pos == 10 and x.size == 22:
              hilo = ['%hi', x.x]
         if x.pos == 0 and x.size == 10:
              hilo = ['%lo', x.x]
-    if hilo is not None:
-         if hilo[1]._is_eqn:
-             hilo[1] = address(hilo[1])
-         elif hilo[1]._is_cst:
-             pass
-         else:
-             hilo[1] = hilo[1].ref
-         return '%s(%s)'%tuple(hilo)
-    return str(x)
-
-def reg_or_imm(x,t='%d'):
-    if x._is_ext:
+    # Other cases
+    elif x._is_ext:
         return x.ref
-    if x._is_reg:
+    elif x._is_reg:
         return '%'+x.ref
-    if x._is_cst:
+    elif x._is_cst:
         return t%x.value
-    if x._is_eqn:
+    elif x._is_eqn:
         if x.r is None:
             return ("%s"+t)%(x.op.symbol,x.l)
         elif x.l is None:
             return ("%s"+t)%(x.op.symbol,x.r)
         else:
             return (t+"%s"+t)%(x.l,x.op.symbol,x.r)
-    return hilo_imm(x)
-
+    # Now dealing with hilo
+    if hilo is None:
+        return str(x)
+    elif hilo[1]._is_eqn:
+        hilo[1] = address(hilo[1])
+    elif hilo[1]._is_cst:
+        pass
+    else:
+        hilo[1] = hilo[1].ref
+    return '%s(%s)'%tuple(hilo)
 
 def label(i):
     _pc = i.address

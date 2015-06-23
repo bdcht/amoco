@@ -17,8 +17,9 @@ def push(fmap,x):
   fmap[mem(esp,x.size)] = x
 
 def pop(fmap,l):
-  fmap[l] = fmap(mem(esp,l.size))
+  v = fmap(mem(esp,l.size))
   fmap[esp] = fmap(esp+l.length)
+  fmap[l] = v
 
 def parity(x):
   x = x ^ (x>>1)

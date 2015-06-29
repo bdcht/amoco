@@ -105,7 +105,8 @@ class exp(object):
         return (1<<self.size)-1
 
     def eval(self,env):
-        if not self._is_def: return exp(self.size)
+        if self._is_def is 0    : return top(self.size)
+        if self._is_def is False: return exp(self.size)
         else: raise NotImplementedError("can't eval %s"%self)
 
     def simplify(self):
@@ -246,7 +247,7 @@ class exp(object):
         if exp.__cmp__(self,n)==0: return bit0
         return oper('>',self,n)
 
-    def to_smtlib(self):
+    def to_smtlib(self,solver=None):
         logger.warning('no SMT solver defined')
         raise NotImplementedError
 ##
@@ -1315,7 +1316,7 @@ def eqn1_helpers(e):
 def eqn2_helpers(e):
     if e.r.depth()>e.threshold: e.r = top(e.r.size)
     if e.l.depth()>e.threshold: e.l = top(e.l.size)
-    if False in (e.l._is_def, e.r._is_def): return top(e.size)
+    if not (e.l._is_def | e.r._is_def): return top(e.size)
     if e.l._is_vec: return vec([e.op(l,e.r) for l in e.l.l])
     if e.r._is_vec: return vec([e.op(e.l,r) for r in e.r.l])
     if e.l._is_eqn and e.l.r._is_cst:

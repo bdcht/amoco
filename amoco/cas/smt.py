@@ -213,8 +213,8 @@ if has_solver:
     uop.to_smtlib   = uop_to_z3
     vec.to_smtlib  = vec_to_z3
 
-def to_smtlib(e):
-    return e.to_smtlib()
+def to_smtlib(e,solver=None):
+    return e.to_smtlib(solver)
 
 def model_to_mapper(r,locs):
     m = mapper()

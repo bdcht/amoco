@@ -297,7 +297,7 @@ Let's have a look at the graph instance:
  1.| <node [0x8048370] at 0x8db740c>
  >>> print G.C[0].sE
  0.| <link [0x8048380 -> 0x8048370] at 0x8db742c>
- >>> G.get_node('0x8048370')
+ >>> G.get_by_name('0x8048370')
  <node [0x8048370] at 0x8db740c>
  >>> n=_
  >>> print n.data
@@ -343,7 +343,7 @@ A little more elaborated analysis like **link-forward** would have started analy
  ------
  0.| <node [0x80484d4] at 0x8a38a1c>
  ------
- >>> print G.get_node('0x8048434').data
+ >>> print G.get_by_name('0x8048434').data
  # --- block 0x8048434 ---
  0x8048434  '55'                   push        ebp
  0x8048435  '89e5'                 mov         ebp,esp
@@ -357,7 +357,7 @@ A little more elaborated analysis like **link-forward** would have started analy
  0x8048453  '8b45f4'               mov         eax,[ebp-12]
  0x8048456  '890424'               mov         [esp],eax
  0x8048459  'e825000000'           call        *#fct_b
- >>> print G.get_node('0x8048483').data
+ >>> print G.get_by_name('0x8048483').data
  # --- block 0x8048483 ---
  0x8048483  '55'         push        ebp
  0x8048484  '89e5'       mov         ebp,esp
@@ -1268,7 +1268,7 @@ a function's control-flow graph  (a *graph_core* object).
 The ``graph.add_vertex`` extends Graph.add_vertex to detect that the node to be added *cuts*
 an existing node and adjust the graph structure accordingly.
 The ``graph.spool()`` method provides a list of the current leaves in the graph.
-The ``graph.get_node(name)`` method allows to get a node object by its name.
+The ``graph.get_by_name(name)`` method allows to get a node object by its name.
 
 system
 ------

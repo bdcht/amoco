@@ -147,6 +147,7 @@ class func(block):
         # base/offset need to be defined before code (used in setcode)
         self._name = name
         self.misc  = defaultdict(lambda :0)
+        self._helper = None
 
     @property
     def address(self):

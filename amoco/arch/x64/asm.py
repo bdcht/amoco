@@ -1210,26 +1210,26 @@ def i_RSM(i,fmap):
 
 def i_SYSENTER(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
-  fmap[rip] = top(32)
-  fmap[rsp] = top(32)
+  fmap[rip] = top(64)
+  fmap[rsp] = top(64)
   fmap[cs]  = top(16)
   fmap[ss]  = top(16)
 
 def i_SYSEXIT(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
-  fmap[rip] = top(32)
-  fmap[rsp] = top(32)
+  fmap[rip] = top(64)
+  fmap[rsp] = top(64)
   fmap[cs]  = top(16)
   fmap[ss]  = top(16)
 
 def i_SYSCALL(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
-  fmap[rip] = top(32)
-  fmap[rcx] = top(32)
-  fmap[r11] = top(32)
+  fmap[rip] = top(64)
+  fmap[rcx] = top(64)
+  fmap[r11] = top(64)
 
 def i_SYSRET(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
-  fmap[rip] = top(32)
-  fmap[rsp] = top(32)
+  fmap[rip] = top(64)
+  fmap[rsp] = top(64)
 

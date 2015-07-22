@@ -229,7 +229,7 @@ def i_CMPSQ(i,fmap):
 
 #------------------------------------------------------------------------------
 def _scas_(i,fmap,l):
-  counter,d = ecx,edi if i.misc['adrsz'] else rcx,rdi
+  counter,d = (ecx,edi) if i.misc['adrsz'] else (rcx,rdi)
   a = fmap({1:al, 2:ax, 4:eax, 8:rax}[l])
   src = fmap(mem(d,l*8))
   x, carry, overflow = SubWithBorrow(a,src)

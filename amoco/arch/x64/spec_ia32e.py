@@ -90,6 +90,8 @@ def ia32_nop(obj):
 @ispec_ia32("16>[ {0f}{31}     ]", mnemonic = "RDTSC",   type=type_cpu_state)
 @ispec_ia32("16>[ {0f}{32}     ]", mnemonic = "RDMSR",   type=type_system)
 @ispec_ia32("16>[ {0f}{33}     ]", mnemonic = "RDPMC",   type=type_cpu_state)
+@ispec_ia32("16>[ {0f}{05}     ]", mnemonic = "SYSCALL", type=type_system)
+@ispec_ia32("16>[ {0f}{07}     ]", mnemonic = "SYSRET",  type=type_system)
 @ispec_ia32("16>[ {0f}{34}     ]", mnemonic = "SYSENTER",type=type_system)
 @ispec_ia32("16>[ {0f}{35}     ]", mnemonic = "SYSEXIT", type=type_system)
 @ispec_ia32("24>[ {0f}{01}{c8} ]", mnemonic = "MONITOR", type=type_cpu_state)

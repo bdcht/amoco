@@ -29,7 +29,7 @@ class ELF(CoreExec):
             # create the dynamic segments:
             self.load_shlib()
         # create the stack zone:
-        self.mmap.newzone(cpu.esp)
+        self.mmap.newzone(cpu.rsp)
 
     # call dynamic linker to populate mmap with shared libs:
     # for now, the external libs are seen through the elf dynamic section:

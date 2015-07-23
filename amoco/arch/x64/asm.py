@@ -555,7 +555,8 @@ def i_ADC(i,fmap):
   op2 = fmap(i.operands[1])
   fmap[rip] = fmap[rip]+i.length
   a=fmap(op1)
-  x,carry,overflow = AddWithCarry(a,op2,fmap(cf))
+  c = fmap(cf)
+  x,carry,overflow = AddWithCarry(a,op2,c)
   fmap[pf]  = parity8(x[0:8])
   fmap[af]  = halfcarry(a,op2,c)
   fmap[zf]  = x==0

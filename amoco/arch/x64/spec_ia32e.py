@@ -143,9 +143,9 @@ def ia32_strings(obj):
 def ia32_imm_rel(obj,ib):
     obj.operands = [env.cst(ib,8)]
 
-@ispec_ia32("16>[ {e3} cb(8) ]", mnemonic = "JECXZ", type=type_control_flow)
+@ispec_ia32("16>[ {e3} cb(8) ]", mnemonic = "JRCXZ", type=type_control_flow)
 def ia32_cb8(obj,cb):
-    if obj.misc['adrsz']==16: obj.mnemonic = "JCXZ"
+    if obj.misc['adrsz']==32: obj.mnemonic = "JECXZ"
     obj.operands = [env.cst(cb,8)]
 
 # imm16:

@@ -488,6 +488,24 @@ def i_Jcc(i,fmap):
   cond = i.cond[1]
   fmap[eip] = tst(fmap(cond),fmap[eip]+op1,fmap[eip])
 
+def i_JECXZ(i,fmap):
+  pc = fmap[eip]+i.length
+  fmap[eip] = pc
+  op1 = fmap(i.operands[0])
+  op1 = op1.signextend(pc.size)
+  cond = (ecx==0)
+  target = tst(fmap(cond),fmap[eip]+op1,fmap[eip])
+  fmap[eip] = target
+
+def i_JCXZ(i,fmap):
+  pc = fmap[eip]+i.length
+  fmap[eip] = pc
+  op1 = fmap(i.operands[0])
+  op1 = op1.signextend(pc.size)
+  cond = (cx==0)
+  target = tst(fmap(cond),fmap[eip]+op1,fmap[eip])
+  fmap[eip] = target
+
 def i_RETN(i,fmap):
   src = i.operands[0].v
   pop(fmap,eip)

@@ -301,7 +301,7 @@ def i_CMPSD(i,fmap):
 #------------------------------------------------------------------------------
 def _scas_(i,fmap,l):
   counter = cx if i.misc['adrsz'] else ecx
-  a = {1:al, 2:ax, 4:eax}[l]
+  a = fmap({1:al, 2:ax, 4:eax}[l])
   src = fmap(mem(edi,l*8))
   x, carry, overflow = SubWithBorrow(a,src)
   if i.misc['rep']:
@@ -354,7 +354,7 @@ def i_LODSD(i,fmap):
 #------------------------------------------------------------------------------
 def _stos_(i,fmap,l):
   counter = cx if i.misc['adrsz'] else ecx
-  src = {1:al, 2:ax, 4:eax}[l]
+  src = fmap({1:al, 2:ax, 4:eax}[l])
   loc = mem(edi,l*8)
   if i.misc['rep']:
       fmap[loc] = tst(fmap(counter)==0, fmap(loc), src)

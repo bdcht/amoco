@@ -262,11 +262,13 @@ class fforward(lsweep):
             return True
         return False
 
-    def getcfg(self,loc=None):
+    def getcfg(self,loc=None,debug=False):
+        if debug: import pdb
         try:
-            for x in self.itercfg(loc): pass
+            for x in self.itercfg(loc):
+                if debug: pdb.set_trace()
         except KeyboardInterrupt:
-            pass
+            if debug: pdb.set_trace()
         return self.G
 
     # generic 'forward' analysis explorer.

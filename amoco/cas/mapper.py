@@ -52,6 +52,10 @@ class mapper(object):
     def __str__(self):
         return '\n'.join(["%s <- %s"%x for x in self])
 
+    def pp(self,**kargs):
+        lv = [(l.pp(**kargs),v.pp(**kargs)) for (l,v) in self]
+        return '\n'.join(["%s <- %s"%x for x in lv])
+
     def __getstate__(self):
         return (self.__map,self.csi)
     def __setstate__(self,state):

@@ -114,16 +114,22 @@ try:
     from persistent import Persistent
 except ImportError,e:
     logger.warning(e.message)
+    from StringIO import StringIO
 
     # declare void Session class:
     class Session(object):
         _is_active = False
-    def __init__(self,filename=None):
-        logger.info('this session is not active')
-    def add(self,key,obj):
-        pass
-    def commit(self):
-        pass
+        def __init__(self,filename=None):
+            logger.info('this session is not active')
+            self.db = StringIO()
+            self.conn = None
+            self.root = None
+        def add(self,key,obj):
+            pass
+        def commit(self):
+            pass
+        def restore(self):
+            pass
 else:
 
     # Session database class:

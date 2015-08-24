@@ -18,6 +18,8 @@ NWINDOWS = 32 # in [2,32]
 R = [reg('r%d'%x,32) for x in range(520)]
 # fpu registers:
 f = [reg('f%d'%x,32) for x in range(32)]
+# coprocessor registers:
+c = [reg('c%d'%x,32) for x in range(32)]
 
 # symbols for r0 ... r7:
 g0,g1,g2,g3,g4,g5,g6,g7 = (reg('g%d'%x,32) for x in range(8))

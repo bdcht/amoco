@@ -1,65 +1,44 @@
 # -*- coding: utf-8 -*-
 
+import ConfigParser as cp
 from collections import defaultdict
 
-try:
-    import ConfigParser as cp
-except ImportError:
-    print('ConfigParser not found, fallback to default config')
-    cp = None
+conf = cp.SafeConfigParser()
 
+# define default config:
+#-----------------------
 
-if cp:
-    import os
-    conf = cp.SafeConfigParser()
-    conf.add_section('block')
-    conf.set('block', 'header', 'True')
-    conf.set('block', 'bytecode', 'True')
-    conf.set('block', 'padding', '4')
-    conf.add_section('log')
-    conf.set('log', 'level', 'ERROR')
-    conf.read([os.path.expanduser('~/.amocorc')])
-else:
-    conf = None
+# basic block section
+conf.add_section('block')
+conf.set('block', 'header'   , 'True')
+conf.set('block', 'bytecode' , 'True')
+conf.set('block', 'padding'  , '4'   )
 
-    class DefaultConf(object):
-        def __init__(self):
-            self.sections = defaultdict(lambda :{})
-            self.setdefaults()
+# log section
+conf.add_section('log')
+conf.set('log', 'level', 'ERROR')
+#conf.set('log', 'file', '/tmp/amoco.log')
 
-        def get(self,section,item):
-            s = self.sections[section]
-            return s.get(item,None) if s else None
+# ui section
+conf.add_section('ui')
+conf.set('ui', 'formatter', 'Null')
 
-        def getint(self,section,item):
-            v = self.get(section,item)
-            if v is not None: return int(v,0)
-            return v
+# overwrite with config file:
+import os
+conf.read([os.path.expanduser('~/.amocorc')])
 
-        def getboolean(self,section,item):
-            v = self.get(section,item)
-            if v is not None: return bool(v=='True')
-            return v
-
-        def set(self,section,item,value):
-            s = self.sections[section]
-            s[item] = value
-
-        def mset(self,section,**kargs):
-            for k,v in kargs.iteritems():
-                self.set(section, k, v)
-
-        def write(self,filename):
-            with open(filename,'w') as f:
-                for sk,sv in self.sections.iteritems():
-                    f.write('[%s]\n'%sk)
-                    for vk,vv in sv.iteritems():
-                        f.write('%s: %s\n'%(vk,vv))
-
-        def setdefaults(self):
-            self.mset('block', header=True)
-            self.mset('block', bytecode=True)
-            self.mset('block', padding=4)
-            self.mset('log', level='ERROR')
-
-    conf = DefaultConf()
+#-----------------------
+def get_module_conf(module_name):
+    D = defaultdict(lambda:None)
+    if conf.has_section(module_name):
+        for k,v in conf.items(module_name):
+            k = k.lower()
+            v = v.lower()
+            if  k == 'true': D[k]=True
+            elif k == 'false': D[k]=False
+            else:
+                try:
+                    v = int(v,0)
+                except ValueError: pass
+            D[k] = v
+    return D

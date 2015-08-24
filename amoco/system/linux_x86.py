@@ -98,6 +98,9 @@ class ELF(CoreExec):
                     x = self.check_sym(v)
                     if x is not None: v=x
                     i.misc['to'] = v
+                    if i.misc[tag.FUNC_CALL] and i.misc['retto']==v:
+                        # this looks like a fake call
+                        i.misc[tag.FUNC_CALL]=-1
                     continue
             # check operands (globals & .got calls):
             for op in i.operands:
@@ -111,7 +114,7 @@ class ELF(CoreExec):
                             op.a.base=x
                             op.a.disp=0
                             if i.mnemonic == 'JMP': # PLT jumps:
-                                i.address = i.address.to_sym('PLT%s'%x)
+                                #i.address = i.address.to_sym('PLT%s'%x)
                                 i.misc[tag.FUNC_START]=1
                                 i.misc[tag.FUNC_END]=1
                 elif op._is_cst:

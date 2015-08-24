@@ -1,6 +1,10 @@
 =====
 Amoco
 =====
+
+.. image:: https://travis-ci.org/bdcht/amoco.svg?branch=release
+    :target: https://travis-ci.org/bdcht/amoco
+
 +-----------+-----------------------------------+
 | Status:   | Under Development                 |
 +-----------+-----------------------------------+
@@ -88,7 +92,7 @@ Amoco is tested on python 2.7 and depends on the following python packages:
 - grandalf_ used for building CFG (and eventually rendering it)
 - crysp_    used by the generic intruction decoder (``arch/core.py``)
 - z3_       used to simplify expressions and solve constraints
-- pygments_ (not in current release, planned for 2.4.2 release)
+- pygments_ used for pretty printing of assembly code and expressions
 - pyparsing_ for parsing instruction decoder formats
 - ply_ (optional), for parsing *GNU as* files
 - zodb_ (optional), provides persistence of amoco objects in a database
@@ -102,7 +106,7 @@ Below is a very simple example where basic blocks are build with linear sweep:
 .. sourcecode:: python
 
  >>> import amoco
- >>> p = amoco.system.loader.load_program('tests/samples/flow.elf')
+ >>> p = amoco.system.loader.load_program('tests/samples/x86/flow.elf')
  amoco.system.loader: INFO: Elf32 file detected
  amoco.system.loader: INFO: linux_x86 program created
  >>> p
@@ -1334,6 +1338,20 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.4.2`_
+
+  * merge support for pygments pretty printing methods (in ui.render module)
+  * add x86 hilighted syntax formatter (in arch.x86.formats)
+  * expose expression's pretty printing interface (exp.pp(), exp.toks())
+  * remove default config class fallback (ConfigParser is standard)
+  * merge some samples and tests ported to pytest package
+  * use setuptools, add tox.ini and travis-ci config
+  * fix some x86/x64 semantics
+  * improve sparc v8 formats
+  * add sparc coprocessor registers
+  * update README
+
+
 - `v2.4.1`_
 
   * add lbackward analysis and func.makemap() implementations
@@ -1412,6 +1430,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _zodb: http://www.zodb.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.4.2: https://github.com/bdcht/amoco/releases/tag/v2.4.2
 .. _v2.4.1: https://github.com/bdcht/amoco/releases/tag/v2.4.1
 .. _v2.4.0: https://github.com/bdcht/amoco/releases/tag/v2.4.0
 .. _v2.3.5: https://github.com/bdcht/amoco/releases/tag/v2.3.5

@@ -7,7 +7,9 @@ uarch = dict(filter(lambda kv:kv[0].startswith('i_'),locals().iteritems()))
 from amoco.arch.core import instruction, disassembler
 
 instruction.set_uarch(uarch)
-from amoco.arch.x86.formats import IA32_Intel
+
+from amoco.arch.x86.formats import *
+
 instruction.set_formatter(IA32_Intel)
 
 from amoco.arch.x86 import spec_ia32
@@ -17,3 +19,12 @@ disassemble.maxlen = 15
 
 def PC():
     return eip
+
+def configure(**kargs):
+    from amoco.config import get_module_conf
+    conf = get_module_conf('x86')
+    conf.update(kargs)
+    if conf['highlight']:
+        instruction.set_formatter(IA32_Intel_highlighted)
+
+configure()

@@ -458,13 +458,21 @@ class Formatter(object):
         self.formats = formats
         self.default = ('{i.mnemonic} ', lambda i: ', '.join(map(str,i.operands)))
 
-    def __call__(self,i):
-        s=[]
+    def getkey(self,i):
+        if i.mnemonic in self.formats: return i.mnemonic
+        if i.spec.hook.func_name in self.formats: return i.spec.hook.func_name
+        return None
+
+    def getparts(self,i):
         try:
             fmts = self.formats[i.mnemonic]
         except KeyError:
             fmts = self.formats.get(i.spec.hook.func_name,self.default)
-        for f in fmts:
+        return fmts
+
+    def __call__(self,i):
+        s=[]
+        for f in self.getparts(i):
             if hasattr(f,'format'):
                 # It is a string
                 s.append(f.format(i=i))

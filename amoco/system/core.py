@@ -320,16 +320,6 @@ class MemoryMap(object):
     def __str__(self):
         return '\n'.join(map(str,self._zones.values()))
 
-    # getitem allows to use a MemoryMap object as if it was a string on which
-    # some slice lookups are performed. This is typically the case of the API
-    # required by arch/disasm "disassemble" and "getsequence" methods.
-    def __getitem__(self,aslc):
-        address,end = aslc.start,aslc.stop
-        l = end-address
-        r,o = self.reference(address)
-        item = self._zones[r].read(o,l)[0]
-        return item
-
     def read(self,address,l):
         r,o = self.reference(address)
         if r in self._zones:

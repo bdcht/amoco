@@ -69,3 +69,39 @@ IA32_Intel_formats = {
 
 IA32_Intel = Formatter(IA32_Intel_formats)
 IA32_Intel.default = format_intel_default
+
+# highlighted formatter:
+#-----------------------
+from amoco.ui import render
+
+def IA32_Intel_tokenize(i):
+    toks = []
+    for f in IA32_Intel.getparts(i):
+        if   f is pfx:   toks.append((render.Token.Prefix,f(i)))
+        elif f is mnemo: toks.append((render.Token.Mnemonic,f(i)))
+        elif f is oprel:
+            s = f(i)
+            if s.startswith('*'):
+                t = render.Token.Address
+            else:
+                t = render.Token.Constant
+            toks.append((t,s))
+        elif f is opers:
+            for op in i.operands:
+                if   op._is_reg: toks.append((render.Token.Register,str(op)))
+                elif op._is_mem: toks.append((render.Token.Memory,deref(op)))
+                elif op._is_cst:
+                    if i.misc['imm_ref'] is not None:
+                        toks.append((render.Token.Address,str(i.misc['imm_ref'])))
+                    elif op.sf:
+                        toks.append((render.Token.Constant,'%+d'%op.value))
+                    else:
+                        toks.append((render.Token.Constant,str(op)))
+                toks.append((render.Token.Literal,', '))
+            if toks[-1][0] is render.Token.Literal: toks.pop()
+        else:
+            toks.append((render.Token.Comment,f(i)))
+    return toks
+
+def IA32_Intel_highlighted(null, i):
+    return render.highlight(IA32_Intel_tokenize(i))

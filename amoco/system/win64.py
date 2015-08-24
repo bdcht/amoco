@@ -98,6 +98,9 @@ class PE(CoreExec):
                     x = self.check_sym(v)
                     if x is not None: v=x
                     i.misc['to'] = v
+                    if i.misc[tag.FUNC_CALL] and i.misc['retto']==v:
+                        # this looks like a fake call
+                        i.misc[tag.FUNC_CALL]=-1
                     continue
             # check operands (globals & .got calls):
             for op in i.operands:

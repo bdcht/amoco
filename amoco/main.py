@@ -97,15 +97,16 @@ class lsweep(object):
             n = self.G.add_vertex(n)
             b = n.data
             # find its links:
-            if b.misc['func_call']:
+            if b.misc[code.tag.FUNC_CALL]:
                 aret = b.misc['retto']+0
                 nret = D.get(aret,None) or self.G.get_with_address(aret)
                 if nret is not None:
                     e = cfg.link(n,nret)
                     self.G.add_edge(e)
                     ato  = b.misc['to']
-                    if ato is not 0: C[ato+0].append((e,'func_call'))
-            elif b.misc['func_goto'] and b.misc['to'] is not 0:
+                    if ato is not 0 and b.misc[code.tag.FUNC_CALL]>0:
+                        C[ato+0].append((e,code.tag.FUNC_CALL))
+            elif b.misc[code.tag.FUNC_GOTO] and b.misc['to'] is not 0:
                 ato = b.misc['to']+0
                 nto = D.get(ato,None) or self.G.get_with_address(ato)
                 if nto is not None:
@@ -128,7 +129,7 @@ class lsweep(object):
             n = cfg.node(next(self.iterblocks(ato)))
             n = self.G.add_vertex(n)
             for (p,why) in L:
-                if why is 'func_call':
+                if why is code.tag.FUNC_CALL:
                     if n.data.misc['callers']:
                         n.data.misc['callers'].append(p)
                     else:
@@ -297,7 +298,7 @@ class fforward(lsweep):
                 # otherwise we add the new (parent,vtx) edge.
                 if parent is None:
                     self.add_root_node(vtx)
-                elif parent.data.misc[code.tag.FUNC_CALL]:
+                elif parent.data.misc[code.tag.FUNC_CALL]>0:
                     vtx = self.add_call_node(vtx,parent,econd)
                 else:
                     e = cfg.link(parent,vtx,data=econd)

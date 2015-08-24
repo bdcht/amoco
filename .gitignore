@@ -2,4 +2,7 @@ tags
 *.pyc
 *.swp
 build/
-tests/
+dist/
+*.egg-info
+tests/priv
+.tox/

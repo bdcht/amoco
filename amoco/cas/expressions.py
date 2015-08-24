@@ -7,6 +7,8 @@
 from amoco.logger import Log
 logger = Log(__name__)
 
+from amoco.ui.render import Token,highlight
+
 # decorators:
 #------------
 
@@ -92,11 +94,12 @@ class exp(object):
     def length(self): # length value is in bytes
         return self.size/8
 
-    def bytes(self,sta=0,sto=None):
+    def bytes(self,sta=0,sto=None,endian=0):
         s = slice(sta,sto)
         l = self.length
         sta,sto,stp = s.indices(l)
-        if self._endian==-1:
+        endian |= self._endian
+        if endian==-1:
             sta,sto = l-sto,l-sta
         return self[sta*8:sto*8]
 
@@ -130,6 +133,12 @@ class exp(object):
         if self._is_def is 0: return 'T%d'%self.size
         if self._is_def is False: return '⊥%d'%self.size
         raise ValueError("void expression")
+
+    def toks(self,**kargs):
+        return [(Token.Literal,str(self))]
+
+    def pp(self,**kargs):
+        return highlight(self.toks(**kargs))
 
     def bit(self,i):
         i = i%self.size
@@ -292,6 +301,9 @@ class cst(exp):
     # defaults to signed hex base
     def __str__(self):
         return '{:#x}'.format(self.value)
+
+    def toks(self,**kargs):
+        return [(Token.Constant,str(self))]
 
     def to_sym(self,ref):
         return sym(ref,self.v,self.size)
@@ -473,6 +485,9 @@ class cfp(exp):
     def __str__(self):
         return '{:f}'.format(self.value)
 
+    def toks(self,**kargs):
+        return [(Token.Constant,str(self))]
+
     def eval(self,env): return cfp(self.value,self.size)
 
     def __neg__(self):
@@ -571,6 +586,9 @@ class reg(exp):
     def __str__(self):
         return self.ref
 
+    def toks(self,**kargs):
+        return [(Token.Register,str(self))]
+
     def eval(self,env):
         return env[self]
 
@@ -608,6 +626,10 @@ class ext(reg):
 
     def __str__(self):
         return '@%s'%self.ref
+
+    def toks(self,**kargs):
+        tk = Token.Tainted if '!' in self.ref else Token.Name
+        return [(tk,str(self))]
 
     def __setattr__(self,a,v):
         exp.__setattr__(self,a,v)
@@ -675,6 +697,17 @@ class comp(exp):
             s += ' %s->%s |'%('[%d:%d]'%nk,str(nv))
             cur += nv.size
         return s+' }'
+
+    def toks(self,**kargs):
+        tl = (Token.Literal,', ')
+        s  = [(Token.Literal,'{')]
+        for nv in self:
+            t = nv.toks(newline=False,**kargs)
+            s.extend(t)
+            s.append(tl)
+        if len(s)>1: s.pop()
+        s.append((Token.Literal,'}'))
+        return s
 
     def eval(self,env):
         res = comp(self.size)
@@ -833,6 +866,9 @@ class mem(exp):
         n = '$%d'%n if n>0 else ''
         return 'M%d%s%s'%(self.size,n,self.a)
 
+    def toks(self,**kargs):
+        return [(Token.Memory,str(self))]
+
     def eval(self,env):
         a = self.a.eval(env)
         m = env.use()
@@ -872,6 +908,9 @@ class ptr(exp):
     def __str__(self):
         d = '%+d'%self.disp if self.disp else ''
         return '%s(%s%s)'%(self.seg,self.base,d)
+
+    def toks(self,**kargs):
+        return [(Token.Address,str(self))]
 
     def simplify(self):
         self.base,offset = extract_offset(self.base)
@@ -950,7 +989,12 @@ class slc(exp):
 
     def __str__(self):
         return self.ref or self.raw()
-    ##
+
+    def toks(self,**kargs):
+        if self._is_reg: return [(Token.Register,str(self))]
+        subpart = [(Token.Literal,'[%d:%d]'%(self.pos,self.pos+self.size))]
+        return self.x.toks(**kargs)+subpart
+
     def __hash__(self): return hash(self.raw())
 
     def eval(self,env):
@@ -1020,6 +1064,14 @@ class tst(exp):
     ##
     def __str__(self):
         return '(%s ? %s : %s)'%(str(self.tst),str(self.l),str(self.r))
+
+    def toks(self,**kargs):
+        ttest  = self.tst.toks(**kargs)
+        ttest.append((Token.Literal,' ? '))
+        ttrue  = self.l.toks(**kargs)
+        ttrue.append((Token.Literal,' : '))
+        tfalse = self.r.toks(**kargs)
+        return ttest+ttrue+tfalse
 
     # default verify method if smt module is not loaded.
     # here we check if tst or its negation exist in env.conds but we can
@@ -1103,6 +1155,13 @@ class op(exp):
     def __str__(self):
         return '(%s%s%s)'%(str(self.l),self.op.symbol,str(self.r))
 
+    def toks(self,**kargs):
+        l = self.l.toks(**kargs)
+        l.insert(0,(Token.Literal,'('))
+        r = self.r.toks(**kargs)
+        r.append((Token.Literal,')'))
+        return l+[(Token.Literal,self.op.symbol)]+r
+
     def simplify(self):
         minus = (self.op.symbol=='-')
         l = self.l.simplify()
@@ -1167,6 +1226,11 @@ class uop(exp):
 
     def __str__(self):
         return '(%s%s)'%(self.op.symbol,str(self.r))
+
+    def toks(self,**kargs):
+        r = self.r.toks(**kargs)
+        r.append((Token.Literal,')'))
+        return [(Token.Literal,'(%s'%self.op.symbol)]+r
 
     def simplify(self):
         self.r = self.r.simplify()

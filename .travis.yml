@@ -10,7 +10,7 @@ addons:
     packages:
     - unzip
 before_install:
-    - wget -q -O /tmp/z3.zip https://github.com/Z3Prover/bin/raw/master/releases/z3-4.4.0-x64-ubuntu-14.04.zip
+  - wget -q -O /tmp/z3.zip https://github.com/Z3Prover/bin/raw/master/releases/z3-4.4.0-x64-ubuntu-14.04.zip
   - mkdir z3
   - unzip -q -d z3 -j /tmp/z3.zip
   - export PYTHONPATH=$PYTHONPATH:$(pwd)/z3

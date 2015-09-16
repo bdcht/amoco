@@ -188,6 +188,11 @@ class _target(object):
     def __eq__(self,t):
         return (self.cst==t.cst and self.parent==t.parent)
 
+    def __repr__(self):
+        pfx = 'dirty ' if self.dirty else ''
+        cnd = [str(x) for x in self.econd]
+        return '<%s_target %s by %s %s>'%(pfx,self.cst,self.parent.name, cnd)
+
 
 # -----------------------------------------------------------------------------
 # fast forward based analysis:
@@ -387,7 +392,7 @@ class fbackward(lforward):
 
 # -----------------------------------------------------------------------------
 # link backward based analysis:
-# a generalisation of link forward where pc is evaluated by evaluating all paths
+# a generalisation of link forward where pc is evaluated by considering all paths
 # that link to the current node.
 class lbackward(fforward):
     policy = {'depth-first': False, 'branch-lazy': False, 'frame-aliasing':False}
@@ -436,11 +441,17 @@ class lbackward(fforward):
             if x in (s.parent for s in self.spool):
                 code.mapper.assume_no_aliasing = alf
                 return xpc
-        # f is now fully explored so we can "return" to callers:
-        logger.info('lbackward: function %s done'%f)
         # cleanup spool:
         for t in self.spool:
-            if t.parent.c is f.cfg: t.dirty=True
+            if t.parent.c is f.cfg:
+                if t.cst in [n.data.address for n in t.parent.N(+1)]:
+                    t.dirty=True
+                else:
+                    # the target in spool will create a new branch/leaf
+                    # so we're not done yet...
+                    return xpc
+        # f is now fully explored so we can "return" to callers:
+        logger.info('lbackward: function %s done'%f)
         # if needed compute the full map:
         if f.misc['partial']: m = f.makemap()
         f.map = m

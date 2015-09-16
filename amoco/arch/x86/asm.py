@@ -447,13 +447,14 @@ def i_JMPF(i,fmap):
 
 #------------------------------------------------------------------------------
 def _loop_(i,fmap,cond):
+  pc = fmap[eip]+i.length
   opdsz = 16 if i.misc['opdsz'] else 32
   src = i.operands[0].signextend(32)
-  loc = fmap[eip]+src
+  loc = pc+src
   loc = loc[0:opdsz].zeroextend(32)
   counter = cx if i.misc['adrsz'] else ecx
   fmap[counter] = fmap(counter)-1
-  fmap[eip] = tst(fmap(cond), loc, fmap[eip]+i.length)
+  fmap[eip] = tst(fmap(cond), loc, pc)
 
 def i_LOOP(i,fmap):
   counter = cx if i.misc['adrsz'] else ecx

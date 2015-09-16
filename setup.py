@@ -32,6 +32,7 @@ setup(
     name = 'amoco',
     version = '2.4.2',
     description = 'yet another binary analysis framework',
+    long_description = long_descr,
     # Metadata
     author = 'Axel Tillequin',
     author_email = 'bdcht3@gmail.com',
@@ -52,7 +53,7 @@ setup(
     install_requires = ['grandalf>=0.555', 'crysp>0.1', 'pyparsing'],
     extras_require={
         'test': ['pytest'],
-        'full': ['z3','pygments','ply','zodb'],
+        'full': ['pygments','ply','zodb'],
     },
     package_data = {
     },

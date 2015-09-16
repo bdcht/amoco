@@ -699,14 +699,24 @@ class comp(exp):
         return s+' }'
 
     def toks(self,**kargs):
+        if 'indent' in kargs:
+            p = kargs.get('indent',0)
+            pad = '\n'.ljust(p+1)
+            kargs['indent'] = p+4
+        else:
+            pad = ''
         tl = (Token.Literal,', ')
         s  = [(Token.Literal,'{')]
+        cur=0
         for nv in self:
-            t = nv.toks(newline=False,**kargs)
+            loc = "%s[%2d:%2d] -> "%(pad,cur,cur+nv.size)
+            cur += nv.size
+            s.append((Token.Literal,loc))
+            t = nv.toks(**kargs)
             s.extend(t)
             s.append(tl)
         if len(s)>1: s.pop()
-        s.append((Token.Literal,'}'))
+        s.append((Token.Literal,'%s}'%pad))
         return s
 
     def eval(self,env):

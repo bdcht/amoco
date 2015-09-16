@@ -392,9 +392,10 @@ def i_JMPF(i,fmap):
 
 #------------------------------------------------------------------------------
 def _loop_(i,fmap,cond):
+  pc = fmap[rip]+i.length
   opdsz = 16 if i.misc['opdsz'] else 64
   src = i.operands[0].signextend(64)
-  loc = fmap[rip]+src
+  loc = pc+src
   loc = loc[0:opdsz].zeroextend(64)
   counter = cx if i.misc['adrsz'] else ecx
   REX = i.misc['REX']
@@ -402,7 +403,7 @@ def _loop_(i,fmap,cond):
   if REX: W=REX[0]
   if W==1: counter = rcx
   fmap[counter] = fmap(counter)-1
-  fmap[rip] = tst(fmap(cond), loc, fmap[rip]+i.length)
+  fmap[rip] = tst(fmap(cond), loc, pc)
 
 def i_LOOP(i,fmap):
   cond = (counter!=0)
@@ -435,22 +436,22 @@ def i_Jcc(i,fmap):
   fmap[rip] = tst(fmap(cond),fmap[rip]+op1,fmap[rip])
 
 def i_JRCXZ(i,fmap):
-  pc = fmap[eip]+i.length
-  fmap[eip] = pc
+  pc = fmap[rip]+i.length
+  fmap[rip] = pc
   op1 = fmap(i.operands[0])
   op1 = op1.signextend(pc.size)
   cond = (rcx==0)
-  target = tst(fmap(cond),fmap[eip]+op1,fmap[eip])
-  fmap[eip] = target
+  target = tst(fmap(cond),fmap[rip]+op1,fmap[rip])
+  fmap[rip] = target
 
 def i_JECXZ(i,fmap):
-  pc = fmap[eip]+i.length
-  fmap[eip] = pc
+  pc = fmap[rip]+i.length
+  fmap[rip] = pc
   op1 = fmap(i.operands[0])
   op1 = op1.signextend(pc.size)
   cond = (ecx==0)
-  target = tst(fmap(cond),fmap[eip]+op1,fmap[eip])
-  fmap[eip] = target
+  target = tst(fmap(cond),fmap[rip]+op1,fmap[rip])
+  fmap[rip] = target
 
 def i_RETN(i,fmap):
   src = i.operands[0].v

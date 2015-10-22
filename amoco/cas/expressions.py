@@ -1364,6 +1364,8 @@ def complexity(e):
 def eqn1_helpers(e):
     assert e.op.unary
     if not e.r._is_def: return e.r
+    if e.r._is_cst:
+        return e.op(e.r)
     if e.r._is_vec:
         return vec(map(e.op,e.r.l))
     if e.r._is_eqn:
@@ -1388,13 +1390,10 @@ def eqn1_helpers(e):
 # e.l or e.r because these objects might be used also in other
 # expressions. See tests/test_cas_exp.py for details.
 def eqn2_helpers(e):
-    if e.r.depth()>e.threshold: e.r = top(e.r.size)
-    if e.l.depth()>e.threshold: e.l = top(e.l.size)
+    if complexity(e.r)>e.threshold: e.r = top(e.r.size)
+    if complexity(e.l)>e.threshold: e.l = top(e.l.size)
     if not (e.l._is_def | e.r._is_def): return top(e.size)
-    if e.l._is_vec: return vec([e.op(l,e.r) for l in e.l.l])
-    if e.r._is_vec: return vec([e.op(e.l,r) for r in e.r.l])
-    if e.l._is_eqn and e.l.r._is_cst:
-        assert e.l.op.unary==0
+    if e.l._is_eqn and e.l.r._is_cst and e.l.op.unary==0:
         xop = e.op*e.l.op
         if xop:
             e.op,lop = e.l.op,e.op
@@ -1437,6 +1436,10 @@ def eqn2_helpers(e):
                 return ptr(e.l,disp=e.op(0,e.r.value))
         elif e.l._is_cst:
             return e.op(e.l,e.r)
+    if e.l._is_vec:
+        return vec([e.op(x,e.r) for x in e.l.l]).simplify()
+    if e.r._is_vec:
+        return vec([e.op(e.l,x) for x in e.r.l]).simplify()
     if str(e.l)==str(e.r):
         if e.op.symbol in ('!=','<', '>' ): return bit0
         if e.op.symbol in ('==','<=','>='): return bit1

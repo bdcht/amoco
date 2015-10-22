@@ -48,6 +48,7 @@ class Log(logging.Logger):
         return self.log(VERBOSE,msg,*args,**kargs)
 
     def progress(self,count,total=0,pfx=''):
+        if self.level<VERBOSE: return
         term = self.handlers[0].stream
         if not term.isatty(): return
         if total>0:

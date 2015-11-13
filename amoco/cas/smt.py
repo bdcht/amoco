@@ -57,42 +57,42 @@ else:
 
     has_solver = True
 
-def newvar(pfx,e,solver):
-    s = '' if solver is None else '%d'%solver.ctr
+def newvar(pfx,e,slv):
+    s = '' if slv is None else '%d'%slv.ctr
     return z3.BitVec("%s%s"%(pfx,s),e.size)
 
-def top_to_z3(e,solver=None):
-    return newvar('_top',e,solver)
+def top_to_z3(e,slv=None):
+    return newvar('_top',e,slv)
 
-def cst_to_z3(e,solver=None):
+def cst_to_z3(e,slv=None):
     return z3.BitVecVal(e.v,e.size)
 
-def cfp_to_z3(e,solver=None):
+def cfp_to_z3(e,slv=None):
     return z3.RealVal(e.v)
 
-def reg_to_z3(e,solver=None):
+def reg_to_z3(e,slv=None):
     return z3.BitVec(e.ref,e.size)
 
-def comp_to_z3(e,solver=None):
+def comp_to_z3(e,slv=None):
     e.simplify()
-    parts = [x.to_smtlib(solver) for x in e]
+    parts = [x.to_smtlib(slv) for x in e]
     parts.reverse()
     if len(parts)>1:
         return z3.Concat(*parts)
     else:
         return parts[0]
 
-def slc_to_z3(e,solver=None):
-    x = e.x.to_smtlib(solver)
+def slc_to_z3(e,slv=None):
+    x = e.x.to_smtlib(slv)
     return z3.Extract(int(e.pos+e.size-1),int(e.pos),x)
 
-def ptr_to_z3(e,solver=None):
-    return e.base.to_smtlib(solver)+e.disp
+def ptr_to_z3(e,slv=None):
+    return e.base.to_smtlib(slv)+e.disp
 
-def mem_to_z3(e,solver=None):
+def mem_to_z3(e,slv=None):
     e.simplify()
     M = z3.Array('M',z3.BitVecSort(e.a.size),z3.BitVecSort(8))
-    p = e.a.to_smtlib(solver)
+    p = e.a.to_smtlib(slv)
     b = []
     for i in range(0,e.length):
         b.insert(0,M[p+i])
@@ -100,45 +100,45 @@ def mem_to_z3(e,solver=None):
     if len(b) > 1: return z3.Concat(*b)
     return b[0]
 
-def cast_z3_bool(x,solver=None):
-    b = x.to_smtlib(solver)
+def cast_z3_bool(x,slv=None):
+    b = x.to_smtlib(slv)
     if not z3.is_bool(b):
         assert b.size()==1
         b = (b==z3.BitVecVal(1,1))
     return b
 
-def cast_z3_bv(x,solver=None):
-    b = x.to_smtlib(solver)
+def cast_z3_bv(x,slv=None):
+    b = x.to_smtlib(slv)
     if z3.is_bool(b):
         b = z3.If(b, z3.BitVecVal(1,1), z3.BitVecVal(0,1))
     return b
 
-def tst_to_z3(e,solver=None):
+def tst_to_z3(e,slv=None):
     e.simplify()
-    z3t = cast_z3_bool(e.tst,solver)
-    l = cast_z3_bv(e.l,solver)
-    r = cast_z3_bv(e.r,solver)
+    z3t = cast_z3_bool(e.tst,slv)
+    l = cast_z3_bv(e.l,slv)
+    r = cast_z3_bv(e.r,slv)
     return z3.If(z3t, l, r)
 
 def tst_verify(e,env):
     t = e.tst.eval(env).simplify()
-    zt = cast_z3_bool(t)
-    s = z3.Solver()
+    s = solver()
+    zt = cast_z3_bool(t,s)
     for c in env.conds:
-        s.add(cast_z3_bool(c))
-    s.push()
-    s.add(zt)
-    rtrue = (s.check()==z3.sat)
-    s.pop()
-    s.add(z3.Not(zt))
-    rfalse = (s.check()==z3.sat)
+        s.solver.add(cast_z3_bool(c,s))
+    s.solver.push()
+    s.solver.add(zt)
+    rtrue = (s.solver.check()==z3.sat)
+    s.solver.pop()
+    s.solver.add(z3.Not(zt))
+    rfalse = (s.solver.check()==z3.sat)
     if rtrue and rfalse: return t
     if rtrue: return bit1
     if rfalse: return bit0
     # mapper conds are unsatisfiable:
     raise ValueError(e)
 
-def op_to_z3(e,solver=None):
+def op_to_z3(e,slv=None):
     e.simplify()
     l,r = e.l,e.r
     op = e.op
@@ -146,8 +146,8 @@ def op_to_z3(e,solver=None):
     elif op.symbol == '//' : op = operator.rshift
     elif op.symbol == '>>>': op = z3.RotateRight
     elif op.symbol == '<<<': op = z3.RotateLeft
-    z3l = l.to_smtlib(solver)
-    z3r = r.to_smtlib(solver)
+    z3l = l.to_smtlib(slv)
+    z3r = r.to_smtlib(slv)
     if z3.is_bool(z3l):
         z3l = _bool2bv1(z3l)
     if z3.is_bool(z3r):
@@ -161,16 +161,16 @@ def op_to_z3(e,solver=None):
         res = _bool2bv1(res)
     return res
 
-def uop_to_z3(e,solver=None):
+def uop_to_z3(e,slv=None):
     e.simplify()
     r = e.r
     op = e.op
-    z3r = r.to_smtlib(solver)
+    z3r = r.to_smtlib(slv)
     if z3.is_bool(z3r):
         z3r = _bool2bv1(z3r)
     return op(z3r)
 
-def vec_to_z3(e,solver=None):
+def vec_to_z3(e,slv=None):
     # flatten vec:
     e.simplify()
     # translate vec list to z3:
@@ -179,7 +179,7 @@ def vec_to_z3(e,solver=None):
         zx = x.to_smtlib()
         beqs.append(zx)
     if len(beqs)==0: return exp(e.size)
-    if solver is None:
+    if slv is None:
         # if no solver is provided, it needs to be
         # a list of boolean equations
         if all([z3.is_bool(x) for x in beqs]):
@@ -191,8 +191,8 @@ def vec_to_z3(e,solver=None):
         # if the solver is provided (default)
         # then a new local variable is added which
         # should equal one of the z3 expression.
-        var = newvar('_var',e,solver)
-        solver.solver.add(z3.Or([var==x for x in beqs]))
+        var = newvar('_var',e,slv)
+        slv.solver.add(z3.Or([var==x for x in beqs]))
     return var
 
 def _bool2bv1(z):
@@ -210,11 +210,12 @@ if has_solver:
     tst.to_smtlib  = tst_to_z3
     tst.verify     = tst_verify
     op.to_smtlib   = op_to_z3
-    uop.to_smtlib   = uop_to_z3
+    uop.to_smtlib  = uop_to_z3
     vec.to_smtlib  = vec_to_z3
+    vecw.to_smtlib = top_to_z3
 
-def to_smtlib(e,solver=None):
-    return e.to_smtlib(solver)
+def to_smtlib(e,slv=None):
+    return e.to_smtlib(slv)
 
 def model_to_mapper(r,locs):
     m = mapper()

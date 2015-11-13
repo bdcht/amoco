@@ -11,8 +11,12 @@ conf = cp.SafeConfigParser()
 # basic block section
 conf.add_section('block')
 conf.set('block', 'header'   , 'True')
+conf.set('block', 'footer'   , 'False')
 conf.set('block', 'bytecode' , 'True')
 conf.set('block', 'padding'  , '4'   )
+
+conf.add_section('cas')
+conf.set('cas', 'complexity' , '30'  )
 
 # log section
 conf.add_section('log')
@@ -32,10 +36,10 @@ def get_module_conf(module_name):
     D = defaultdict(lambda:None)
     if conf.has_section(module_name):
         for k,v in conf.items(module_name):
-            k = k.lower()
-            v = v.lower()
-            if  k == 'true': D[k]=True
-            elif k == 'false': D[k]=False
+            if  v.lower() == 'true':
+                D[k]=True
+            if  v.lower() == 'false':
+                D[k]=False
             else:
                 try:
                     v = int(v,0)

@@ -86,6 +86,15 @@ def test_op(a,b):
     assert e.r.v == 0xffffffffL
     assert e.r.sf == True
 
+def test_op_slc(a,b):
+    e = a^b
+    assert e[8:16] == a[8:16]^b[8:16]
+    e = composer([a[0:8],b[0:8]])
+    x = (e&a[0:16])[0:8]
+    assert x._is_slc
+    x = x.simplify()
+    assert x._is_reg and x==a[0:8]
+
 def test_ptr(a):
     p = ptr(a)
     q = ptr(a,disp=17)
@@ -115,3 +124,22 @@ def test_vec(a):
     assert z.l[3]==0x13
     assert (~v).l[3]==0xffffffef
 
+def test_vecw():
+    x = [cst(n) for n in range(5)]
+    v1 = vec(x)
+    v2 = vec(x[0:3])
+    v3 = vec([v1,v2]).simplify()
+    assert len(v3.l)==5
+    assert v3==v1
+    v4 = vec([v1,v2]).simplify(widening=True)
+    assert not v4._is_def
+    assert len(v4.l)==5
+    assert v4+1 == v4
+    assert v4.depth()==float('inf')
+    assert v3[8:16].l == v4[8:16].l
+
+def test_top(r):
+    t = top(8)
+    assert t+3 == t
+    assert t^r[0:8] == t
+    assert (t==3) == top(1)

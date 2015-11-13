@@ -204,7 +204,7 @@ SPARC_V8_full_formats = {
 
 SPARC_V8_full = Formatter(SPARC_V8_full_formats)
 
-def SPARC_V8_synthetic(null,i):
+def SPARC_V8_synthetic(null,i,toks=False):
     s = SPARC_V8_full(i)
     return SPARC_Synthetic_renaming(s, i)
 

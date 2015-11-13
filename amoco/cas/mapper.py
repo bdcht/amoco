@@ -11,6 +11,7 @@ from .expressions import *
 from amoco.cas.tracker import generation
 from amoco.system.core import MemoryMap
 from amoco.arch.core   import Bits
+from amoco.ui.render   import vltable
 
 # a mapper is a symbolic functional representation of the execution
 # of a set of instructions.
@@ -21,7 +22,6 @@ from amoco.arch.core   import Bits
 # individual separated zones.
 # conds  : is the list of conditions that must be True for the mapper
 # csi    : is the optional interface to a "concrete" state
-# to be valid.
 class mapper(object):
     assume_no_aliasing = False
 
@@ -53,8 +53,17 @@ class mapper(object):
         return '\n'.join(["%s <- %s"%x for x in self])
 
     def pp(self,**kargs):
-        lv = [(l.pp(**kargs),v.pp(**kargs)) for (l,v) in self]
-        return '\n'.join(["%s <- %s"%x for x in lv])
+        t = vltable()
+        t.rowparams['sep'] = ' <- '
+        for (l,v) in self:
+            if l._is_reg: v = v[0:v.size]
+            lv = (l.toks(**kargs)+
+                  [(render.Token.Column,'')]+
+                  v.toks(**kargs))
+            t.addrow(lv)
+        if t.colsize[0]>18: t.colsize[0]=18
+        if t.colsize[1]>58: t.colsize[1]=58
+        return str(t)
 
     def __getstate__(self):
         return (self.__map,self.csi)
@@ -153,13 +162,13 @@ class mapper(object):
         try:
             res = self.__Mem.read(a,l)
         except MemoryError,e: # no zone for location a;
-            res = [top(l*8)]
+            res = [exp(l*8)]
         if exp._endian==-1: res.reverse()
         P = []
         cur = 0
         for p in res:
             plen = len(p)
-            if isinstance(p,exp) and not p._is_def:
+            if isinstance(p,exp) and (p._is_def is False):
                 if self.csi:
                     p = self.csi(mem(a,p.size,disp=cur))
                 else:
@@ -171,7 +180,14 @@ class mapper(object):
         return composer(P)
 
     def _Mem_write(self,a,v):
-        self.__Mem.write(a,v)
+        if a.base._is_vec:
+            locs = (ptr(l,a.seg,a.disp) for l in a.base.l)
+        else:
+            locs = (a,)
+        iswide = not a.base._is_def
+        for l in locs:
+            self.__Mem.write(l,v,deadzone=iswide)
+            if (l in self.__map): del self.__map[l]
 
     # just a convenient wrapper around M/R:
     def __getitem__(self,k):
@@ -193,8 +209,12 @@ class mapper(object):
                 return
         if k._is_slc and not loc._is_reg:
             raise ValueError('memory location slc is not supported')
-        elif k._is_ptr or k._is_mem:
+        elif loc._is_ptr:
             r = v
+            oldr = self.__map.get(loc,None)
+            if oldr is not None and oldr.size>r.size:
+                r = composer([r,oldr[r.size:oldr.size]])
+            self._Mem_write(loc,r)
             self.__map.lastw = len(self.__map)+1
         else:
             r = self.R(loc)
@@ -203,11 +223,6 @@ class mapper(object):
                 r[0:loc.size] = loc
             pos = k.pos if k._is_slc else 0
             r[pos:pos+k.size] = v.simplify()
-        if loc._is_ptr:
-            oldr = self.__map.get(loc,None)
-            if oldr is not None and oldr.size>r.size:
-                r = composer([r,oldr[r.size:oldr.size]])
-            self._Mem_write(loc,r)
         self.__map[loc] = r
 
     def update(self,instr):
@@ -243,6 +258,7 @@ class mapper(object):
         mm = mapper(csi=self.csi)
         for c in self.conds:
             cc = c.eval(m)
+            if not cc._is_def: continue
             if cc==1: continue
             if cc==0:
                 logger.error("invalid mapper eval: cond %s is false"%c)
@@ -260,6 +276,7 @@ class mapper(object):
         mcopy = m.use()
         for c in self.conds:
             cc = c.eval(m)
+            if not cc._is_def: continue
             if cc==1: continue
             if cc==0:
                 logger.error("invalid mapper eval: cond %s is false"%c)
@@ -315,16 +332,21 @@ class mapper(object):
 from amoco.cas.smt import *
 
 # union of two mappers:
-def merge(m1,m2):
+def merge(m1,m2,widening=None):
     m1 = m1.assume(m1.conds)
     m2 = m2.assume(m2.conds)
     mm = mapper()
     for loc,v1 in m1:
         if loc._is_ptr:
-            v2 = m2[mem(loc,v1.size)]
+            seg = loc.seg
+            disp = loc.disp
+            if loc.base._is_vec:
+                v2 = vec([m2[mem(l,v1.size,seg,disp)] for l in loc.base.l])
+            else:
+                v2 = m2[mem(loc,v1.size)]
         else:
             v2 = m2[loc]
-        vv = vec([v1,v2]).simplify()
+        vv = vec([v1,v2]).simplify(widening)
         mm[loc] = vv
     for loc,v2 in m2:
         if mm.has(loc): continue
@@ -332,16 +354,6 @@ def merge(m1,m2):
             v1 = m1[mem(loc,v2.size)]
         else:
             v1 = m1[loc]
-        vv = vec([v1,v2]).simplify()
+        vv = vec([v1,v2]).simplify(widening)
         mm[loc] = vv
     return mm
-
-def widening(m):
-    w = False
-    for loc,v in m:
-        if loc._is_reg: v = v[0:loc.size]
-        if v._is_vec and len(v.l)>2:
-            w = True
-            v.w = w
-    return w
-

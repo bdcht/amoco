@@ -10,10 +10,7 @@ instruction.set_uarch(uarch)
 
 from amoco.arch.x86.formats import *
 
-instruction.set_formatter(IA32_Intel)
-
 from amoco.arch.x86 import spec_ia32
-
 disassemble = disassembler([spec_ia32])
 disassemble.maxlen = 15
 
@@ -24,7 +21,10 @@ def configure(**kargs):
     from amoco.config import get_module_conf
     conf = get_module_conf('x86')
     conf.update(kargs)
-    if conf['highlight']:
-        instruction.set_formatter(IA32_Intel_highlighted)
+    # asm format:
+    if conf['format'] in ('AT&T','at&t','ATT','att'):
+        instruction.set_formatter(IA32_ATT)
+    else:
+        instruction.set_formatter(IA32_Intel)
 
 configure()

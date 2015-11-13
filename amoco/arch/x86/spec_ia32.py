@@ -137,6 +137,9 @@ def ia32_strings(obj):
 @ispec_ia32("16>[ {d4} ib(8) ]", mnemonic = "AAM",    type=type_data_processing)
 @ispec_ia32("16>[ {6a} ib(8) ]", mnemonic = "PUSH",   type=type_data_processing)
 @ispec_ia32("16>[ {cd} ib(8) ]", mnemonic = "INT",    type=type_control_flow)
+def ia32_imm8(obj,ib):
+    obj.operands = [env.cst(ib,8)]
+
 @ispec_ia32("16>[ {eb} ib(8) ]", mnemonic = "JMP",    type=type_control_flow)
 @ispec_ia32("16>[ {e2} ib(8) ]", mnemonic = "LOOP",   type=type_control_flow)
 @ispec_ia32("16>[ {e1} ib(8) ]", mnemonic = "LOOPE",  type=type_control_flow)
@@ -299,6 +302,7 @@ def ia32_imm_rel(obj,cc,cb):
 def ia32_imm_rel(obj,cc,data):
     obj.cond = CONDITION_CODES[cc]
     size = obj.misc['opdsz'] or 32
+    if data.size<size: raise InstructionError(obj)
     imm = data[0:size]
     op1 = env.cst(imm.int(-1),size)
     op1.sf = True

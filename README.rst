@@ -1338,6 +1338,21 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.4.3`_
+
+  * add ui.graphics packages (emptied)
+  * add ui.views module with support for block/func/xfunc
+  * add ui.render.vltable class to pretty print tables
+  * improve instruction formatter class to access pp tokens
+  * cleaner itercfg and lbackward algorithms
+  * add vecw expression class to represent 'widened' vec expressions
+  * improve Memory write of vec expressions
+  * improve widening and fixpoint in func.makemap()
+  * add 'type' attribute (std/pc/flags/stack/other)
+  * define register type for x86 arch
+  * fix some x86/64 decoding/formating/semantics
+  * update travis config, fix pytest vs. Token.
+
 - `v2.4.2`_
 
   * merge support for pygments pretty printing methods (in ui.render module)
@@ -1350,7 +1365,6 @@ Changelog
   * improve sparc v8 formats
   * add sparc coprocessor registers
   * update README
-
 
 - `v2.4.1`_
 
@@ -1430,6 +1444,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _zodb: http://www.zodb.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.4.3: https://github.com/bdcht/amoco/releases/tag/v2.4.3
 .. _v2.4.2: https://github.com/bdcht/amoco/releases/tag/v2.4.2
 .. _v2.4.1: https://github.com/bdcht/amoco/releases/tag/v2.4.1
 .. _v2.4.0: https://github.com/bdcht/amoco/releases/tag/v2.4.0

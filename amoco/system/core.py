@@ -10,7 +10,7 @@ logger = Log(__name__)
 
 from bisect import bisect_left
 
-from amoco.cas.expressions import top
+from amoco.cas.expressions import exp,top
 
 #------------------------------------------------------------------------------
 # datadiv provides the API for manipulating data values extracted from memory.
@@ -154,10 +154,11 @@ class mo(object):
 
 #------------------------------------------------------------------------------
 class MemoryZone(object):
-    __slot__ = ['rel','_map','__cache']
+    __slot__ = ['rel','_map','__cache','__dead']
 
     def __init__(self,rel=None,D=None):
         self.rel = rel
+        self.__dead = False
         self._map = []
         self.__cache = [] # speedup locate method
         if D != None and isinstance(D,dict):
@@ -187,15 +188,17 @@ class MemoryZone(object):
 
     # read l bytes starting at vaddr.
     # return value is a list of datadiv values, unmapped areas
-    # are returned as 'top' expressions.
+    # are returned as 'void' expressions : top if zone is marked as 'dead'
+    # or bottom otherwise.
     def read(self,vaddr,l):
+        void = top if self.__dead else exp
         res = []
         i = self.locate(vaddr)
         if i is None:
-            if len(self._map)==0: return [top(l*8)]
+            if len(self._map)==0: return [void(l*8)]
             v0 = self._map[0].vaddr
-            if (vaddr+l)<=v0: return [top(l*8)]
-            res.append(top((v0-vaddr)*8))
+            if (vaddr+l)<=v0: return [void(l*8)]
+            res.append(void((v0-vaddr)*8))
             l = (vaddr+l)-v0
             vaddr = v0
             i = 0
@@ -204,14 +207,14 @@ class MemoryZone(object):
             try:
                 data,ll = self._map[i].read(vaddr,ll)
             except IndexError:
-                res.append(top(ll*8))
+                res.append(void(ll*8))
                 ll=0
                 break
             if data is None:
                 vi = self.__cache[i]
                 if vaddr < vi:
                     l = min(vaddr+ll,vi)-vaddr
-                    data = top(l*8)
+                    data = void(l*8)
                     ll -= l
                     i -=1
             if data is not None:
@@ -222,7 +225,11 @@ class MemoryZone(object):
         return res
 
     # write data at address vaddr in map
-    def write(self,vaddr,data,res=False):
+    def write(self,vaddr,data,res=False,dead=False):
+        if dead:
+            self._map = []
+            self._cache = []
+            self.__dead = dead
         self.addtomap(mo(vaddr,data))
         if res is True: self.restruct()
 
@@ -327,11 +334,11 @@ class MemoryMap(object):
         else:
             raise MemoryError(address)
 
-    def write(self,address,expr):
+    def write(self,address,expr,deadzone=False):
         r,o = self.reference(address)
         if not r in self._zones:
             self.newzone(r)
-        self._zones[r].write(o,expr)
+        self._zones[r].write(o,expr,deadzone)
 
     def restruct(self):
         for z in self._zones.itervalues(): z.restruct()

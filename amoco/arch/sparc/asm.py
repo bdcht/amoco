@@ -551,18 +551,18 @@ def i_flush(ins,fmap):raise NotImplementedError
 
 @__pcnpc
 def i_FPop1(ins,fmap):
-    raise InstructionError
+    raise NotImplementedError
 @__pcnpc
 def i_FPop2(ins,fmap):
-    raise InstructionError
+    raise NotImplementedError
 
 @__pcnpc
 def i_CPop1(ins,fmap):
-    raise InstructionError
+    raise NotImplementedError
 @__pcnpc
 def i_CPop2(ins,fmap):
-    raise InstructionError
+    raise NotImplementedError
 
 @__pcnpc
 def i_unimp(ins,fmap):
-    raise InstructionError
+    raise NotImplementedError

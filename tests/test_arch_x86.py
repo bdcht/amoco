@@ -2,7 +2,10 @@ import pytest
 
 from amoco.arch.x86.cpu_x86 import *
 
-instruction.set_formatter(IA32_Intel)
+# enforce Intel syntax and NullFormatter output:
+configure(format='Intel')
+from amoco.ui import render
+render.configure(formatter='Null')
 
 def test_decoder_000():
   c = '\x90'

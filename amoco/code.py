@@ -4,27 +4,42 @@
 # Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
+"""
+The code module defines classes that represent assembly blocks, functions,
+and *external functions*.
+"""
+
+import pdb
+import heapq
 from collections import defaultdict
+
 from amoco.cas.mapper import *
 
 from amoco.config import conf
 from amoco.logger import Log
 logger = Log(__name__)
 
-#------------------------------------------------------------------------------
-# A block instance is a 'continuous' sequence of instructions.
-#------------------------------------------------------------------------------
-class block(object):
-    __slots__=['_map','instr','_name','misc','_helper']
+from amoco.ui.views import blockView, funcView, xfuncView
 
-    # the init of a block takes a list of instructions and creates a map of it:
+from amoco.ui.render import Token,vltable
+
+#-------------------------------------------------------------------------------
+class block(object):
+    """
+    A block instance is a 'continuous' sequence of instructions.
+    """
+    __slots__=['_map','instr','_name','misc','_helper','view']
+
     def __init__(self, instrlist, name=None):
+        """
+        the init of a block takes a list of instructions and creates a `map` of it
+        """
         self._map  = None
-        # base/offset need to be defined before code (used in setcode)
         self.instr = instrlist
         self._name = name
         self.misc  = defaultdict(lambda :0)
         self._helper = None
+        self.view  = blockView(self)
 
     @property
     def map(self):
@@ -51,7 +66,10 @@ class block(object):
 
     @property
     def support(self):
-        return (self.address,self.address+self.length) if len(self.instr)>0 else (None,None)
+        if len(self.instr)>0:
+            return (self.address,self.address+self.length)
+        else:
+            return (None,None)
 
     def getname(self):
         return str(self.address) if not self._name else self._name
@@ -94,22 +112,28 @@ class block(object):
             # TODO: update misc annotations too
             return len(I)-pos
 
-    def __str__(self):
-        L = []
+    def __vltable(self):
+        T = vltable()
         n = len(self.instr)
-        if conf.getboolean('block','header'):
-            L.append('# --- block %s ---' % self.name)
+        for i in self.instr:
+            ins2 = i.toks()
+            if isinstance(ins2,str): ins2 = [(Token.Literal,ins2)]
+            ins = [ (Token.Address,'{:<10}'.format(i.address)),
+                    (Token.Column,''),
+                    (Token.Literal,"'%s'"%(i.bytes.encode('hex'))),
+                    (Token.Column,'') ]
+            T.addrow(ins+ins2)
         if conf.getboolean('block','bytecode'):
-            bcs = [ "'%s'"%(i.bytes.encode('hex')) for i in self.instr ]
             pad = conf.getint('block','padding') or 0
-            maxlen = max(map(len,bcs))+pad
-            bcs = [ s.ljust(maxlen) for s in bcs ]
-        else:
-            bcs = ['']*n
-        ins = [ ('{:<10}'.format(i.address),i.formatter(i)) for i in self.instr ]
-        for j in range(n):
-            L.append('%s %s %s'%(ins[j][0],bcs[j],ins[j][1]))
-        return '\n'.join(L)
+            T.colsize[1] += pad
+        if conf.getboolean('block','header'):
+            T.header = ('# --- block %s ---' % self.name).ljust(T.width,'-')
+        if conf.getboolean('block','footer'):
+            T.footer = '-'*T.width
+        return T
+
+    def __str__(self):
+        return str(self.__vltable())
 
     def __repr__(self):
         return '<%s object (name=%s) at 0x%08x>'%(self.__class__.__name__,self.name,id(self))
@@ -148,6 +172,7 @@ class func(block):
         self._name = name
         self.misc  = defaultdict(lambda :0)
         self._helper = None
+        self.view  = funcView(self)
 
     @property
     def address(self):
@@ -163,97 +188,76 @@ class func(block):
         smax = max((b.address+b.length for b in self.blocks))
         return (smin,smax)
 
-    def backward(self,node):
-        D = self.cfg.dijkstra(node,f_io=-1)
-        logger.verbose('computing backward map from %s',node.name)
-        return self.makemap(tagged=D.keys())
-
     #(re)compute the map of the entire function cfg:
-    def makemap(self,tagged=None,withmap=None):
-        _map = None
-        if tagged is None: tagged = self.cfg.sV
-        if self.cfg.order()==0: return
-        # get entrypoint:
-        t0 = self.cfg.roots()
-        if len(t0)==0:
-            logger.warning("function %s seems recursive: first block taken as entrypoint",self)
-            t0 = [self.cfg.sV[0]]
-        if len(t0)>1:
-            logger.warning("%s map computed with first entrypoint",self)
-        t0 = t0[0]
-        assert (t0 in tagged)
-        t0map = t0.data._map
-        if withmap is not None:
-            t0map <<= withmap
-        # init structs:
-        # spool is the list of current walking "heads" each having a mapper that captures
-        # execution up to this point, waitl is the list of nodes that have been reach
-        # by a path but are waiting for some other paths to reach them in order to collect
-        # and ultimately merge associated mappers before going into spool.
-        spool = [(t0,t0map)]
-        waitl = defaultdict(lambda :[])
-        visit = defaultdict(lambda :0)
-        dirty = defaultdict(lambda :0)
+    def makemap(self,withmap=None,widening=True):
+        # spawn a cfg layout to detect loops and allow to
+        # walk the cfg by using the nodes rank.
+        gr = self.view.layout
+        gr.init_all()
+        # init the walking process heap queue and heads:
+        # spool is a heap queue ordered by node rank. It is associated
+        # with the list of current walking "heads" (a mapper that captures
+        # execution up to this block.
         count = 0
-        # lets walk func cfg:
+        spool = []
+        heads = {}
+        for t in gr.layers[0]:
+            heapq.heappush(spool,(0,t))
+            tmap = t.data._map
+            if withmap is not None:
+                tmap <<= withmap
+            heads[t] = tmap
+        # lets walk the function's cfg, in rank priority order:
         while len(spool)>0:
-            n,m = spool.pop(0)
-            if dirty[n]: continue
             count += 1
             logger.progress(count,pfx='in %s makemap: '%self.name)
-            E = n.e_out()
-            exit = True
-            # we update spool/waitl with target nodes
-            for e in E:
-                visit[e]=1
-                if e.data and any([m(c)==0 for c in e.data]): continue
+            # take lowest ranked node from spool:
+            l,n = heapq.heappop(spool)
+            m = heads.pop(n)
+            # keep head for exit or merging points:
+            if len(n.e_out())==0 or len(n.e_in())>1: heads[n] = m
+            # we want to update the mapper by going through all edges out of n:
+            for e in n.e_out():
                 tn = e.v[1]
-                if not (tn in tagged): continue
-                exit = False
-                # if tn is a loop entry, n is marked as a loop end:
-                if tn.data.misc[tag.LOOP_START] and self.cfg.path(tn,n,f_io=1):
-                    if not n.data.misc[tag.LOOP_END]:
-                        logger.verbose('loop end at node %s'%n.name)
-                    n.data.misc[tag.LOOP_END] += 1
-                tm = tn.data.map.assume(e.data)
+                # compute constraints that lead to this path with this mapper:
+                econd = []
+                if e.data:
+                    econd = [m(c) for c in e.data]
+                # increment loop index for widening:
+                if e in gr.alt_e:
+                    n.data.misc[tag.LOOP_END]+=1
+                    tn.data.misc[tag.LOOP_START]+=1
+                # compute new mapper state:
                 try:
-                    waitl[tn].append(m>>tm)
-                except ValueError:
+                    # apply edge contraints to the current mapper and
+                    # try to execute target:
+                    mtn = m.assume(econd)>>tn.data.map
+                except ValueError,err:
                     logger.warning("link %s ignored"%e)
-                # if target node has been reach by all parent path, we
-                # can merge its mappers and proceed, otherwise it stays
-                # in wait list and we take next node from spool
-                if all(visit[x] for x in tn.e_in()):
-                    wtn = waitl[tn]
-                    if len(wtn)>0:
-                        spool.append((tn,reduce(merge,wtn)))
-                    del waitl[tn]
-            # if its an exit node, we update _map and check if widening is possible
-            if exit:
-                _map = merge(_map,m) if _map else m
-                if widening(_map):
-                    # if widening has occured, we stop walking the loop by
-                    # removing the associated spool node:
-                    for s in spool:
-                        if self.cfg.path(s[0],n,f_io=1):
-                            dirty[s[0]] = 1
-                    logger.verbose('widening needed at node %s'%n.name)
-            # if spool is empty but wait list is not then we check if
-            # its a loop entry and update spool:
-            if len(spool)==0 and len(waitl)>0:
-                tn = waitl.keys()[0]
-                # if tn has output edges its a loop entry:
-                if len(tn.e_out())>0:
-                    if not tn.data.misc[tag.LOOP_START]:
-                        logger.verbose('loop start at node %s'%tn.name)
-                    tn.data.misc[tag.LOOP_START] = 1
-                spool.append((tn,reduce(merge,waitl[tn])))
-                del waitl[tn]
-        assert len(waitl)==0
-        if len(tagged)<self.cfg.order() or sum(visit.values())<self.cfg.norm():
-            self.misc['partial']=True
-        else:
-            logger.verbose('map of function %s computed'%self)
+                    continue
+                # and update heads and spool...
+                if tn in heads:
+                    # check for widening:
+                    if widening and tn.data.misc[tag.LOOP_START]==1:
+                        logger.verbose('widening at %s'%tn.name)
+                        mm = merge(heads[tn],mtn,widening)
+                    else:
+                        mm = merge(heads[tn],mtn)
+                    fixpoint = (mm==heads[tn])
+                else:
+                    mm = mtn
+                    fixpoint = False
+                # update heads:
+                heads[tn] = mm
+                # update spool if not on a fixpoint:
+                if not fixpoint:
+                    r = gr.grx[tn].rank
+                    if not (r,tn) in spool:
+                        heapq.heappush(spool,(r,tn))
+                else:
+                    logger.verbose('fixpoint at %s'%tn.name)
+        out = [heads[x] for x in self.cfg.leaves()]
+        _map = reduce(merge,out) if out else None
         return _map
 
     def __str__(self):
@@ -265,7 +269,7 @@ class func(block):
 # defined in the ext expression.
 #------------------------------------------------------------------------------
 class xfunc(object):
-    __slots__ = ['map','name','address','length','misc']
+    __slots__ = ['map','name','address','length','misc','view']
 
     def __init__(self, x):
         self.map = mapper()
@@ -279,6 +283,7 @@ class xfunc(object):
             for (k,v) in tag.list():
                 if (k in doc) or (v in doc):
                     self.misc[v] = 1
+        self.view  = xfuncView(self)
 
     @property
     def support(self):

@@ -4,22 +4,24 @@ from .env import *
 from .utils import *
 from amoco.arch.core import Formatter
 
+from amoco.ui.render import Token, TokenListJoin
+
 def mnemo(i):
     m = i.mnemonic
     if hasattr(i,'setflags') and i.setflags:
         m += 'S'
     if hasattr(i,'cond') and i.cond!=CONDITION_AL:
         m += '.%s'%CONDITION[i.cond][0]
-    return '%s'%(m.lower()).ljust(12)
+    return [(Token.Mnemonic,'%s'%(m.lower()).ljust(12))]
 
 def regs(i,limit=None):
     ops = i.operands
     if limit: ops = ops[:limit]
-    return ['{0}'.format(r) for r in ops]
+    return [(Token.Register,'{0}'.format(r)) for r in ops]
 
 def reglist(i,pos=-1):
     l = i.operands[pos]
-    return "{%s}"%(', '.join(['{0}'.format(r) for r in l]))
+    return [(Token.Register,"{%s}"%(', '.join(['{0}'.format(r) for r in l])))]
 
 def deref(i,pos=-2):
     assert len(i.operands)>2
@@ -37,7 +39,7 @@ def deref(i,pos=-2):
             loc = '[%s], %s'%(base, ostr)
     else:
         loc = '[%s], %s'%(base,ostr)
-    return [loc]
+    return [(Token.Memory,loc)]
 
 def label(i,pos=0):
     _pc = i.address
@@ -45,11 +47,11 @@ def label(i,pos=0):
     pcoffset = 4 if internals['isetstate']==0 else 2
     _pc = _pc + 2*pcoffset
     offset = i.operands[pos]
-    return '*'+str(_pc+offset)
+    return [(Token.Address,'*'+str(_pc+offset))]
 
 def setend(i):
     endian_specifier = 'BE' if i.set_bigend else 'LE'
-    return mnemo(i)+endian_specifier
+    return mnemo(i)+[(Token.Literal,endian_specifier)]
 
 def plx(i):
     m = mnemo(i)
@@ -59,23 +61,23 @@ def plx(i):
         ostr = '#%c%d'%(sign,offset.value)
     else:
         ostr = sign+str(offset)
-    loc = '[%s, %s]'%(base, ostr)
+    loc = [(Token.Memory,'[%s, %s]'%(base, ostr))]
     return m+loc
 
 def specreg(i):
     spec_reg = "%s_"%apsr
     if i.write_nzcvq: spec_reg += 'nzcvq'
     if i.write_g: spec_reg += 'g'
-    return '%s, %s'%(i.operands[0],spec_reg)
+    return [(Token.Register,'%s, %s'%(i.operands[0],spec_reg))]
 
-format_allregs = [lambda i: ', '.join(regs(i))]
+format_allregs = [lambda i: TokenListJoin(', ',regs(i))]
 format_default = [mnemo]+format_allregs
 format_sreg    = format_default
 format_label   = [mnemo, label]
-format_adr     = [mnemo, lambda i: '{0}, '.format(i.operands[0]), lambda i: label(i,1)]
+format_adr     = [mnemo, lambda i: regs(i,1), lambda i: label(i,1)]
 format_bits    = format_default
-format_reglist = [mnemo, (lambda i: ', '.join(regs(i,-1))), reglist]
-format_deref   = [mnemo, lambda i: ', '.join(regs(i,-2)+deref(i,-2))]
+format_reglist = [mnemo, (lambda i: TokenListJoin(', ',regs(i,-1))), reglist]
+format_deref   = [mnemo, lambda i: TokenListJoin(', ',regs(i,-2)+deref(i,-2))]
 format_plx     = [plx]
 format_msr     = [mnemo, specreg]
 format_setend  = [setend]

@@ -10,6 +10,7 @@ from amoco.logger import Log
 logger = Log(__name__)
 
 from grandalf.graphs import Vertex,Edge,Graph
+from grandalf.layouts import SugiyamaLayout
 
 from amoco.system.core import MemoryZone
 
@@ -23,6 +24,7 @@ class node(Vertex):
     def __init__(self,acode):
         Vertex.__init__(self,data=acode)
         self.name = self.data.name
+        self.view = self.data.view
 
     def __repr__(self):
         return '<%s [%s] at 0x%x>'%(self.__class__.__name__,self.name,id(self))

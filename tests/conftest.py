@@ -77,3 +77,14 @@ for R,D,F in os.walk(samples_dir):
 @pytest.fixture(scope='session')
 def samples():
     return samples_all
+
+@pytest.fixture(scope='session')
+def x86samples(samples):
+    return filter(lambda s: 'x86/' in s, samples)
+
+@pytest.fixture(scope='session')
+def ploop(x86samples):
+    for s in x86samples:
+        if 'loop_simple' in s:
+            return s
+    return None

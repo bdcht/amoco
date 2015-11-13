@@ -20,7 +20,8 @@ def test_memory_001(M,sc1):
     o = z._map[0]
     assert o.data.val==sc1
 
-def test_memory_002(M,p):
+def test_memory_002(M,sc1,p):
+    M.write(0x0, sc1)
     M.write(p, 'A'*8)
     assert len(M._zones)==2
     # write little-endian 16 bits constant:
@@ -30,7 +31,10 @@ def test_memory_002(M,p):
     assert len(z._map)==3
     assert M.read(p+3,1)[0]==0x42
 
-def test_memory_003(M,y):
+def test_memory_003(M,sc1,p,y):
+    M.write(0x0, sc1)
+    M.write(p, 'A'*8)
+    M.write(p+2,cst(0x4243,16))
     # overwrite string with symbolic reg y:
     M.write(cst(0x10,32), y)
     assert len(M._zones)==2
@@ -38,7 +42,11 @@ def test_memory_003(M,y):
     assert len(z._map)==3
     assert z._map[1].data.val==y
 
-def test_memory_004(M,p,y):
+def test_memory_004(M,sc1,p,y):
+    M.write(0x0, sc1)
+    M.write(p, 'A'*8)
+    M.write(p+2,cst(0x4243,16))
+    M.write(cst(0x10,32), y)
     # test big endian cases:
     z = M._zones[p.base]
     c = z._map[1].data.val

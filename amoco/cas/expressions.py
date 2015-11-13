@@ -7,7 +7,7 @@
 from amoco.logger import Log
 logger = Log(__name__)
 
-from amoco.ui.render import Token,highlight
+from amoco.ui import render
 
 # decorators:
 #------------
@@ -135,10 +135,10 @@ class exp(object):
         raise ValueError("void expression")
 
     def toks(self,**kargs):
-        return [(Token.Literal,str(self))]
+        return [(render.Token.Literal,str(self))]
 
     def pp(self,**kargs):
-        return highlight(self.toks(**kargs))
+        return render.highlight(self.toks(**kargs))
 
     def bit(self,i):
         i = i%self.size
@@ -303,7 +303,7 @@ class cst(exp):
         return '{:#x}'.format(self.value)
 
     def toks(self,**kargs):
-        return [(Token.Constant,str(self))]
+        return [(render.Token.Constant,str(self))]
 
     def to_sym(self,ref):
         return sym(ref,self.v,self.size)
@@ -486,7 +486,7 @@ class cfp(exp):
         return '{:f}'.format(self.value)
 
     def toks(self,**kargs):
-        return [(Token.Constant,str(self))]
+        return [(render.Token.Constant,str(self))]
 
     def eval(self,env): return cfp(self.value,self.size)
 
@@ -566,7 +566,7 @@ class cfp(exp):
 # reg holds 32-bit register reference (refname).
 #------------------------------------------------------------------------------
 class reg(exp):
-    __slots__ = ['ref','_subrefs', '__protect']
+    __slots__ = ['ref','type','_subrefs', '__protect']
     _is_def   = True
     _is_reg   = True
 
@@ -577,17 +577,13 @@ class reg(exp):
         self.sf  = False
         self.ref = refname
         self._subrefs = {}
-
-    @_checkarg_slice
-    def __getitem__(self,i):
-        if i.start==0 and i.stop==self.size: return self
-        else: return slicer(self,i.start,i.stop-i.start)
+        self.type = regtype.STD
 
     def __str__(self):
         return self.ref
 
     def toks(self,**kargs):
-        return [(Token.Register,str(self))]
+        return [(render.Token.Register,str(self))]
 
     def eval(self,env):
         return env[self]
@@ -607,9 +603,38 @@ class reg(exp):
         self.size = v['size']
         self.sf = v['sf']
         self.ref = v['ref']
+        self.type = v['type']
         self._subrefs = v['_subrefs']
         self.__protect = v['_reg__protect']
 ##
+
+class regtype(object):
+    STD   = 0b0000
+    PC    = 0b0001
+    FLAGS = 0b0010
+    STACK = 0b0100
+    OTHER = 0b1000
+    cur   = None
+
+    def __init__(self,t):
+        self.t = t
+
+    def __call__(self,r):
+        if not r._is_reg:
+            logger.error('pc decorator ignored (not a register)')
+        r.type = self.t
+        return r
+
+    def __enter__(self):
+        regtype.cur = self.t
+
+    def __exit__(self,exc_type,exc_value,traceback):
+        regtype.cur = None
+
+is_reg_pc    = regtype(regtype.PC)
+is_reg_flags = regtype(regtype.FLAGS)
+is_reg_stack = regtype(regtype.STACK)
+is_reg_other = regtype(regtype.OTHER)
 
 #------------------------------------------------------------------------------
 # ext holds external symbols used by the dynamic linker.
@@ -628,7 +653,7 @@ class ext(reg):
         return '@%s'%self.ref
 
     def toks(self,**kargs):
-        tk = Token.Tainted if '!' in self.ref else Token.Name
+        tk = render.Token.Tainted if '!' in self.ref else render.Token.Name
         return [(tk,str(self))]
 
     def __setattr__(self,a,v):
@@ -705,18 +730,18 @@ class comp(exp):
             kargs['indent'] = p+4
         else:
             pad = ''
-        tl = (Token.Literal,', ')
-        s  = [(Token.Literal,'{')]
+        tl = (render.Token.Literal,', ')
+        s  = [(render.Token.Literal,'{')]
         cur=0
         for nv in self:
             loc = "%s[%2d:%2d] -> "%(pad,cur,cur+nv.size)
             cur += nv.size
-            s.append((Token.Literal,loc))
+            s.append((render.Token.Literal,loc))
             t = nv.toks(**kargs)
             s.extend(t)
             s.append(tl)
         if len(s)>1: s.pop()
-        s.append((Token.Literal,'%s}'%pad))
+        s.append((render.Token.Literal,'%s}'%pad))
         return s
 
     def eval(self,env):
@@ -848,11 +873,18 @@ class comp(exp):
                     self.smask[ra[0]:rb[1]] = [(ra[0],rb[1])]*(rb[1]-ra[0])
                     self.restruct()
                     break
+                elif not (na._is_def or nb._is_def):
+                    self.parts[(ra[0],rb[1])] = top(rb[1]-ra[0])
+                    self.parts.pop(ra)
+                    self.parts.pop(rb)
+                    self.smask[ra[0]:rb[1]] = [(ra[0],rb[1])]*(rb[1]-ra[0])
+                    self.restruct()
+                    break
     ##
 
     def depth(self):
         return sum((p.depth() for p in self))
-##
+    ##
 
 #------------------------------------------------------------------------------
 # mem holds memory fetches, ie a read operation of length size, in segment seg,
@@ -877,7 +909,7 @@ class mem(exp):
         return 'M%d%s%s'%(self.size,n,self.a)
 
     def toks(self,**kargs):
-        return [(Token.Memory,str(self))]
+        return [(render.Token.Memory,str(self))]
 
     def eval(self,env):
         a = self.a.eval(env)
@@ -920,13 +952,14 @@ class ptr(exp):
         return '%s(%s%s)'%(self.seg,self.base,d)
 
     def toks(self,**kargs):
-        return [(Token.Address,str(self))]
+        return [(render.Token.Address,str(self))]
 
     def simplify(self):
         self.base,offset = extract_offset(self.base)
         self.disp += offset
         if isinstance(self.seg,exp):
             self.seg = self.seg.simplify()
+        if not self.base._is_def: self.disp=0
         return self
 
     # default segment handler does not care about seg value:
@@ -956,6 +989,8 @@ def slicer(x,pos,size):
             if rst==0:
                 a = ptr(x.a.base,x.a.seg,x.a.disp+off)
                 return mem(a,size)
+        elif x._is_cmp:
+            return x[pos:pos+size]
         return slc(x,pos,size)
 
 #------------------------------------------------------------------------------
@@ -989,6 +1024,10 @@ class slc(exp):
             self.__protect = True
         self.ref = ref
 
+    @property
+    def type(self):
+        if self._is_reg: return self.x.type
+
     def raw(self):
         return "%s[%d:%d]"%(str(self.x),self.pos,self.pos+self.size)
 
@@ -1001,11 +1040,13 @@ class slc(exp):
         return self.ref or self.raw()
 
     def toks(self,**kargs):
-        if self._is_reg: return [(Token.Register,str(self))]
-        subpart = [(Token.Literal,'[%d:%d]'%(self.pos,self.pos+self.size))]
+        if self._is_reg: return [(render.Token.Register,str(self))]
+        subpart = [(render.Token.Literal,'[%d:%d]'%(self.pos,self.pos+self.size))]
         return self.x.toks(**kargs)+subpart
 
     def __hash__(self): return hash(self.raw())
+
+    def depth(self): return 2*self.x.depth()
 
     def eval(self,env):
         n = self.x.eval(env)
@@ -1015,12 +1056,20 @@ class slc(exp):
     # the sliced mem object.
     def simplify(self):
         self.x = self.x.simplify()
+        if not self.x._is_def: return top(self.size)
         if self.x._is_mem and self.size%8==0:
             off,rst = divmod(self.pos,8)
             if rst==0:
                 a = ptr(self.x.a.base,self.x.a.seg,self.x.a.disp+off)
                 return mem(a,self.size)
-        return self
+        if self.x._is_eqn and self.x.op.type==2:
+            r = self.x.r[self.pos:self.pos+self.size]
+            if self.x.op.unary:
+                return self.x.op(r)
+            l = self.x.l[self.pos:self.pos+self.size]
+            return self.x.op(l,r)
+        else:
+            return self
 
     # slice of a slice:
     @_checkarg_slice
@@ -1077,9 +1126,9 @@ class tst(exp):
 
     def toks(self,**kargs):
         ttest  = self.tst.toks(**kargs)
-        ttest.append((Token.Literal,' ? '))
+        ttest.append((render.Token.Literal,' ? '))
         ttrue  = self.l.toks(**kargs)
-        ttrue.append((Token.Literal,' : '))
+        ttrue.append((render.Token.Literal,' : '))
         tfalse = self.r.toks(**kargs)
         return ttest+ttrue+tfalse
 
@@ -1108,13 +1157,18 @@ class tst(exp):
         else          : return r
 
     def simplify(self):
-        if self.l is self.r: return self.l
+        if self.l == self.r: return self.l
         self.tst = self.tst.simplify()
         self.l   = self.l.simplify()
         self.r   = self.r.simplify()
         if   self.tst==bit1: return self.l
         elif self.tst==bit0: return self.r
+        if not self.tst._is_def:
+            return vec([self.l,self.r]).simplify()
         return self
+
+    def depth(self):
+        return (self.tst.depth()+self.l.depth()+self.r.depth())/3.
 
 
 #------------------------------------------------------------------------------
@@ -1167,18 +1221,18 @@ class op(exp):
 
     def toks(self,**kargs):
         l = self.l.toks(**kargs)
-        l.insert(0,(Token.Literal,'('))
+        l.insert(0,(render.Token.Literal,'('))
         r = self.r.toks(**kargs)
-        r.append((Token.Literal,')'))
-        return l+[(Token.Literal,self.op.symbol)]+r
+        r.append((render.Token.Literal,')'))
+        return l+[(render.Token.Literal,self.op.symbol)]+r
 
     def simplify(self):
-        minus = (self.op.symbol=='-')
         l = self.l.simplify()
         r = self.r.simplify()
-        if not l._is_def or not r._is_def:
-            return top(self.size)
+        minus = (self.op.symbol=='-')
         if self.prop<4:
+            if l._is_def==0: return l
+            if r._is_def==0: return r
             # arithm/logic normalisation:
             # push cst to the right
             if l._is_cst:
@@ -1239,12 +1293,13 @@ class uop(exp):
 
     def toks(self,**kargs):
         r = self.r.toks(**kargs)
-        r.append((Token.Literal,')'))
-        return [(Token.Literal,'(%s'%self.op.symbol)]+r
+        r.append((render.Token.Literal,')'))
+        return [(render.Token.Literal,'(%s'%self.op.symbol)]+r
 
     def simplify(self):
-        self.r = self.r.simplify()
-        if not self.r._is_def: return top(self.size)
+        r = self.r.simplify()
+        if r._is_def==0: return r
+        self.r = r
         return eqn1_helpers(self)
 
     def depth(self):
@@ -1326,7 +1381,14 @@ class _operator(object):
 # basic simplifier:
 #------------------
 
-op.limit(30)
+def configure(**kargs):
+    from amoco.config import get_module_conf
+    conf = get_module_conf('cas')
+    conf.update(kargs)
+    if conf['complexity']:
+        op.limit(conf['complexity'])
+
+configure()
 
 def symbols_of(e):
     if e is None: return []
@@ -1363,7 +1425,6 @@ def complexity(e):
 # helpers for unary expressions:
 def eqn1_helpers(e):
     assert e.op.unary
-    if not e.r._is_def: return e.r
     if e.r._is_cst:
         return e.op(e.r)
     if e.r._is_vec:
@@ -1392,7 +1453,7 @@ def eqn1_helpers(e):
 def eqn2_helpers(e):
     if complexity(e.r)>e.threshold: e.r = top(e.r.size)
     if complexity(e.l)>e.threshold: e.l = top(e.l.size)
-    if not (e.l._is_def | e.r._is_def): return top(e.size)
+    if not (e.r._is_def and e.l._is_def): return top(e.size)
     if e.l._is_eqn and e.l.r._is_cst and e.l.op.unary==0:
         xop = e.op*e.l.op
         if xop:
@@ -1465,17 +1526,16 @@ def extract_offset(e):
 # the merge function in the mapper module.
 # The simplify method uses the complexity measure to
 # eventually "reduce" the expression to top with a hard-limit
-# currently set to >30.
+# currently set to op.threshold.
 # -----------------------------------------------------
 class vec(exp):
-    __slots__ = ['l','w']
+    __slots__ = ['l']
     _is_def = True
     _is_vec = True
 
-    def __init__(self,l=None,w=False):
+    def __init__(self,l=None):
         if l is None: l = []
         self.l = l
-        self.w = w
         size = 0
         for e in self.l:
             if e.size>size: size=e.size
@@ -1486,39 +1546,45 @@ class vec(exp):
 
     def __str__(self):
         s = ','.join(map(str,self.l))
-        w = ',...' if self.w else ''
-        return '[%s%s]'%(s,w)
+        return '[%s]'%(s)
 
-    def simplify(self):
+    def toks(self,**kargs):
+        t = []
+        for x in self.l:
+            t.extend(x.toks(**kargs))
+            t.append((render.Token.Literal,', '))
+        if len(t)>0: t.pop()
+        t.insert(0,(render.Token.Literal,'['))
+        t.append((render.Token.Literal,']'))
+        return t
+
+    def simplify(self,widening=False):
         l = []
         for e in self.l:
             ee = e.simplify()
-            if ee._is_vec: l.extend(ee.l)
+            if ee._is_vec:
+                l.extend(ee.l)
+                if isinstance(ee,vecw):
+                    widening = True
             else: l.append(ee)
         self.l = []
         for e in l:
             if e in self.l: continue
             self.l.append(e)
-        if len(self.l)==0: return exp(self.size)
-        cl = map(complexity,self.l)
-        if max(cl)>30.:
-            return top(self.size)
-        if self.w or (len(self.l)>1):
-            return self
-        else:
+        if len(self.l)==1:
             return self.l[0]
+        if widening:
+            return vecw(self)
+        cl = map(complexity,self.l)
+        if sum(cl,0.)>op.threshold:
+            return top(self.size)
+        return self
 
     def eval(self,env):
         l = []
         for e in self.l:
             l.append(e.eval(env))
-        return vec(l,self.w)
-
-    def addr(self,env):
-        l = []
-        for e in self.l:
-            l.append(e.addr(env))
-        return vec(l,self.w)
+        return vec(l)
 
     def depth(self):
         if self.size==0: return 0.
@@ -1529,15 +1595,48 @@ class vec(exp):
         sta,sto,stp = i.indices(self.size)
         l = []
         for e in self.l:
-            l.append(slicer(e,sta,sto-sta))
-        return vec(l,self.w)
+            l.append(e[sta:sto])
+        return vec(l)
 
     def __contains__(self,x):
         return (x in self.l)
 
-    # the only atom that is considered True is the cst(1,1) (ie bit1 below)
     def __nonzero__(self):
         return all([e.__nonzero__() for e in self.l])
 
-##
+class vecw(top):
+    __slots__ = ['l']
+    _is_def = 0
+    _is_vec = True
 
+    def __init__(self,v):
+        self.l = v.l
+        self.size = v.size
+        self.sf = False
+
+    def __str__(self):
+        s = ','.join(map(str,self.l))
+        return '[%s, ...]'%(s)
+
+    def toks(self,**kargs):
+        t = []
+        for x in self.l:
+            t.extend(x.toks(**kargs))
+            t.append((render.Token.Literal,', '))
+        if len(t)>0: t.pop()
+        t.insert(0,(render.Token.Literal,'['))
+        t.append((render.Token.Literal,', ...]'))
+        return t
+
+    def eval(self,env):
+        v = vec([x.eval(env) for x in self.l])
+        return vecw(v)
+
+    @_checkarg_slice
+    def __getitem__(self,i):
+        sta,sto,stp = i.indices(self.size)
+        l = []
+        for e in self.l:
+            l.append(e[sta:sto])
+        return vecw(vec(l))
+##

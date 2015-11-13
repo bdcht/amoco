@@ -14,6 +14,8 @@ import importlib
 from amoco.logger import Log
 logger = Log(__name__)
 
+from amoco.ui.render import Token,highlight
+
 type_unpredictable     =  -1
 type_undefined         =   0
 type_data_processing   =   1
@@ -93,14 +95,18 @@ class instruction(icore):
     def set_formatter(cls,f):
         cls.formatter = f
 
-    #default formatter:
-    def formatter(self,i):
-        m = i.mnemonic
-        o = ','.join(map(str,i.operands))
-        return '%s %s'%(m,o)
+    @staticmethod
+    def formatter(i,toks=False):
+        t = (Token.Mnemonic,i.mnemonic)
+        t+= [(Token.Literal,op) for op in map(str,i.operands[0:1])]
+        t+= [(Token.Literal,', '+op) for op in map(str,i.operands[1:])]
+        return t if toks else highlight(t)
 
     def __str__(self):
         return self.formatter(i=self)
+
+    def toks(self):
+        return self.formatter(i=self,toks=True)
 
     def __getstate__(self):
         return (self.bytes,
@@ -470,16 +476,17 @@ class Formatter(object):
             fmts = self.formats.get(i.spec.hook.func_name,self.default)
         return fmts
 
-    def __call__(self,i):
+    def __call__(self,i,toks=False):
         s=[]
         for f in self.getparts(i):
             if hasattr(f,'format'):
-                # It is a string
-                s.append(f.format(i=i))
+                t = f.format(i=i)
             else:
-                # It is a function
-                s.append(f(i))
-        return ''.join(s)
+                t = f(i)
+            if isinstance(t,str):
+                t = [(Token.Literal,t)]
+            s.extend(t)
+        return s if toks else highlight(s)
 
 
 # ispec format parser:

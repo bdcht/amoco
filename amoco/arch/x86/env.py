@@ -21,6 +21,10 @@ edi    = reg('edi',32)     # ptr to data in segment pointed by ES; dst ptr for s
 eip    = reg('eip',32)     # instruction pointer in 32 bit mode
 eflags = reg('eflags',32)
 
+is_reg_pc(eip)
+is_reg_flags(eflags)
+is_reg_stack(esp)
+
 ax = slc(eax,0,16,'ax')
 bx = slc(ebx,0,16,'bx')
 cx = slc(ecx,0,16,'cx')
@@ -45,25 +49,27 @@ pf = slc(eflags,2,1,'pf')   # parity flag
 af = slc(eflags,4,1,'af')   # aux carry flag
 zf = slc(eflags,6,1,'zf')   # zero flag
 sf = slc(eflags,7,1,'sf')   # sign flag
-tf = slc(eflags,8,1,'sf')   # trap flag
+tf = slc(eflags,8,1,'tf')   # trap flag
 df = slc(eflags,10,1,'df')  # direction flag
 of = slc(eflags,11,1,'of')  # overflow flag
 
-# segment registers & other mappings:
-cs = reg('cs',16)      # segment selector for the code segment
-ds = reg('ds',16)      # segment selector to a data segment
-ss = reg('ss',16)      # segment selector to the stack segment
-es = reg('es',16)      # (data)
-fs = reg('fs',16)      # (data)
-gs = reg('gs',16)      # (data)
+with is_reg_other:
+    # segment registers & other mappings:
+    cs = reg('cs',16)      # segment selector for the code segment
+    ds = reg('ds',16)      # segment selector to a data segment
+    ss = reg('ss',16)      # segment selector to the stack segment
+    es = reg('es',16)      # (data)
+    fs = reg('fs',16)      # (data)
+    gs = reg('gs',16)      # (data)
+
+    mmregs = [reg('mm%d'%n,64) for n in range(8)]
+
+    xmmregs = [reg('xmm%d'%n, 128) for n in range(16)]
 
 # fpu registers (80 bits holds double extended floats see Intel Vol1--4.4.2):
 def st(num):
-  return reg('st%d'%num,80)
+  return is_reg_other(reg('st%d'%num,80))
 
-mmregs = [reg('mm%d'%n,64) for n in range(8)]
-
-xmmregs = [reg('xmm%d'%n, 128) for n in range(16)]
 
 # return R/M register (see ModR/M Byte encoding) :
 def getreg(i,size=32):
@@ -74,13 +80,12 @@ def getreg(i,size=32):
             128 : xmmregs[:8],
             }[size][i]
 
-
 # system registers:
 
 # control regs:
 def cr(num):
-    return reg('cr%d'%num,32)
+    return is_reg_other(reg('cr%d'%num,32))
 
 # debug regs:
 def dr(num):
-    return reg('dr%d'%num,32)
+    return is_reg_other(reg('dr%d'%num,32))

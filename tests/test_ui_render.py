@@ -1,13 +1,13 @@
 import pytest
 
-from amoco.ui.render import *
+from amoco.ui import render
 
-@pytest.mark.skipif(not has_pygments,reason="no pygments")
+@pytest.mark.skipif(not render.has_pygments,reason="no pygments")
 def test_vltable():
-    T = vltable()
-    T.addrow([(Token.Literal,'abcd'),(Token.Register,'eax'),(Token.Column,'<-'),(Token.Constant,'0x23')])
-    T.addrow([(Token.Literal,'abcd'),(Token.Register,'ebx'),(Token.Column,'<-'),(Token.Mnemonic,'mov')])
-    T.addrow([(Token.Literal,'abcdxxxxxxx'),(Token.Register,'eflags'),(Token.Column,'<-'),(Token.Memory,'M32(eax+1)')])
+    T = render.vltable()
+    T.addrow([(render.Token.Literal,'abcd'),(render.Token.Register,'eax'),(render.Token.Column,'<-'),(render.Token.Constant,'0x23')])
+    T.addrow([(render.Token.Literal,'abcd'),(render.Token.Register,'ebx'),(render.Token.Column,'<-'),(render.Token.Mnemonic,'mov')])
+    T.addrow([(render.Token.Literal,'abcdxxxxxxx'),(render.Token.Register,'eflags'),(render.Token.Column,'<-'),(render.Token.Memory,'M32(eax+1)')])
     assert T.nrows == 3
     assert T.ncols == 2
     assert T.colsize[0] == 17

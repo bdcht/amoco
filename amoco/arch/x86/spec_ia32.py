@@ -79,7 +79,6 @@ def ia32_nop(obj):
 @ispec_ia32(" 8>[ {9e}         ]", mnemonic = "SAHF",    type=type_data_processing)
 @ispec_ia32(" 8>[ {9f}         ]", mnemonic = "LAHF",    type=type_data_processing)
 @ispec_ia32(" 8>[ {d7}         ]", mnemonic = "XLATB",   type=type_data_processing)
-@ispec_ia32(" 8>[ {6d}         ]", mnemonic = "IRETD",   type=type_other)
 @ispec_ia32(" 8>[ {61}         ]", mnemonic = "POPAD",   type=type_other)
 @ispec_ia32(" 8>[ {9d}         ]", mnemonic = "POPFD",   type=type_other)
 @ispec_ia32(" 8>[ {60}         ]", mnemonic = "PUSHAD",  type=type_other)
@@ -103,12 +102,14 @@ def ia32_nop(obj):
 def ia32_nooperand(obj):
     pass
 
+@ispec_ia32(" 8>[ {cf}         ]", mnemonic = "IRETD",   type=type_other)
 @ispec_ia32(" 8>[ {98}         ]", mnemonic = "CWDE",    type=type_data_processing)
 @ispec_ia32(" 8>[ {99}         ]", mnemonic = "CDQ",     type=type_data_processing)
 def ia32_nooperand(obj):
     if obj.misc['opdsz']:
         if obj.mnemonic=="CWDE": obj.mnemonic="CBW"
         if obj.mnemonic=="CDQ" : obj.mnemonic="CWD"
+        if obj.mnemonic=="IRETD" : obj.mnemonic="IRET"
 
 # instructions for which REP/REPNE is valid (see formats.py):
 @ispec_ia32(" 8>[ {6c} ]", mnemonic = "INSB",    type=type_system)

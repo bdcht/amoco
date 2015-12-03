@@ -78,7 +78,6 @@ def ia32_nop(obj):
 @ispec_ia32(" 8>[ {fa}         ]", mnemonic = "CLI",     type=type_system)
 @ispec_ia32(" 8>[ {fb}         ]", mnemonic = "STI",     type=type_system)
 @ispec_ia32(" 8>[ {d7}         ]", mnemonic = "XLATB",   type=type_data_processing)
-@ispec_ia32(" 8>[ {6d}         ]", mnemonic = "IRETD",   type=type_other)
 @ispec_ia32(" 8>[ {9d}         ]", mnemonic = "POPFQ",   type=type_other)
 @ispec_ia32(" 8>[ {9c}         ]", mnemonic = "PUSHFQ",  type=type_other)
 @ispec_ia32("16>[ {0f}{06}     ]", mnemonic = "CLTS",    type=type_other)
@@ -101,15 +100,21 @@ def ia32_nop(obj):
 def ia32_nooperand(obj):
     pass
 
+@ispec_ia32(" 8>[ {cf}         ]", mnemonic = "IRETD",   type=type_other)
 @ispec_ia32(" 8>[ {98}         ]", mnemonic = "CWDE",    type=type_data_processing)
 @ispec_ia32(" 8>[ {99}         ]", mnemonic = "CDQ",     type=type_data_processing)
 def ia32_nooperand(obj):
     if obj.misc['opdsz']:
         if obj.mnemonic=="CWDE": obj.mnemonic="CBW"
         if obj.mnemonic=="CDQ" : obj.mnemonic="CWD"
+        if obj.mnemonic=="IRETD" : obj.mnemonic="IRET"
     if obj.misc['REX']:
+        REX = obj.misc['REX']
+        W,R,X,B = REX
         if obj.mnemonic=="CWDE": obj.mnemonic="CDQE"
         if obj.mnemonic=="CDQ" : obj.mnemonic="CQO"
+        if obj.mnemonic=="IRETD" and W==1:
+            obj.mnemonic="IRETQ"
 
 # instructions for which REP/REPNE is valid (see formats.py):
 @ispec_ia32(" 8>[ {6c} ]", mnemonic = "INSB",    type=type_system)

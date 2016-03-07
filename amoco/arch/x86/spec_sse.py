@@ -760,13 +760,11 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
 # xmm, r/m32, imm8
 # r/m32, xmm, imm8
 @ispec_ia32("*>[ {0f}{3a}{14} /r ]", mnemonic="PEXTRB", _inv=True)
-@ispec_ia32("*>[ {0f}{c4}     /r ]", mnemonic="PINSRW", _inv=False)
-@ispec_ia32("*>[ {0f}{c5}     /r ]", mnemonic="PEXTRW", _inv=False)
 @ispec_ia32("*>[ {0f}{3a}{15} /r ]", mnemonic="PEXTRW", _inv=True)
 @ispec_ia32("*>[ {0f}{3a}{16} /r ]", mnemonic="PEXTRD", _inv=True)
 @ispec_ia32("*>[ {0f}{3a}{17} /r ]", mnemonic="EXTRACTPS", _inv=True)
 @ispec_ia32("*>[ {0f}{3a}{20} /r ]", mnemonic="PINSRB", _inv=False)
-@ispec_ia32("*>[ {0f}{3a}{21} /r ]", mnemonic="INSERTPS", _inv=False)
+@ispec_ia32("*>[ {0f}{c4}     /r ]", mnemonic="PINSRW", _inv=False)
 @ispec_ia32("*>[ {0f}{3a}{22} /r ]", mnemonic="PINSRD", _inv=False)
 def sse_pd(obj,Mod,REG,RM,data,_inv):
     if not check_66(obj,set_opdsz_32): raise InstructionError(obj)
@@ -779,6 +777,38 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
             else: op2.size=16
     op1 = env.getreg(REG,128)
     obj.operands = [op1,op2] if not _inv else [op2,op1]
+    if data.size<8: raise InstructionError(obj)
+    imm = data[0:8]
+    obj.operands.append(env.cst(imm.int(),8))
+    obj.bytes += pack(imm)
+    obj.type = type_data_processing
+
+@ispec_ia32("*>[ {0f}{c5}     /r ]", mnemonic="PEXTRW", _inv=False)
+def sse_pd(obj,Mod,REG,RM,data,_inv):
+    if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
+    op2,data = getModRM(obj,Mod,RM,data)
+    if op2._is_mem:
+        if   obj.mnemonic[-1]=='B':
+            op2.size=8
+        elif obj.mnemonic[-1]=='W':
+            if _inv: raise InstructionError(obj)
+            else: op2.size=16
+    op1 = env.getreg(REG,32)
+    obj.operands = [op1,op2] if not _inv else [op2,op1]
+    if data.size<8: raise InstructionError(obj)
+    imm = data[0:8]
+    obj.operands.append(env.cst(imm.int(),8))
+    obj.bytes += pack(imm)
+    obj.type = type_data_processing
+
+@ispec_ia32("*>[ {0f}{3a}{21} /r ]", mnemonic="INSERTPS")
+def sse_pd(obj,Mod,REG,RM,data):
+    if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
+    op1 = env.getreg(REG,128)
+    op2,data = getModRM(obj,Mod,RM,data)
+    if op2._is_mem:
+        op2.size=32
+    obj.operands = [op1,op2]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
     obj.operands.append(env.cst(imm.int(),8))

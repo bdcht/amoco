@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from amoco.cas.expressions import regtype
 from amoco.arch.core import Formatter
 
 def pfx(i):
@@ -18,7 +19,12 @@ def deref(op):
     d = '%+d'%op.a.disp if op.a.disp else ''
     s = {8:'byte ptr ',16:'word ptr ',32:'dword ptr ', 128:'xmmword ptr '}.get(op.size,'')
     s += '%s:'%op.a.seg  if op.a.seg is not '' else ''
-    s += '[%s%s]'%(op.a.base,d)
+    b = op.a.base
+    if op.a.base._is_reg and op.a.base.type==regtype.STACK:
+        base10 = True
+    else:
+        base10 = False
+    s += '[%s%s]'%(op.a.base,op.a.disp_to_string(base10))
     return s
 
 def opers(i):

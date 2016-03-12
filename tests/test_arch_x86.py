@@ -159,6 +159,19 @@ def test_decoder_019():
   i = cpu.disassemble(c)
   assert str(i.operands[0])=='M64(ecx)'
 
+# movzx eax, byte ptr [eax+0x806fb088]
+def test_decoder_020():
+  c = '\x0f\xb6\x80\x88\xb0\x6f\x80'
+  i = cpu.disassemble(c)
+  assert str(i.operands[1])=='M8(eax-2140163960)'
+  assert i.toks()[-1][1] == 'byte ptr [eax+0x806fb088]'
+
+# mov eax, [esp-300]
+def test_decoder_021():
+  c = '\x8b\x84\x24\xd4\xfe\xff\xff'
+  i = cpu.disassemble(c)
+  assert str(i.operands[1])=='M32(esp-300)'
+  assert i.toks()[-1][1] == '[esp-300]'
 
 #------------------------------------------------------------------------------
 

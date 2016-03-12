@@ -26,6 +26,7 @@ conf.set('log', 'level', 'ERROR')
 # ui section
 conf.add_section('ui')
 conf.set('ui', 'formatter', 'Null')
+conf.set('ui', 'graphics', 'term')
 
 # overwrite with config file:
 import os

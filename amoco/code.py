@@ -21,8 +21,6 @@ logger = Log(__name__)
 
 from amoco.ui.views import blockView, funcView, xfuncView
 
-from amoco.ui.render import Token,vltable
-
 #-------------------------------------------------------------------------------
 class block(object):
     """
@@ -112,28 +110,9 @@ class block(object):
             # TODO: update misc annotations too
             return len(I)-pos
 
-    def __vltable(self):
-        T = vltable()
-        n = len(self.instr)
-        for i in self.instr:
-            ins2 = i.toks()
-            if isinstance(ins2,str): ins2 = [(Token.Literal,ins2)]
-            ins = [ (Token.Address,'{:<10}'.format(i.address)),
-                    (Token.Column,''),
-                    (Token.Literal,"'%s'"%(i.bytes.encode('hex'))),
-                    (Token.Column,'') ]
-            T.addrow(ins+ins2)
-        if conf.getboolean('block','bytecode'):
-            pad = conf.getint('block','padding') or 0
-            T.colsize[1] += pad
-        if conf.getboolean('block','header'):
-            T.header = ('# --- block %s ---' % self.name).ljust(T.width,'-')
-        if conf.getboolean('block','footer'):
-            T.footer = '-'*T.width
-        return T
-
     def __str__(self):
-        return str(self.__vltable())
+        T = self.view._vltable(formatter='Null')
+        return '\n'.join([r.show(raw=True,**T.rowparams) for r in T.rows])
 
     def __repr__(self):
         return '<%s object (name=%s) at 0x%08x>'%(self.__class__.__name__,self.name,id(self))
@@ -207,6 +186,7 @@ class func(block):
             if withmap is not None:
                 tmap <<= withmap
             heads[t] = tmap
+        self.misc['heads'] = heads
         # lets walk the function's cfg, in rank priority order:
         while len(spool)>0:
             count += 1

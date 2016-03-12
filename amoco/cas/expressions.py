@@ -648,6 +648,7 @@ class ext(reg):
         self.size = kargs.get('size',None)
         self.sf = False
         self._reg__protect = False
+        self.type = regtype.OTHER
 
     def __str__(self):
         return '@%s'%self.ref
@@ -948,8 +949,15 @@ class ptr(exp):
         self.sf   = False
 
     def __str__(self):
-        d = '%+d'%self.disp if self.disp else ''
+        d = self.disp_tostring()
         return '%s(%s%s)'%(self.seg,self.base,d)
+
+    def disp_tostring(self,base10=True):
+        if self.disp==0: return ''
+        if base10: return '%+d'%self.disp
+        c = cst(self.disp,self.size)
+        c.sf=False
+        return '+%s'%str(c)
 
     def toks(self,**kargs):
         return [(render.Token.Address,str(self))]

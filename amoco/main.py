@@ -430,6 +430,9 @@ class lbackward(fforward):
         # so we can return now :
         if len(T)>0:
             logger.verbose('extending cfg of %s (new target found)'%f)
+            for t in T:
+                for k,v in f.misc['heads'].iteritems():
+                    if v(pc)==t.cst: t.parent = k
         else:
             logger.info('lbackward: function %s done'%f)
             f.map = m

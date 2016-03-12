@@ -24,6 +24,7 @@ eflags = reg('eflags',32)
 is_reg_pc(eip)
 is_reg_flags(eflags)
 is_reg_stack(esp)
+is_reg_stack(ebp)
 
 ax = slc(eax,0,16,'ax')
 bx = slc(ebx,0,16,'bx')

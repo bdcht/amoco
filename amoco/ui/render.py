@@ -29,32 +29,52 @@ except ImportError:
             for t,v in tokensource:
                 outfile.write(v)
     Formats = {
-      'null':NullFormatter(),
+      'Null':NullFormatter(),
     }
 else:
     logger.info("pygments package imported")
     has_pygments = True
-    class DefaultStyle(Style):
+    class DarkStyle(Style):
         default_style = ""
         styles = {
-          Token.Literal:  '#fff',
+          #Token.Literal:  '#fff',
           Token.Address:  '#fb0',
           Token.Constant: '#f30',
-          Token.Prefix:   '#fff',
-          Token.Mnemonic: 'bold #fff',
+          #Token.Prefix:   '#fff',
+          Token.Mnemonic: 'bold',
           Token.Register: '#33f',
           Token.Memory:   '#3ff',
           Token.Comment:  '#8f8',
-          Token.Name:     'underline #fff',
+          Token.Name:     'underline',
           Token.Tainted:  'bold #f00',
           Token.Column:   '#bbb',
           Token.Hide:     '#222',
         }
+    class LightStyle(Style):
+        default_style = ""
+        styles = {
+          Token.Literal:  '#000',
+          Token.Address:  '#b58900',
+          Token.Constant: '#dc322f',
+          Token.Prefix:   '#000',
+          Token.Mnemonic: 'bold',
+          Token.Register: '#268bd2',
+          Token.Memory:   '#859900',
+          Token.Comment:  '#93a1a1',
+          Token.Name:     'underline',
+          Token.Tainted:  'bold #f00',
+          Token.Column:   '#222',
+          Token.Hide:     '#bbb',
+        }
+    DefaultStyle = DarkStyle
 
     Formats = {
       'Null':NullFormatter(),
       'Terminal':TerminalFormatter(style=DefaultStyle),
       'Terminal256':Terminal256Formatter(style=DefaultStyle),
+      'TerminalDark':Terminal256Formatter(style=DarkStyle),
+      'TerminalLight':Terminal256Formatter(style=LightStyle),
+      'Html':HtmlFormatter(style=LightStyle,nowrap=True),
     }
 
 default_formatter = NullFormatter()
@@ -71,6 +91,7 @@ configure()
 
 def highlight(toks,formatter=None,outfile=None):
     formatter = formatter or default_formatter
+    if isinstance(formatter,str): formatter = Formats[formatter]
     outfile = outfile or StringIO()
     formatter.format(toks,outfile)
     return outfile.getvalue()
@@ -202,7 +223,7 @@ class vltable(object):
 class tokenrow(object):
     def __init__(self,toks=None):
         if toks is None: toks = []
-        self.toks      = toks
+        self.toks      = [(t,unicode(s)) for (t,s) in toks]
         self.maxwidth  = float('inf')
         self.align     = '<'
         self.fill      = ' '
@@ -246,10 +267,12 @@ class tokenrow(object):
         colsz     = params.get('colsize')
         hidden_c  = params.get('hidden_c',set())
         squash_c  = params.get('squash_c',True)
+        head      = params.get('head','')
+        tail      = params.get('tail','')
         if raw:
-            formatter=None
+            formatter='Null'
             outfile=None
-        r = []
+        r = [head]
         tz = 0
         for i,c in enumerate(self.cols):
             toks = []
@@ -271,13 +294,12 @@ class tokenrow(object):
                 pad = fill*(mz-sz)
                 if   align=='<': toks[-1][1] += pad
                 elif align=='>': toks[0][1] = pad+toks[0][1]
-            if tt==Token.Column:
-                if sep: tv=sep
-                toks.append((tt,tv))
             if i in hidden_c:
                 if not squash_c:
-                    toks = [(TokenHide,highlight(toks,None,None))]
+                    toks = [(TokenHide,highlight(toks,'Null',None))]
                 else:
                     toks = []
             r.append(highlight(toks,formatter,outfile))
+            if tt==Token.Column and sep: r.append(sep)
+        r.append(tail)
         return ''.join(r)

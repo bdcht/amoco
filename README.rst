@@ -1338,6 +1338,14 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.4.4`_
+
+  * add some SSE instruction semantics
+  * add ui.graphics qt package with block/func/xfunc items classes
+  * add initial ui.graphics gtk package
+  * move vltable in ui.views.blockView class
+  * fix various x86/64 decoding/formating/semantics
+
 - `v2.4.3`_
 
   * add ui.graphics packages (emptied)
@@ -1444,6 +1452,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _zodb: http://www.zodb.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.4.4: https://github.com/bdcht/amoco/releases/tag/v2.4.4
 .. _v2.4.3: https://github.com/bdcht/amoco/releases/tag/v2.4.3
 .. _v2.4.2: https://github.com/bdcht/amoco/releases/tag/v2.4.2
 .. _v2.4.1: https://github.com/bdcht/amoco/releases/tag/v2.4.1

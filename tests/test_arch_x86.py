@@ -35,7 +35,7 @@ def test_decoder_003():
   c = '\xeb\x0c'
   i = cpu.disassemble(c)
   op1 = i.operands[0]
-  assert op1.value==0xc and op1.size==8
+  assert op1.value==0xc and op1.size==32
 
 # mov edx,[eax*4+0x0805bd00]
 def test_decoder_004():

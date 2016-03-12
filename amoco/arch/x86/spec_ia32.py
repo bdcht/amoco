@@ -146,12 +146,14 @@ def ia32_imm8(obj,ib):
 @ispec_ia32("16>[ {e1} ib(8) ]", mnemonic = "LOOPE",  type=type_control_flow)
 @ispec_ia32("16>[ {e0} ib(8) ]", mnemonic = "LOOPNE", type=type_control_flow)
 def ia32_imm_rel(obj,ib):
-    obj.operands = [env.cst(ib,8)]
+    size = obj.misc['adrsz'] or 32
+    obj.operands = [env.cst(ib,8).signextend(size)]
 
 @ispec_ia32("16>[ {e3} cb(8) ]", mnemonic = "JECXZ", type=type_control_flow)
 def ia32_cb8(obj,cb):
-    if obj.misc['adrsz']==16: obj.mnemonic = "JCXZ"
-    obj.operands = [env.cst(cb,8)]
+    size = obj.misc['adrsz'] or 32
+    if size==16: obj.mnemonic = "JCXZ"
+    obj.operands = [env.cst(cb,8).signextend(size)]
 
 # imm16:
 @ispec_ia32("24>[ {c2} iw(16) ]", mnemonic = "RETN", type=type_control_flow)

@@ -173,6 +173,38 @@ def test_decoder_021():
   assert str(i.operands[1])=='M32(esp-300)'
   assert i.toks()[-1][1] == '[esp-300]'
 
+# cvtss2sd [ebp-16], xmm0
+def test_decoder_022():
+  c = '\xf3\x0f\x5a\x45\xf0'
+  i = cpu.disassemble(c)
+  assert i.mnemonic == 'CVTSS2SD'
+  op1 = i.operands[0]
+  assert op1._is_reg and op1.size==128
+  assert str(op1)=='xmm0'
+
+# cvttss2si eax, [ebp-16]
+def test_decoder_023():
+  c = '\xf3\x0f\x2c\x45\xf0'
+  i = cpu.disassemble(c)
+  assert i.mnemonic == 'CVTTSS2SI'
+  assert i.toks()[1][1] == 'eax'
+
+# cvtss2si eax, [ebp-16]
+def test_decoder_024():
+  c = '\xf3\x0f\x2d\x45\xf0'
+  i = cpu.disassemble(c)
+  assert i.mnemonic == 'CVTSS2SI'
+  assert i.toks()[1][1] == 'eax'
+
+# push -1
+def test_decoder_025():
+  c = '\x6a\xff'
+  i = cpu.disassemble(c)
+  assert i.mnemonic == 'PUSH'
+  op1 = i.operands[0]
+  assert op1.sf == True
+  assert op1.value == -1
+  assert op1.size == 8
 #------------------------------------------------------------------------------
 
 

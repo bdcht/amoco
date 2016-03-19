@@ -139,10 +139,13 @@ def ia32_strings(obj):
 #----------
 
 # imm8:
-@ispec_ia32("16>[ {6a} ib(8) ]", mnemonic = "PUSH",   type=type_data_processing)
 @ispec_ia32("16>[ {cd} ib(8) ]", mnemonic = "INT",    type=type_control_flow)
 def ia32_imm8(obj,ib):
     obj.operands = [env.cst(ib,8)]
+
+@ispec_ia32("16>[ {6a} ib(8) ]", mnemonic = "PUSH",   type=type_data_processing)
+def ia32_imm8_signed(obj,ib):
+    obj.operands = [env.cst(ib,8).signextend(8)]
 
 @ispec_ia32("16>[ {eb} ib(8) ]", mnemonic = "JMP",    type=type_control_flow)
 @ispec_ia32("16>[ {e2} ib(8) ]", mnemonic = "LOOP",   type=type_control_flow)

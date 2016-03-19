@@ -517,7 +517,7 @@ def i_NOT(i,fmap):
   fmap[op1] = x
 
 def i_SETcc(i,fmap):
-  op1 = fmap(i.operands[0])
+  op1 = i.operands[0]
   fmap[rip] = fmap[rip]+i.length
   x = tst(fmap(i.cond[1]),cst(1,op1.size),cst(0,op1.size))
   op1,x = _r32_zx64(op1,x)

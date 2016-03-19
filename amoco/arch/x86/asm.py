@@ -296,7 +296,10 @@ def i_CMPSB(i,fmap):
 def i_CMPSW(i,fmap):
   _cmps_(i,fmap,2)
 def i_CMPSD(i,fmap):
-  _cmps_(i,fmap,4)
+    if i.misc['opdsz']==128:
+        return
+    else:
+        _cmps_(i,fmap,4)
 
 #------------------------------------------------------------------------------
 def _scas_(i,fmap,l):
@@ -569,7 +572,7 @@ def i_NOT(i,fmap):
   fmap[op1] = ~fmap(op1)
 
 def i_SETcc(i,fmap):
-  op1 = fmap(i.operands[0])
+  op1 = i.operands[0]
   fmap[eip] = fmap[eip]+i.length
   fmap[op1] = tst(fmap(i.cond[1]),cst(1,op1.size),cst(0,op1.size))
 

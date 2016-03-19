@@ -109,7 +109,7 @@ def opers_att(i):
     s = []
     for op in reversed(i.operands):
         if op._is_mem:
-            s.extend(deref(op))
+            s.extend(deref_att(op))
         elif op._is_cst:
             if i.misc['imm_ref'] is not None:
                 s.append((Token.Address,str(i.misc['imm_ref'])))

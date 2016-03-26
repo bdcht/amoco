@@ -1246,7 +1246,7 @@ def i_MOVQ(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[op1] = op2.zeroextend(op1.size)
+  fmap[op1] = op2[0:64].zeroextend(op1.size)
 
 def sse_MOVSD(i,fmap):
   fmap[eip] = fmap[eip]+i.length

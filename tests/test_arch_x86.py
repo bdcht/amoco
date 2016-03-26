@@ -205,6 +205,30 @@ def test_decoder_025():
   assert op1.sf == True
   assert op1.value == -1
   assert op1.size == 8
+
+# movq qword ptr [ebp-16], xmm1
+def test_decoder_026():
+  c = '\x66\x0f\xd6\x4d\xf0'
+  i = cpu.disassemble(c)
+  assert i.mnemonic == 'MOVQ'
+  assert i.toks()[1][1] == 'qword ptr [ebp-16]'
+
+# movq xmm2, qword ptr [ebp-16]
+def test_decoder_027():
+  c = '\xf3\x0f\x7e\x55\xf0'
+  i = cpu.disassemble(c)
+  assert i.mnemonic == 'MOVQ'
+  assert i.toks()[1][1] == 'xmm2'
+  assert i.toks()[3][1] == 'qword ptr [ebp-16]'
+
+# movq xmm0, xmm1
+def test_decoder_028():
+  c = '\xf3\x0f\x7e\xc1'
+  i = cpu.disassemble(c)
+  assert i.mnemonic == 'MOVQ'
+  op1,op2 = i.operands
+  assert op1.size==op2.size==128
+
 #------------------------------------------------------------------------------
 
 

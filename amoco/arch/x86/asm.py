@@ -1363,7 +1363,6 @@ def i_PSRLQ(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   op1 = i.operands[0]
   op2 = i.operands[1]
-  assert op1.size==op2.size
   src1 = fmap(op1)
   src2 = fmap(op2)
   val1 = (src1[i:i+64] for i in range(0,op1.size,64))
@@ -1374,7 +1373,6 @@ def i_PSLLQ(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   op1 = i.operands[0]
   op2 = i.operands[1]
-  assert op1.size==op2.size
   src1 = fmap(op1)
   src2 = fmap(op2)
   val1 = (src1[i:i+64] for i in range(0,op1.size,64))

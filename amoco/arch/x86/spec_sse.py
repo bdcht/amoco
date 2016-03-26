@@ -339,7 +339,7 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
 # xmm, xmm/m128
 @ispec_ia32("*>[ {0f}{7c} /r ]", mnemonic="HADDPS")
 @ispec_ia32("*>[ {0f}{7d} /r ]", mnemonic="HSUBPS")
-@ispec_ia32("*>[ {0f}{e6} /r ]", mnemonic="CVTPD2PQ")
+@ispec_ia32("*>[ {0f}{e6} /r ]", mnemonic="CVTPD2DQ")
 def sse_ps(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)

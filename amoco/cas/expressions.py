@@ -74,6 +74,7 @@ class exp(object):
     _is_slc   = False
     _is_mem   = False
     _is_ext   = False
+    _is_lab   = False
     _is_ptr   = False
     _is_tst   = False
     _is_eqn   = False
@@ -680,6 +681,12 @@ class ext(reg):
         logger.info('stub %s called'%self.ref)
         self.stub(self.ref)(env,**self._subrefs)
 ##
+
+#------------------------------------------------------------------------------
+# lab holds labels/symbols, e.g. from relocations
+#------------------------------------------------------------------------------
+class lab(ext):
+    _is_lab = True
 
 #------------------------------------------------------------------------------
 # composer returns a comp object (see below) constructed with parts from low

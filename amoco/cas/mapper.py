@@ -130,6 +130,7 @@ class mapper(object):
     # get a memory location value (fetch) :
     # k must be mem expressions
     def M(self,k):
+        if k.a.base._is_lab: return k
         if k.a.base._is_ext: return k.a.base
         n = self.aliasing(k)
         if n>0:

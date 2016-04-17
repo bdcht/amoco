@@ -108,3 +108,5 @@ mmregs = [reg('mm%d'%n,64) for n in range(16)]
 
 xmmregs = [reg('xmm%d'%n, 128) for n in range(16)]
 ymmregs = [reg('ymm%d'%n, 256) for n in range(16)]
+
+internals = {'mode':64}

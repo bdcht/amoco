@@ -24,7 +24,7 @@ def deref(op):
         base10 = True
     else:
         base10 = False
-    s += '[%s%s]'%(op.a.base,op.a.disp_to_string(base10))
+    s += '[%s%s]'%(op.a.base,op.a.disp_tostring(base10))
     return s
 
 def opers(i):

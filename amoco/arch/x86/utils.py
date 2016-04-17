@@ -27,17 +27,17 @@ class ispec_ia32(ispec):
             f=format
         ispec.__init__(self,f,**kargs)
 
-# read ModR/M + SIB values and update obj accordingly:
+# read ModR/M + SIB values and update obj:
 def getModRM(obj,Mod,RM,data):
-    opdsz = obj.misc['opdsz'] or 32
-    adrsz = obj.misc['adrsz'] or 32
+    opdsz = obj.misc['opdsz'] or env.internals['mode']
+    adrsz = obj.misc['adrsz'] or env.internals['mode']
     seg   = obj.misc['segreg']
     if seg is None: seg=''
     # r/16/32 case:
     if Mod==0b11:
         op1 = env.getreg(RM,opdsz)
         return op1,data
-    # m/16/32 case:
+    # 32-bit SIB cases:
     if adrsz==32 and RM==0b100:
         # read SIB byte in data:
         if data.size<8: raise InstructionError(obj)
@@ -62,7 +62,6 @@ def getModRM(obj,Mod,RM,data):
                   env.di,
                   env.bp,
                   env.bx)[RM]
-
     # check [disp16/32] case:
     if (b is env.ebp or b is env.bp) and Mod==0:
         b=env.cst(0,adrsz)

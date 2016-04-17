@@ -1338,6 +1338,20 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.4.5`_
+
+  * add x86/x64 internals 'mode' selector
+  * add 'lab' expression for labels
+  * improve MemoryZone/Map with a 'grep' method
+  * improve MemoryZone to allow "shifting" to some address
+  * improve x86 AT&T formatter
+  * add x64 decoder tests
+  * fix x64 rip-relative addressing mode
+  * fix many x64 specs
+  * add x64 packed-instructions semantics
+  * fix various x86 SSE instructions
+  * fix various x86 issues (fisttp/SETcc/PUSH imm8/movq)
+
 - `v2.4.4`_
 
   * add some SSE instruction semantics
@@ -1452,6 +1466,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _zodb: http://www.zodb.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.4.5: https://github.com/bdcht/amoco/releases/tag/v2.4.5
 .. _v2.4.4: https://github.com/bdcht/amoco/releases/tag/v2.4.4
 .. _v2.4.3: https://github.com/bdcht/amoco/releases/tag/v2.4.3
 .. _v2.4.2: https://github.com/bdcht/amoco/releases/tag/v2.4.2

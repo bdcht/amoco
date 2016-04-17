@@ -27,48 +27,48 @@ class ispec_ia32(ispec):
             f=format
         ispec.__init__(self,f,**kargs)
 
+def getREX(obj):
+    REX = obj.misc['REX']
+    if REX is None:
+        W=R=X=B=0
+    else:
+        W,R,X,B=REX
+    return (W,R,X,B)
+
+def getreg8_legacy(x):
+    return (env.al,env.cl,env.dl,env.bl,env.ah,env.ch,env.dh,env.bh)[x]
+
+# using REX.R to get ModRM 'reg' register
 def getregR(obj,REG,size):
-    REX = obj.misc['REX']
-    if REX is None:
-        W=R=X=B=0
-    else:
-        W,R,X,B=REX
+    W,R,X,B = getREX(obj)
     return env.getreg(REG+(R<<3),size)
 
+# using REX.R + REX.W to get ModRM 'reg' register
 def getregRW(obj,REG,size):
-    REX = obj.misc['REX']
-    if REX is None:
-        W=R=X=B=0
-    else:
-        W,R,X,B=REX
-        if W==1: size=64
+    W,R,X,B = getREX(obj)
+    if W==1: size=64
     return env.getreg(REG+(R<<3),size)
 
+# using REX.B to get ModRM 'r/m' register
 def getregB(obj,REG,size):
-    REX = obj.misc['REX']
-    if REX is None:
-        W=R=X=B=0
-    else:
-        W,R,X,B=REX
+    W,R,X,B = getREX(obj)
     return env.getreg(REG+(B<<3),size)
 
 # read ModR/M + SIB values and update obj accordingly:
-def getModRM(obj,Mod,RM,data):
+def getModRM(obj,Mod,RM,data,REX=None):
     opdsz = obj.misc['opdsz'] or 32
     adrsz = obj.misc['adrsz'] or 64
     seg   = obj.misc['segreg']
     if seg is None: seg=''
-    REX = obj.misc['REX']
-    if REX is None:
-        W=R=X=B=0
-    else:
-        W,R,X,B = REX
-        if W==1: opdsz = 64
-    # r/16/32 case:
+    W,R,X,B = REX or getREX(obj)
+    if opdsz!=8 and W==1: opdsz = 64
+    # r/16/32/64 case:
     if Mod==0b11:
         op1 = env.getreg((B<<3)+RM,opdsz)
+        if opdsz==8 and obj.misc['REX'] is None:
+            op1 = getreg8_legacy(RM)
         return op1,data
-    # m/16/32 case:
+    # SIB cases :
     if adrsz!=16 and RM==0b100:
         # read SIB byte in data:
         if data.size<8: raise InstructionError(obj)
@@ -93,15 +93,15 @@ def getModRM(obj,Mod,RM,data):
                   env.di,
                   env.bp,
                   env.bx)[RM]
-
-    # check [disp16/32] case:
-    if (b is env.rbp or b is env.r13) and Mod==0:
-        b=env.rip
-        if seg is '': seg = env.cs
-        Mod = 0b10
-    if (b is env.bp) and Mod==0:
-        b=env.cst(0,adrsz)
-        Mod = 0b10
+    # check special disp32 case (RIP-relative addressing):
+    if Mod==0:
+        if RM==0b101:
+            b=env.rip
+            if seg is '': seg = env.cs
+            Mod = 0b10
+        elif b.ref in ('rbp','r13'):
+            b = env.cst(0,adrsz)
+            Mod = 0b10
     # now read displacement bytes:
     if Mod==0b00:
         d = 0
@@ -155,6 +155,8 @@ def set_opdsz_mm(obj):
     obj.misc['opdsz']='mm'
 def set_opdsz_64(obj):
     obj.misc['opdsz']=64
+def set_opdsz_32(obj):
+    obj.misc['opdsz']=32
 
 def check_f2(obj,f=do_nothing):
     if obj.misc['pfx'] and obj.misc['pfx'][0]=='repne':

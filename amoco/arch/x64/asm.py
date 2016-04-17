@@ -90,6 +90,15 @@ def i_RET(i,fmap):
 def i_HLT(i,fmap):
   fmap[rip] = top(64)
 
+def i_XLATB(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  _table = bx if i.misc['opdsz']==16 else ebx
+  REX = i.misc['REX']
+  W = 0
+  if REX: W=REX[0]
+  if W==1: _table = rbx
+  fmap[al] = fmap(mem(_table+al.zeroextend(_table.size),8))
+
 #------------------------------------------------------------------------------
 def _ins_(i,fmap,l):
   counter = cx if i.misc['adrsz'] else rcx
@@ -391,7 +400,7 @@ def i_JMPF(i,fmap):
   pc = fmap[rip]+i.length
 
 #------------------------------------------------------------------------------
-def _loop_(i,fmap,cond):
+def _loop_(i,fmap,fcond):
   pc = fmap[rip]+i.length
   opdsz = 16 if i.misc['opdsz'] else 64
   src = i.operands[0].signextend(64)
@@ -402,20 +411,21 @@ def _loop_(i,fmap,cond):
   W = 0
   if REX: W=REX[0]
   if W==1: counter = rcx
+  cond = fcond(zf,counter)
   fmap[counter] = fmap(counter)-1
   fmap[rip] = tst(fmap(cond), loc, pc)
 
 def i_LOOP(i,fmap):
-  cond = (counter!=0)
-  _loop_(i,fmap,cond)
+  fcond = lambda f,c: (c!=0)
+  _loop_(i,fmap,fcond)
 
 def i_LOOPE(i,fmap):
-  cond = zf&(counter!=0)
-  _loop_(i,fmap,cond)
+  fcond = lambda f,c : f&(c!=0)
+  _loop_(i,fmap,fcond)
 
 def i_LOOPNE(i,fmap):
-  cond = (~zf)&(counter!=0)
-  _loop_(i,fmap,cond)
+  fcond = lambda f,c : (~f)&(c!=0)
+  _loop_(i,fmap,fcond)
 
 #------------------------------------------------------------------------------
 def i_LSL(i,fmap):
@@ -1253,3 +1263,258 @@ def i_SYSRET(i,fmap):
   fmap[rip] = top(64)
   fmap[rsp] = top(64)
 
+def i_PAND(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = fmap(i.operands[1])
+  x=fmap(op1)&op2
+  fmap[op1] = x
+
+def i_PANDN(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = fmap(i.operands[1])
+  x=fmap(~op1)&op2
+  fmap[op1] = x
+
+def i_POR(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = fmap(i.operands[1])
+  x=fmap(op1)|op2
+  fmap[op1] = x
+
+def i_PXOR(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = fmap(i.operands[1])
+  x=fmap(op1)^op2
+  fmap[op1] = x
+
+def i_MOVD(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = fmap(i.operands[1])
+  fmap[op1] = op2[0:32].zeroextend(op1.size)
+
+def i_MOVQ(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = fmap(i.operands[1])
+  fmap[op1] = op2[0:64].zeroextend(op1.size)
+
+def sse_MOVSD(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  if op1._is_mem:
+    src = fmap(op2[0:op1.size])
+  elif op2._is_mem:
+    src = fmap(op2).zeroextend(op1.size)
+  fmap[op1] = src
+
+def i_MOVDQU(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  fmap[op1] = fmap(op2)
+
+def i_MOVDQA(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  fmap[op1] = fmap(op2)
+
+def i_MOVUPS(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  fmap[op1] = fmap(op2)
+
+def i_MOVAPS(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  fmap[op1] = fmap(op2)
+
+def i_PADDB(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  assert op1.size==op2.size
+  for __i in range(0,op1.size,8):
+    src1 = fmap(op1[__i:__i+8])
+    src2 = fmap(op2[__i:__i+8])
+    fmap[op1[__i:__i+8]] = src1+src2
+
+def i_PSUBUSB(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  assert op1.size==op2.size
+  for __i in range(0,op1.size,8):
+    src1 = fmap(op1[__i:__i+8])
+    src2 = fmap(op2[__i:__i+8])
+    res = src1-src2
+    fmap[op1[__i:__i+8]] = tst(src1<src2,cst(0,op1.size),res)
+
+def i_PMAXUB(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  assert op1.size==op2.size
+  for __i in range(0,op1.size,8):
+    src1 = fmap(op1[__i:__i+8])
+    src2 = fmap(op2[__i:__i+8])
+    fmap[op1[__i:__i+8]] = tst(src1>src2,src1,src2)
+
+def i_PMINUB(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  assert op1.size==op2.size
+  for __i in range(0,op1.size,8):
+    src1 = fmap(op1[__i:__i+8])
+    src2 = fmap(op2[__i:__i+8])
+    fmap[op1[__i:__i+8]] = tst(src1<src2,src1,src2)
+
+def i_PUNPCKHBW(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  assert op1.size==op2.size
+  src1 = fmap(op1)
+  src2 = fmap(op2)
+  val1 = (src1[i:i+8] for i in range(0,op1.size,8))
+  val2 = (src2[i:i+8] for i in range(0,op2.size,8))
+  res  = [composer([v1,v2]) for (v1,v2) in zip(val1,val2)]
+  fmap[op1] = composer(res)[op1.size:2*op1.size]
+
+def i_PUNPCKLBW(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  assert op1.size==op2.size
+  src1 = fmap(op1)
+  src2 = fmap(op2)
+  val1 = (src1[i:i+8] for i in range(0,op1.size,8))
+  val2 = (src2[i:i+8] for i in range(0,op2.size,8))
+  res  = [composer([v1,v2]) for (v1,v2) in zip(val1,val2)]
+  fmap[op1] = composer(res)[0:op1.size]
+
+def i_PCMPEQB(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  assert op1.size==op2.size
+  src1 = fmap(op1)
+  src2 = fmap(op2)
+  val1 = (src1[i:i+8] for i in range(0,op1.size,8))
+  val2 = (src2[i:i+8] for i in range(0,op2.size,8))
+  res  = [tst(v1==v2,cst(0xff,8),cst(0,8)) for (v1,v2) in zip(val1,val2)]
+  fmap[op1] = composer(res)
+
+def i_PSRLW(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  src1 = fmap(op1)
+  src2 = fmap(op2)
+  val1 = (src1[i:i+16] for i in range(0,op1.size,16))
+  res  = [v1>>src2.value for v1 in val1]
+  fmap[op1] = composer(res)
+
+def i_PSRLD(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  src1 = fmap(op1)
+  src2 = fmap(op2)
+  val1 = (src1[i:i+32] for i in range(0,op1.size,32))
+  res  = [v1>>src2.value for v1 in val1]
+  fmap[op1] = composer(res)
+
+def i_PSRLQ(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  src1 = fmap(op1)
+  src2 = fmap(op2)
+  val1 = (src1[i:i+64] for i in range(0,op1.size,64))
+  res  = [v1>>src2.value for v1 in val1]
+  fmap[op1] = composer(res)
+
+def i_PSLLQ(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  src1 = fmap(op1)
+  src2 = fmap(op2)
+  val1 = (src1[i:i+64] for i in range(0,op1.size,64))
+  res  = [v1<<src2.value for v1 in val1]
+  fmap[op1] = composer(res)
+
+def i_PSHUFD(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  op3 = i.operands[2]
+  assert op1.size==op2.size==128
+  sz = 2
+  dst = []
+  src = fmap(op2)
+  order = fmap(op3)
+  j = 0
+  for i in range(0,op1.size,32):
+      dst.append( src[i:i+32]>>(order[j:j+sz]*32) )
+      j+=sz
+  fmap[op1] = composer(dst)
+
+def i_PSHUFB(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  assert op1.size==op2.size
+  sz = 4 if op1.size==128 else 3
+  src = fmap(op1)
+  mask = fmap(op2)
+  for i in range(0,op1.size,8):
+    srcb = src[i:i+8]
+    maskb = mask[i:i+8]
+    indx = maskb[0:sz]
+    if indx._is_cst:
+      sta,sto = indx.value*8,indx.value*8+8
+      v = src[sta:sto]
+      src[i:i+8] = tst(maskb[7:8],cst(0,8),v)
+      src[sta:sto] = tst(maskb[7:8],v,srcb)
+    else:
+      src[i:i+8] = tst(maskb[7:8],cst(0,8),top(8))
+  fmap[op1] = src
+
+def i_PINSRW(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  op3 = i.operands[2]
+  if op2._is_reg: op2 = op2[0:16]
+  src1 = fmap(op1)
+  src2 = fmap(op2)
+  if op3._is_cst:
+      sta,sto = op3.value*16,op3.value*16+16
+      src1[sta:sto] = src2
+  else:
+      src1 = top(src1.size)
+  fmap[op1] = src1
+
+def i_PEXTRW(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  op3 = i.operands[2]
+  src2 = fmap(op2)
+  if op3._is_cst:
+      sta,sto = op3.value*16,op3.value*16+16
+      v = src2[sta:sto]
+  else:
+      v = top(16)
+  fmap[op1] = v.zeroextend(op1.size)

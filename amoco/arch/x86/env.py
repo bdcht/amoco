@@ -90,3 +90,5 @@ def cr(num):
 # debug regs:
 def dr(num):
     return is_reg_other(reg('dr%d'%num,32))
+
+internals = {'mode': 32}

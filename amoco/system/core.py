@@ -195,10 +195,10 @@ class MemoryZone(object):
         res = []
         i = self.locate(vaddr)
         if i is None:
-            if len(self._map)==0: return [void(l*8)]
+            if len(self._map)==0: return [void(l*8L)]
             v0 = self._map[0].vaddr
-            if (vaddr+l)<=v0: return [void(l*8)]
-            res.append(void((v0-vaddr)*8))
+            if (vaddr+l)<=v0: return [void(l*8L)]
+            res.append(void((v0-vaddr)*8L))
             l = (vaddr+l)-v0
             vaddr = v0
             i = 0
@@ -207,14 +207,14 @@ class MemoryZone(object):
             try:
                 data,ll = self._map[i].read(vaddr,ll)
             except IndexError:
-                res.append(void(ll*8))
-                ll=0
+                res.append(void(ll*8L))
+                ll=0L
                 break
             if data is None:
                 vi = self.__cache[i]
                 if vaddr < vi:
                     l = min(vaddr+ll,vi)-vaddr
-                    data = void(l*8)
+                    data = void(l*8L)
                     ll -= l
                     i -=1
             if data is not None:
@@ -287,6 +287,24 @@ class MemoryZone(object):
         self._map = m
         self.__update_cache()
 
+    def shift(self,offset):
+        for z in self._map:
+            z.vaddr += offset
+        self.__update_cache()
+
+    def grep(self,pattern):
+        import re
+        g = re.compile(pattern)
+        res = []
+        for z in self._map:
+            if z.data._is_raw:
+                off=0
+                for s in g.findall(z.data.val):
+                    off = z.data.val.index(s,off)
+                    res.append(z.vaddr+off)
+                    off += len(s)
+        return res
+
 #------------------------------------------------------------------------------
 class MemoryMap(object):
     __slot__ = ['_zones','perms']
@@ -342,6 +360,14 @@ class MemoryMap(object):
 
     def restruct(self):
         for z in self._zones.itervalues(): z.restruct()
+
+    def grep(self,pattern):
+        res = []
+        for z in self._zones.values():
+            zres = z.grep(pattern)
+            if z.rel is not None: zres = [z.rel+r for r in zres]
+            res.extend(zres)
+        return res
 
 #------------------------------------------------------------------------------
 class CoreExec(object):

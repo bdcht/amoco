@@ -111,6 +111,11 @@ def i_AAM(i,fmap):
   fmap[zf] = _r==0
   fmap[sf] = _r<0
 
+def i_XLATB(i,fmap):
+  fmap[eip] = fmap[eip]+i.length
+  _table = bx if i.misc['opdsz']==16 else ebx
+  fmap[al] = fmap(mem(_table+al.zeroextend(_table.size),8))
+
 #------------------------------------------------------------------------------
 def i_BSWAP(i,fmap):
   fmap[eip] = fmap[eip]+i.length
@@ -1242,6 +1247,12 @@ def i_PXOR(i,fmap):
   x=fmap(op1)^op2
   fmap[op1] = x
 
+def i_MOVD(i,fmap):
+  fmap[eip] = fmap[eip]+i.length
+  op1 = i.operands[0]
+  op2 = fmap(i.operands[1])
+  fmap[op1] = op2[0:32].zeroextend(op1.size)
+
 def i_MOVQ(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   op1 = i.operands[0]
@@ -1359,6 +1370,26 @@ def i_PCMPEQB(i,fmap):
   res  = [tst(v1==v2,cst(0xff,8),cst(0,8)) for (v1,v2) in zip(val1,val2)]
   fmap[op1] = composer(res)
 
+def i_PSRLW(i,fmap):
+  fmap[eip] = fmap[eip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  src1 = fmap(op1)
+  src2 = fmap(op2)
+  val1 = (src1[i:i+16] for i in range(0,op1.size,16))
+  res  = [v1>>src2.value for v1 in val1]
+  fmap[op1] = composer(res)
+
+def i_PSRLD(i,fmap):
+  fmap[eip] = fmap[eip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  src1 = fmap(op1)
+  src2 = fmap(op2)
+  val1 = (src1[i:i+32] for i in range(0,op1.size,32))
+  res  = [v1>>src2.value for v1 in val1]
+  fmap[op1] = composer(res)
+
 def i_PSRLQ(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   op1 = i.operands[0]
@@ -1378,6 +1409,22 @@ def i_PSLLQ(i,fmap):
   val1 = (src1[i:i+64] for i in range(0,op1.size,64))
   res  = [v1<<src2.value for v1 in val1]
   fmap[op1] = composer(res)
+
+def i_PSHUFD(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
+  op2 = i.operands[1]
+  op3 = i.operands[2]
+  assert op1.size==op2.size==128
+  sz = 2
+  dst = []
+  src = fmap(op2)
+  order = fmap(op3)
+  j = 0
+  for i in range(0,op1.size,32):
+      dst.append( src[i:i+32]>>(order[j:j+sz]*32) )
+      j+=sz
+  fmap[op1] = composer(dst)
 
 def i_PSHUFB(i,fmap):
   fmap[eip] = fmap[eip]+i.length

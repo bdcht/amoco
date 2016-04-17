@@ -398,7 +398,11 @@ def sse_sd(obj,Mod,REG,RM,data):
 # xmm, r/m32
 @ispec_ia32("*>[ {0f}{2a} /r ]", mnemonic="CVTSI2SD")
 def sse_sd(obj,Mod,REG,RM,data):
-    if not check_f2(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_f2(obj,set_opdsz_32): raise InstructionError(obj)
+    REX = obj.misc['REX']
+    if REX is not None:
+        W,R,X,B = REX
+        if W==1: set_opdsz_64()
     op2,data = getModRM(obj,Mod,RM,data)
     op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
@@ -528,7 +532,11 @@ def sse_sd(obj,Mod,REG,RM,data):
 # xmm, r/m32
 @ispec_ia32("*>[ {0f}{2a} /r ]", mnemonic="CVTSI2SS")
 def sse_sd(obj,Mod,REG,RM,data):
-    if not check_f3(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_f3(obj,set_opdsz_32): raise InstructionError(obj)
+    REX = obj.misc['REX']
+    if REX is not None:
+        W,R,X,B = REX
+        if W==1: set_opdsz_64()
     op2,data = getModRM(obj,Mod,RM,data)
     op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
@@ -582,6 +590,7 @@ def sse_sd(obj,Mod,REG,RM,data):
 @ispec_ia32("*>[ {0f}{6a} /r ]", mnemonic="PUNPCKHDQ")
 @ispec_ia32("*>[ {0f}{6b} /r ]", mnemonic="PACKSSDW")
 @ispec_ia32("*>[ {0f}{6c} /r ]", mnemonic="PUNPCKLQDQ")
+@ispec_ia32("*>[ {0f}{6d} /r ]", mnemonic="PUNPCKHQDQ")
 @ispec_ia32("*>[ {0f}{6f} /r ]", mnemonic="MOVDQA")
 @ispec_ia32("*>[ {0f}{74} /r ]", mnemonic="PCMPEQB")
 @ispec_ia32("*>[ {0f}{75} /r ]", mnemonic="PCMPEQW")

@@ -577,6 +577,7 @@ def sse_sd(obj,Mod,REG,RM,data):
 @ispec_ia32("*>[ {0f}{6a} /r ]", mnemonic="PUNPCKHDQ")
 @ispec_ia32("*>[ {0f}{6b} /r ]", mnemonic="PACKSSDW")
 @ispec_ia32("*>[ {0f}{6c} /r ]", mnemonic="PUNPCKLQDQ")
+@ispec_ia32("*>[ {0f}{6d} /r ]", mnemonic="PUNPCKHQDQ")
 @ispec_ia32("*>[ {0f}{6f} /r ]", mnemonic="MOVDQA")
 @ispec_ia32("*>[ {0f}{74} /r ]", mnemonic="PCMPEQB")
 @ispec_ia32("*>[ {0f}{75} /r ]", mnemonic="PCMPEQW")

@@ -626,6 +626,7 @@ def ia32_arpl(obj,Mod,REG,RM,data,_inv):
 def ia32_movsxd(obj,Mod,REG,RM,data):
     op1 = getregR(obj,REG,64)
     # force REX.W=0 for op2 decoding:
+    W,R,X,B = getREX(obj)
     op2,data = getModRM(obj,Mod,RM,data,REX=(0,R,X,B))
     obj.operands = [op1, op2]
     obj.type = type_data_processing

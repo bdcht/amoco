@@ -1422,7 +1422,7 @@ def i_PSHUFD(i,fmap):
   order = fmap(op3)
   j = 0
   for i in range(0,op1.size,32):
-      dst.append( src[i:i+32]>>(order[j:j+sz]*32) )
+      dst.append( (src>>(order[j:j+sz]*32))[0:32] )
       j+=sz
   fmap[op1] = composer(dst)
 

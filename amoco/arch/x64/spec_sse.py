@@ -402,7 +402,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     REX = obj.misc['REX']
     if REX is not None:
         W,R,X,B = REX
-        if W==1: set_opdsz_64()
+        if W==1: set_opdsz_64(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
@@ -536,7 +536,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     REX = obj.misc['REX']
     if REX is not None:
         W,R,X,B = REX
-        if W==1: set_opdsz_64()
+        if W==1: set_opdsz_64(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]

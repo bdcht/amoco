@@ -1518,3 +1518,8 @@ def i_PEXTRW(i,fmap):
   else:
       v = top(16)
   fmap[op1] = v.zeroextend(op1.size)
+
+def i_XLATB(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  _b = fmap(mem(rbx+al.zeroextend(64),8))
+  fmap[al]  = _b

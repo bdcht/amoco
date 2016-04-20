@@ -97,3 +97,8 @@ def test_decoder_014():
   c = '\x48\xa5'
   i = cpu.disassemble(c)
   assert i.mnemonic=='MOVSQ'
+
+def test_decoder_015():
+  c = '\x48\x63\xd2'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='MOVSXD'

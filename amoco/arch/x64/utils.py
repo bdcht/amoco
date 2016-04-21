@@ -40,17 +40,23 @@ def getreg8_legacy(x):
 
 # using REX.R to get ModRM 'reg' register
 def getregR(obj,REG,size):
+    if size==8 and obj.misc['REX'] is None:
+        return getreg8_legacy(REG)
     W,R,X,B = getREX(obj)
     return env.getreg(REG+(R<<3),size)
 
 # using REX.R + REX.W to get ModRM 'reg' register
 def getregRW(obj,REG,size):
+    if size==8 and obj.misc['REX'] is None:
+        return getreg8_legacy(REG)
     W,R,X,B = getREX(obj)
     if W==1: size=64
     return env.getreg(REG+(R<<3),size)
 
 # using REX.B to get ModRM 'r/m' register
 def getregB(obj,REG,size):
+    if size==8 and obj.misc['REX'] is None:
+        return getreg8_legacy(REG)
     W,R,X,B = getREX(obj)
     return env.getreg(REG+(B<<3),size)
 
@@ -64,9 +70,7 @@ def getModRM(obj,Mod,RM,data,REX=None):
     if opdsz!=8 and W==1: opdsz = 64
     # r/16/32/64 case:
     if Mod==0b11:
-        op1 = env.getreg((B<<3)+RM,opdsz)
-        if opdsz==8 and obj.misc['REX'] is None:
-            op1 = getreg8_legacy(RM)
+        op1 = getregB(obj,RM,opdsz)
         return op1,data
     # SIB cases :
     if adrsz!=16 and RM==0b100:

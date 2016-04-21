@@ -102,3 +102,17 @@ def test_decoder_015():
   c = '\x48\x63\xd2'
   i = cpu.disassemble(c)
   assert i.mnemonic=='MOVSXD'
+
+def test_decoder_016():
+  c = '\x86\xf1'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='XCHG'
+  assert i.operands[0].ref=='dh'
+  assert i.operands[1].ref=='cl'
+
+def test_decoder_017():
+  c = '\x2a\xf1'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='SUB'
+  assert i.operands[0].ref=='dh'
+  assert i.operands[1].ref=='cl'

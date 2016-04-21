@@ -1411,7 +1411,7 @@ def i_PSLLQ(i,fmap):
   fmap[op1] = composer(res)
 
 def i_PSHUFD(i,fmap):
-  fmap[rip] = fmap[rip]+i.length
+  fmap[eip] = fmap[eip]+i.length
   op1 = i.operands[0]
   op2 = i.operands[1]
   op3 = i.operands[2]

@@ -122,7 +122,7 @@ def sse_ps(obj,Mod,REG,RM,data):
 @ispec_ia32("*>[ {0f}{6e} /r ]", mnemonic="MOVD", _inv=False)
 @ispec_ia32("*>[ {0f}{7e} /r ]", mnemonic="MOVD", _inv=True)
 def sse_pd(obj,Mod,REG,RM,data, _inv):
-    if not check_nopfx(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_nopfx(obj,set_opdsz_32): raise InstructionError(obj)
     REX = obj.misc['REX']
     if REX is not None:
         W,R,X,B = REX
@@ -889,7 +889,7 @@ def sse_pd(obj,Mod,RM,data):
 @ispec_ia32("*>[ {0f}{6e} /r ]", mnemonic="MOVD", _inv=False)
 @ispec_ia32("*>[ {0f}{7e} /r ]", mnemonic="MOVD", _inv=True)
 def sse_pd(obj,Mod,REG,RM,data, _inv):
-    if not check_66(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_66(obj,set_opdsz_32): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2] if not _inv else [op2,op1]

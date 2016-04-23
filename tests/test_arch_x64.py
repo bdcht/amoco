@@ -116,3 +116,74 @@ def test_decoder_017():
   assert i.mnemonic=='SUB'
   assert i.operands[0].ref=='dh'
   assert i.operands[1].ref=='cl'
+
+def test_decoder_018():
+  c = '\xff\x35\x00\x00\x00\x00'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='PUSH'
+  assert i.operands[0].a.base == rip
+  assert i.operands[0].a.disp == 0
+
+def test_decoder_019():
+  c = '\xff\x35\x00\x00\x00\x00'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='PUSH'
+  assert i.operands[0].size == 64
+  assert i.operands[0].a.base == rip
+  assert i.operands[0].a.disp == 0
+
+def test_decoder_020():
+  c = '\x68\x01\x02\x03\xff'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='PUSH'
+  assert i.operands[0].size == 32
+  assert i.operands[0] == 0xff030201
+  c = '\x48\x68\x01\x02\x03\xff'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='PUSH'
+  assert i.operands[0].size == 64
+  assert i.operands[0] == 0xffffffffff030201
+
+def test_decoder_021():
+  c = '\x66\x68\x03\xff'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='PUSH'
+  assert i.operands[0].size == 16
+  assert i.operands[0] == 0xff03
+
+def test_decoder_022():
+  c = '\x66\x48\x51'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='PUSH'
+  assert i.operands[0].ref == 'rcx'
+
+def test_decoder_023():
+  c = '\x45\x51'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='PUSH'
+  assert i.operands[0].ref == 'r9'
+
+def test_decoder_024():
+  c = '\x66\x51'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='PUSH'
+  assert i.operands[0].ref == 'cx'
+
+def test_decoder_025():
+  c = '4c69f1020000f0'.decode('hex')
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='IMUL'
+  assert i.operands[0].ref == 'r14'
+  assert i.operands[1].ref == 'rcx'
+  assert i.operands[2].size == 64
+  assert i.operands[2] == cpu.cst(0xf0000002,32).signextend(64)
+
+def test_decoder_026():
+  c = '\x66\x41\xc7\x84\x55\x11\x11\x11\x11\x22\x22'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='MOV'
+  assert i.operands[0]._is_mem
+  assert i.operands[0].size == 16
+  assert i.operands[0].a.base == cpu.r13 + (cpu.rdx*2)
+  assert i.operands[0].a.disp == 0x11111111
+  assert i.operands[1] == cpu.cst(0x2222,16)

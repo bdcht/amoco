@@ -16,7 +16,7 @@ conf.set('block', 'bytecode' , 'True')
 conf.set('block', 'padding'  , '4'   )
 
 conf.add_section('cas')
-conf.set('cas', 'complexity' , '30'  )
+conf.set('cas', 'complexity' , '100'  )
 
 # log section
 conf.add_section('log')

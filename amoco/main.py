@@ -411,7 +411,8 @@ class fbackward(lforward):
 # a generalisation of link forward where pc is evaluated by considering all paths
 # that link to the current node.
 class lbackward(fforward):
-    policy = {'depth-first': False, 'branch-lazy': False, 'frame-aliasing':False}
+    policy = {'depth-first': False, 'branch-lazy': False, 'frame-aliasing':False,
+              'complexity': 30}
 
     def check_func(self,node):
         for t in self.spool:
@@ -461,11 +462,14 @@ class lbackward(fforward):
     def get_targets(self,node,parent):
         pc = self.prog.cpu.PC()
         alf = code.mapper.assume_no_aliasing
+        cxl = code.op.threshold
+        code.op.limit(self.policy['complexity'])
         code.mapper.assume_no_aliasing = not self.policy['frame-aliasing']
         # make pc value explicit in every block:
         node.data.map = node.data.map.use((pc,node.data.address))
         # try fforward:
         T = super(lbackward,self).get_targets(node,parent)
         code.mapper.assume_no_aliasing = alf
+        code.op.limit(cxl)
         return T
 

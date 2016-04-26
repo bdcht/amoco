@@ -389,7 +389,9 @@ def sse_sd(obj,Mod,REG,RM,data):
 @ispec_ia32("*>[ {0f}{2d} /r ]", mnemonic="CVTSD2SI")
 def sse_sd(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
-    op2,data = getModRM(obj,Mod,RM,data)
+    # force REX.W=0 for op2 decoding:
+    W,R,X,B = getREX(obj)
+    op2,data = getModRM(obj,Mod,RM,data,REX=(0,R,X,B))
     if op2._is_mem: op2.size = 64
     op1 = getregRW(obj,REG,32)
     obj.operands = [op1,op2]

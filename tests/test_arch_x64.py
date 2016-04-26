@@ -187,3 +187,10 @@ def test_decoder_026():
   assert i.operands[0].a.base == cpu.r13 + (cpu.rdx*2)
   assert i.operands[0].a.disp == 0x11111111
   assert i.operands[1] == cpu.cst(0x2222,16)
+
+def test_decoder_027():
+  c = '\xf2\x48\x0f\x2c\xf3'
+  i = cpu.disassemble(c)
+  assert i.mnemonic=='CVTTSD2SI'
+  assert i.operands[0].ref == 'rsi'
+  assert i.operands[1].ref == 'xmm3'

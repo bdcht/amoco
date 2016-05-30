@@ -425,7 +425,8 @@ att_mnemo_correspondance = {
     'cltq': 'cdqe', # x86-64 only
     'cqto': 'cqo',  # x86-64 only
 }
-cmp_sse = ['eq','lt','le','unord','neq','nlt','nle','ord']
+mnemo_sse_cmp = [ 'cmpps', 'cmppd', 'cmpsd', 'cmpss' ]
+mnemo_sse_cmp_predicate = ['eq','lt','le','unord','neq','nlt','nle','ord']
 def att_mnemo_generic(i,s,m):
     if i.mnemonic in [ 'SETcc', 'Jcc' ]:
         pass
@@ -433,8 +434,8 @@ def att_mnemo_generic(i,s,m):
         # This 'movsd' is the string instruction
         # The 'movsd' with two arguments is the SSE instruction
         m = 'movsl'
-    elif m == 'cmpsd' and len(i.operands) == 3:
-        m = m[0:3] + cmp_sse[int(i.operands[2])] + m[3:5]
+    elif m in mnemo_sse_cmp and len(i.operands) == 3:
+        m = m[0:3] + mnemo_sse_cmp_predicate[int(i.operands[2])] + m[3:5]
     elif m in att_mnemo_correspondance.values():
         m = sorted([key
             for key, value in att_mnemo_correspondance.items()
@@ -556,7 +557,7 @@ def att_opers(i):
         else:
             raise ValueError,op
         s.append((Token.Literal,', '))
-    if i.mnemonic == 'CMPSD' and len(i.operands) == 3:
+    if i.mnemonic.lower() in mnemo_sse_cmp and len(i.operands) == 3:
         s = s[2:]
     if len(s)>0: s.pop()
     return s

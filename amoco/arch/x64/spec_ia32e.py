@@ -861,7 +861,7 @@ def ia32_movx(obj,Mod,RM,REG,data,_flg8):
     if R==1: REG = (R<<3)+REG
     op1 = env.getreg(REG,size)
     obj.misc['opdsz']=8 if _flg8 else 16
-    op2,data = getModRM(obj,Mod,RM,data)
+    op2,data = getModRM(obj,Mod,RM,data,REX=(0,R,X,B))
     obj.operands = [op1, op2]
     obj.type = type_data_processing
 

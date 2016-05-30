@@ -960,6 +960,13 @@ class ptr(exp):
         return '%s(%s%s)'%(self.seg,self.base,d)
 
     def disp_tostring(self,base10=True):
+        if hasattr(self.disp, '_is_cst'):
+            # When allowing label in expressions, e.g. when parsing
+            # relocatable objects and relocations, 'disp' (displacement
+            # from a base address in memory) can not only be a number as
+            # in standard amoco, but also a label, a difference of labels
+            # or even a difference of labels added with an integer
+            return '+%s'%self.disp
         if self.disp==0: return ''
         if base10: return '%+d'%self.disp
         c = cst(self.disp,self.size)

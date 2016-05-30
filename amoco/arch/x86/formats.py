@@ -248,10 +248,13 @@ def default_deref(b, d):
         elif b._is_eqn:
             if b.op.symbol == '*':
                 b0, b1, b2 = None, reg_name(b.l), int(b.r)
-            elif b.op.symbol == '+' and b.r._is_reg:
+            elif b.op.symbol == '+' and b.l._is_reg and b.r._is_reg:
                 b0, b1, b2 = reg_name(b.l), reg_name(b.r), None
+                if b1 in ('esp','rsp'): b0, b1 = b1, b0 # esp is always first
             elif b.op.symbol == '+' and b.r._is_eqn and b.r.op.symbol == '*':
                 b0, b1, b2 = reg_name(b.l), reg_name(b.r.l), int(b.r.r)
+            elif b.op.symbol == '+' and b.l._is_eqn and b.l.op.symbol == '*':
+                b0, b1, b2 = reg_name(b.r), reg_name(b.l.l), int(b.l.r)
             else:
                 NEVER
         if not hasattr(d, '_is_cst'):

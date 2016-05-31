@@ -23,6 +23,7 @@ def ia32_nooperand(obj):
 @ispec_ia32("16>[ {d8} reg(3) 0 1011 ]", mnemonic = "FCOM")   # D8 D0+i
 @ispec_ia32("16>[ {d8} reg(3) 1 1011 ]", mnemonic = "FCOMP")  # D8 D8+i
 @ispec_ia32("16>[ {dd} reg(3) 0 0011 ]", mnemonic = "FFREE")  # DD C0+i
+@ispec_ia32("16>[ {df} reg(3) 0 0011 ]", mnemonic = "FFREEP") # DF C0+i
 @ispec_ia32("16>[ {dd} reg(3) 0 1011 ]", mnemonic = "FST")    # DD D0+i
 @ispec_ia32("16>[ {dd} reg(3) 1 1011 ]", mnemonic = "FSTP")   # DD D8+i
 @ispec_ia32("16>[ {dd} reg(3) 0 0111 ]", mnemonic = "FUCOM")  # DD E0+i

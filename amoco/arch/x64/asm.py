@@ -365,7 +365,9 @@ def i_OUT(i,fmap):
 def i_PUSH(i,fmap):
   fmap[rip] = fmap[rip]+i.length
   op1 = fmap(i.operands[0])
-  if op1.size==8: op1 = op1.signextend(64)
+  opdsz = 16 if i.misc['opdsz'] else 64
+  if   op1.size==8:  op1 = op1.signextend(opdsz) # push imm8
+  elif op1.size==16: op1 = op1.zeroextend(opdsz) # push segm register
   push(fmap,op1)
 
 #op1_dst retreives op1 location:

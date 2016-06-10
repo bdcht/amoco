@@ -64,8 +64,19 @@ def getModRM(obj,Mod,RM,data):
                   env.bx)[RM]
     # check [disp16/32] case:
     if (b is env.ebp or b is env.bp) and Mod==0:
-        b=env.cst(0,adrsz)
         Mod = 0b10
+        bs = s+env.cst(0,adrsz)
+    elif s is 0:
+        bs = b
+    elif env.internals.get('keep_order'):
+        # Instead of doing bs = b+s, which will reorder arguments, we do
+        # the addition manually, and change 'prop' so the many future calls
+        # to 'simplify' does not reorder the arguments
+        from amoco.cas import expressions
+        bs = expressions.op('+', b, s)
+        bs.prop |= 16
+    else:
+        bs = b+s
     # now read displacement bytes:
     if Mod==0b00:
         d = 0
@@ -81,7 +92,6 @@ def getModRM(obj,Mod,RM,data):
         obj.bytes += pack(d)
         data = data[adrsz:data.size]
         d = d.int(-1)
-    bs = b+s
     if bs._is_cst and bs.v==0x0:
         bs.size = adrsz
         bs.v = d & bs.mask

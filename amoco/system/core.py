@@ -197,7 +197,9 @@ class MemoryZone(object):
         if i is None:
             if len(self._map)==0: return [void(l*8L)]
             v0 = self._map[0].vaddr
-            if (vaddr+l)<=v0: return [void(l*8L)]
+            # Don't test if (vaddr+l)<=v0 because we need the test to be
+            # true if vaddr or v0 contain label/symbols
+            if not (v0<(vaddr+l)): return [void(l*8)]
             res.append(void((v0-vaddr)*8L))
             l = (vaddr+l)-v0
             vaddr = v0

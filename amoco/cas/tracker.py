@@ -40,7 +40,7 @@ class generation(OrderedDict):
 
     # order at generation g is conserved;
     def getgen(self,g):
-        d = OrderedDict()
+        d = generation()
         for k in self.iterkeys():
             d[k] = self.keygen(k,g)
         return d
@@ -50,3 +50,13 @@ class generation(OrderedDict):
         for k in self:
             d[k] = self[k]
         return d
+
+    # With python 2 we need to define __del__ because the garbage collector
+    # is not efficient enough
+    # However, this definition creates memory leaks if we have circular
+    # references (a generation object containg a reference to itself)
+    # It nevers happen when used by amoco mappers
+    def __del__(self):
+        self.__dict__['_OrderedDict__root'][:] = [None]
+        for _ in self.__dict__['_OrderedDict__map']:
+            self.__dict__['_OrderedDict__map'][_][:] = [None]

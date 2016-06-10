@@ -152,6 +152,7 @@ def ia32_imm8(obj,ib):
 
 @ispec_ia32("16>[ {6a} ib(8) ]", mnemonic = "PUSH",   type=type_data_processing)
 def ia32_imm8_signed(obj,ib):
+    W,R,X,B = getREX(obj)
     obj.operands = [env.cst(ib,8).signextend(8)]
 
 @ispec_ia32("16>[ {eb} ib(8) ]", mnemonic = "JMP",    type=type_control_flow)
@@ -221,6 +222,7 @@ def ia32_bswap(obj,reg):
 @ispec_ia32("16>[ {0f}{a8} ]", mnemonic="PUSH", _seg=env.gs, type=type_data_processing)
 @ispec_ia32("16>[ {0f}{a9} ]", mnemonic="POP",  _seg=env.gs, type=type_data_processing)
 def ia32_push_pop(obj,_seg):
+    W,R,X,B = getREX(obj)
     obj.operands = [_seg]
 
 # r/m operand:

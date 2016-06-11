@@ -21,6 +21,10 @@ rdi    = reg('rdi',64)     # ptr to data in segment pointed by ES; dst ptr for s
 rip    = reg('rip',64)     # instruction pointer in 64 bit mode
 rflags = reg('rflags',64)
 
+is_reg_pc(rip)
+is_reg_flags(rflags)
+is_reg_stack(rsp)
+is_reg_stack(rbp)
 
 # 32bits registers :
 #-------------------
@@ -67,13 +71,17 @@ sf = slc(rflags,7,1,'sf')   # sign flag
 df = slc(rflags,10,1,'df')  # direction flag
 of = slc(rflags,11,1,'of')  # overflow flag
 
-# segment registers & other mappings:
-cs = reg('cs',16)      # segment selector for the code segment
-ds = reg('ds',16)      # segment selector to a data segment
-ss = reg('ss',16)      # segment selector to the stack segment
-es = reg('es',16)      # (data)
-fs = reg('fs',16)      # (data)
-gs = reg('gs',16)      # (data)
+with is_reg_other:
+    # segment registers & other mappings:
+    cs = reg('cs',16)      # segment selector for the code segment
+    ds = reg('ds',16)      # segment selector to a data segment
+    ss = reg('ss',16)      # segment selector to the stack segment
+    es = reg('es',16)      # (data)
+    fs = reg('fs',16)      # (data)
+    gs = reg('gs',16)      # (data)
+    mmregs = [reg('mm%d'%n,64) for n in range(16)]
+    xmmregs = [reg('xmm%d'%n, 128) for n in range(16)]
+    ymmregs = [reg('ymm%d'%n, 256) for n in range(16)]
 
 r8 = reg('r8',64); r8d = slc(r8,0,32,'r8d'); r8w = slc(r8,0,16,'r8w'); r8l = slc(r8,0,8,'r8l')
 r9 = reg('r9',64); r9d = slc(r9,0,32,'r9d'); r9w = slc(r9,0,16,'r9w'); r9l = slc(r9,0,8,'r9l')
@@ -97,16 +105,11 @@ def getreg(i,size=32):
 
 # fpu registers (80 bits holds double extended floats see Intel Vol1--4.4.2):
 def st(num):
-  return reg('st%d'%num,80)
+  return is_reg_other(reg('st%d'%num,80))
 
 def cr(num):
-  return reg('cr%d'%num,64)
+  return is_reg_other(reg('cr%d'%num,64))
 def dr(num):
-  return reg('dr%d'%num,64)
-
-mmregs = [reg('mm%d'%n,64) for n in range(16)]
-
-xmmregs = [reg('xmm%d'%n, 128) for n in range(16)]
-ymmregs = [reg('ymm%d'%n, 256) for n in range(16)]
+  return is_reg_other(reg('dr%d'%num,64))
 
 internals = {'mode':64}

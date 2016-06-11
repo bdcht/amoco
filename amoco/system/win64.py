@@ -108,6 +108,14 @@ class PE(CoreExec):
                     if op.a.base is cpu.rbp:
                         if op.a.disp<0: i.misc[tag.FUNC_ARG]=1
                         else: i.misc[tag.FUNC_VAR]=1
+                    elif op.a.base is cpu.rip and (i.address is not None):
+                        v = cpu.cst(0,op.a.base.size)+i.address+i.length+op.a.disp
+                        x = self.check_sym(v)
+                        if x is not None:
+                            v=x
+                            op.a.base = v
+                            op.a.disp = 0
+                        i.misc['rip_rel'] = v
                     elif op.a.base._is_cst:
                         x = self.check_sym(op.a.base)
                         if x is not None: op.a.base=x
@@ -154,6 +162,10 @@ class PE(CoreExec):
 
 @stub_default
 def pop_rip(m,**kargs):
+    cpu.pop(m,cpu.rip)
+
+def GetSystemTimeAsFileTime(m, **kargs):
+    '''fullname: KERNEL32.dll::GetSystemTimeAsFileTime'''
     cpu.pop(m,cpu.rip)
 
 

@@ -242,6 +242,7 @@ class mapper(object):
     # mapper[mem(esp)] returns eax (what is pointed by "esp before execution")
     # mapper(mem(esp)) returns ebx (what is pointed by "esp after execution")
     def __call__(self,x):
+        if len(self)==0: return x
         return x.eval(self)
 
     def restruct(self):

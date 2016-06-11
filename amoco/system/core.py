@@ -425,7 +425,7 @@ class CoreExec(object):
 
 #------------------------------------------------------------------------------
 from collections import defaultdict
-
+import re
 # default stub:
 def default_hook(m,**kargs):
     pass
@@ -436,7 +436,11 @@ stubs = defaultdict(lambda :default_hook)
 
 # decorator to define a stub:
 def stub(f):
-    stubs[f.__name__] = f
+    name = f.__name__
+    if f.func_doc:
+        fullname = re.findall('^fullname *: *([^ ]*)',f.func_doc)
+        if len(fullname)==1: name = fullname[0]
+    stubs[name] = f
     return f
 
 # decorator to (re)define the default stub:

@@ -415,6 +415,7 @@ class lbackward(fforward):
               'complexity': 30}
 
     def check_func(self,node):
+        if node is None: return
         for t in self.spool:
             if t.parent in node.c:
                 return

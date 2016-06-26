@@ -277,14 +277,15 @@ def _cmps_(i,fmap,l):
   src = fmap(mem(esi,l*8))
   x, carry, overflow = SubWithBorrow(dst,src)
   if i.misc['rep']:
-      fmap[af] = tst(fmap(counter)==0, fmap(af), halfborrow(dst,src))
-      fmap[pf] = tst(fmap(counter)==0, fmap(pf), parity8(x[0:8]))
-      fmap[zf] = tst(fmap(counter)==0, fmap(zf), x==0)
-      fmap[sf] = tst(fmap(counter)==0, fmap(sf), x<0)
-      fmap[cf] = tst(fmap(counter)==0, fmap(cf), carry)
-      fmap[of] = tst(fmap(counter)==0, fmap(of), overflow)
-      fmap[counter] = fmap(counter)-1
-      fmap[eip] = tst(fmap(counter)==0, fmap[eip]+i.length, fmap[eip])
+      cnt = fmap(counter)
+      fmap[af] = tst(cnt==0, fmap(af), halfborrow(dst,src))
+      fmap[pf] = tst(cnt==0, fmap(pf), parity8(x[0:8]))
+      fmap[zf] = tst(cnt==0, fmap(zf), x==0)
+      fmap[sf] = tst(cnt==0, fmap(sf), x<0)
+      fmap[cf] = tst(cnt==0, fmap(cf), carry)
+      fmap[of] = tst(cnt==0, fmap(of), overflow)
+      fmap[eip] = tst(cnt==0, fmap[eip]+i.length, fmap[eip])
+      fmap[counter] = tst(cnt==0,cnt,cnt-1)
   else:
       fmap[af] = halfborrow(dst,src)
       fmap[pf] = parity8(x[0:8])
@@ -313,14 +314,15 @@ def _scas_(i,fmap,l):
   src = fmap(mem(edi,l*8))
   x, carry, overflow = SubWithBorrow(a,src)
   if i.misc['rep']:
-      fmap[af] = tst(fmap(counter)==0, fmap(af), halfborrow(a,src))
-      fmap[pf] = tst(fmap(counter)==0, fmap(pf), parity8(x[0:8]))
-      fmap[zf] = tst(fmap(counter)==0, fmap(zf), x==0)
-      fmap[sf] = tst(fmap(counter)==0, fmap(sf), x<0)
-      fmap[cf] = tst(fmap(counter)==0, fmap(cf), carry)
-      fmap[of] = tst(fmap(counter)==0, fmap(of), overflow)
-      fmap[counter] = fmap(counter)-1
-      fmap[eip] = tst(fmap(counter)==0, fmap[eip]+i.length, fmap[eip])
+      cnt = fmap(counter)
+      fmap[af] = tst(cnt==0, fmap(af), halfborrow(a,src))
+      fmap[pf] = tst(cnt==0, fmap(pf), parity8(x[0:8]))
+      fmap[zf] = tst(cnt==0, fmap(zf), x==0)
+      fmap[sf] = tst(cnt==0, fmap(sf), x<0)
+      fmap[cf] = tst(cnt==0, fmap(cf), carry)
+      fmap[of] = tst(cnt==0, fmap(of), overflow)
+      fmap[eip] = tst(cnt==0, fmap[eip]+i.length, fmap[eip])
+      fmap[counter] = tst(cnt==0,cnt,cnt-1)
   else:
       fmap[af] = halfborrow(a,src)
       fmap[pf] = parity8(x[0:8])
@@ -344,9 +346,10 @@ def _lods_(i,fmap,l):
   loc = {1:al, 2:ax, 4:eax}[l]
   src = fmap(mem(esi,l*8))
   if i.misc['rep']:
-      fmap[loc] = tst(fmap(counter)==0, fmap(loc), src)
-      fmap[counter] = fmap(counter)-1
-      fmap[eip] = tst(fmap(counter)==0, fmap[eip]+i.length, fmap[eip])
+      cnt = fmap(counter)
+      fmap[loc] = tst(cnt==0, fmap(loc), src)
+      fmap[eip] = tst(cnt==0, fmap[eip]+i.length, fmap[eip])
+      fmap[counter] = tst(cnt==0,cnt,cnt-1)
   else:
       fmap[loc] = src
       fmap[eip] = fmap[eip]+i.length
@@ -365,9 +368,10 @@ def _stos_(i,fmap,l):
   src = fmap({1:al, 2:ax, 4:eax}[l])
   loc = mem(edi,l*8)
   if i.misc['rep']:
-      fmap[loc] = tst(fmap(counter)==0, fmap(loc), src)
-      fmap[counter] = fmap(counter)-1
-      fmap[eip] = tst(fmap(counter)==0, fmap[eip]+i.length, fmap[eip])
+      cnt = fmap(counter)
+      fmap[loc] = tst(cnt==0, fmap(loc), src)
+      fmap[eip] = tst(cnt==0, fmap[eip]+i.length, fmap[eip])
+      fmap[counter] = tst(cnt==0,cnt,cnt-1)
   else:
       fmap[loc] = src
       fmap[eip] = fmap[eip]+i.length
@@ -386,9 +390,10 @@ def _movs_(i,fmap,l):
   loc = mem(edi,l*8)
   src = fmap(mem(esi,l*8))
   if i.misc['rep']:
-      fmap[loc] = tst(fmap(counter)==0, fmap(loc), src)
-      fmap[counter] = fmap(counter)-1
-      fmap[eip] = tst(fmap(counter)==0, fmap[eip]+i.length, fmap[eip])
+      cnt = fmap(counter)
+      fmap[loc] = tst(cnt==0, fmap(loc), src)
+      fmap[eip] = tst(cnt==0, fmap[eip]+i.length, fmap[eip])
+      fmap[counter] = tst(cnt==0,cnt,cnt-1)
   else:
       fmap[loc] = src
       fmap[eip] = fmap[eip]+i.length

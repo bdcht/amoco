@@ -129,6 +129,7 @@ def ia32_nooperand(obj):
 @ispec_ia32(" 8>[ {ae} ]", mnemonic = "SCASB",   type=type_data_processing)
 @ispec_ia32(" 8>[ {af} ]", mnemonic = "SCASD",   type=type_data_processing)
 def ia32_strings(obj):
+    if obj.misc['rep']: obj.type=type_control_flow
     if obj.mnemonic[-1]=='D' and obj.misc['opdsz']:
         obj.mnemonic = obj.mnemonic[:-1]+'W'
 

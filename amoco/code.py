@@ -213,7 +213,7 @@ class func(block):
                     # try to execute target:
                     mtn = m.assume(econd)>>tn.data.map
                 except ValueError,err:
-                    logger.warning("link %s ignored"%e)
+                    logger.verbose("link %s ignored"%e)
                     continue
                 # and update heads and spool...
                 if tn in heads:

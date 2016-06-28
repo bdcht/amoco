@@ -263,7 +263,7 @@ class mapper(object):
             if not cc._is_def: continue
             if cc==1: continue
             if cc==0:
-                logger.error("invalid mapper eval: cond %s is false"%c)
+                logger.verbose("invalid mapper eval: cond %s is false"%c)
                 raise ValueError
             mm.conds.append(cc)
         for loc,v in self:
@@ -281,7 +281,7 @@ class mapper(object):
             if not cc._is_def: continue
             if cc==1: continue
             if cc==0:
-                logger.error("invalid mapper eval: cond %s is false"%c)
+                logger.verbose("invalid mapper eval: cond %s is false"%c)
                 raise ValueError
             mcopy.conds.append(cc)
         mm = mcopy.use()

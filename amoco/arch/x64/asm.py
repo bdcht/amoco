@@ -208,14 +208,15 @@ def _cmps_(i,fmap,l):
   src = fmap(mem(s,l*8))
   x, carry, overflow = SubWithBorrow(dst,src)
   if i.misc['rep']:
-      fmap[af] = tst(fmap(counter)==0, fmap(af), halfborrow(dst,src))
-      fmap[pf] = tst(fmap(counter)==0, fmap(pf), parity8(x[0:8]))
-      fmap[zf] = tst(fmap(counter)==0, fmap(zf), x==0)
-      fmap[sf] = tst(fmap(counter)==0, fmap(sf), x<0)
-      fmap[cf] = tst(fmap(counter)==0, fmap(cf), carry)
-      fmap[of] = tst(fmap(counter)==0, fmap(of), overflow)
-      fmap[counter] = fmap(counter)-1
-      fmap[rip] = tst(fmap(counter)==0, fmap[rip]+i.length, fmap[rip])
+      cnt = fmap(counter)
+      fmap[af] = tst(cnt==0, fmap(af), halfborrow(dst,src))
+      fmap[pf] = tst(cnt==0, fmap(pf), parity8(x[0:8]))
+      fmap[zf] = tst(cnt==0, fmap(zf), x==0)
+      fmap[sf] = tst(cnt==0, fmap(sf), x<0)
+      fmap[cf] = tst(cnt==0, fmap(cf), carry)
+      fmap[of] = tst(cnt==0, fmap(of), overflow)
+      fmap[rip] = tst(cnt==0, fmap[rip]+i.length, fmap[rip])
+      fmap[counter] = tst(cnt==0,cnt,cnt-1)
   else:
       fmap[af] = halfborrow(dst,src)
       fmap[pf] = parity8(x[0:8])
@@ -243,14 +244,15 @@ def _scas_(i,fmap,l):
   src = fmap(mem(d,l*8))
   x, carry, overflow = SubWithBorrow(a,src)
   if i.misc['rep']:
-      fmap[af] = tst(fmap(counter)==0, fmap(af), halfborrow(a,src))
-      fmap[pf] = tst(fmap(counter)==0, fmap(pf), parity8(x[0:8]))
-      fmap[zf] = tst(fmap(counter)==0, fmap(zf), x==0)
-      fmap[sf] = tst(fmap(counter)==0, fmap(sf), x<0)
-      fmap[cf] = tst(fmap(counter)==0, fmap(cf), carry)
-      fmap[of] = tst(fmap(counter)==0, fmap(of), overflow)
-      fmap[counter] = fmap(counter)-1
-      fmap[rip] = tst(fmap(counter)==0, fmap[rip]+i.length, fmap[rip])
+      cnt = fmap(counter)
+      fmap[af] = tst(cnt==0, fmap(af), halfborrow(a,src))
+      fmap[pf] = tst(cnt==0, fmap(pf), parity8(x[0:8]))
+      fmap[zf] = tst(cnt==0, fmap(zf), x==0)
+      fmap[sf] = tst(cnt==0, fmap(sf), x<0)
+      fmap[cf] = tst(cnt==0, fmap(cf), carry)
+      fmap[of] = tst(cnt==0, fmap(of), overflow)
+      fmap[rip] = tst(cnt==0, fmap[rip]+i.length, fmap[rip])
+      fmap[counter] = tst(cnt==0,cnt,cnt-1)
   else:
       fmap[af] = halfborrow(a,src)
       fmap[pf] = parity8(x[0:8])
@@ -276,9 +278,10 @@ def _lods_(i,fmap,l):
   loc = {1:al, 2:ax, 4:eax, 8:rax}[l]
   src = fmap(mem(s,l*8))
   if i.misc['rep']:
-      fmap[loc] = tst(fmap(counter)==0, fmap(loc), src)
-      fmap[counter] = fmap(counter)-1
-      fmap[rip] = tst(fmap(counter)==0, fmap[rip]+i.length, fmap[rip])
+      cnt = fmap(counter)
+      fmap[loc] = tst(cnt==0, fmap(loc), src)
+      fmap[rip] = tst(cnt==0, fmap[rip]+i.length, fmap[rip])
+      fmap[counter] = tst(cnt==0,cnt,cnt-1)
   else:
       fmap[loc] = src
       fmap[rip] = fmap[rip]+i.length
@@ -302,9 +305,10 @@ def _stos_(i,fmap,l):
   loc = mem(d,l*8)
   src = fmap({1:al, 2:ax, 4:eax, 8:rax}[l])
   if i.misc['rep']:
-      fmap[loc] = tst(fmap(counter)==0, fmap(loc), src)
-      fmap[counter] = fmap(counter)-1
-      fmap[rip] = tst(fmap(counter)==0, fmap[rip]+i.length, fmap[rip])
+      cnt = fmap(counter)
+      fmap[loc] = tst(cnt==0, fmap(loc), src)
+      fmap[rip] = tst(cnt==0, fmap[rip]+i.length, fmap[rip])
+      fmap[counter] = tst(cnt==0,cnt,cnt-1)
   else:
       fmap[loc] = src
       fmap[rip] = fmap[rip]+i.length
@@ -328,9 +332,10 @@ def _movs_(i,fmap,l):
   loc = mem(d,l*8)
   src = fmap(mem(s,l*8))
   if i.misc['rep']:
-      fmap[loc] = tst(fmap(counter)==0, fmap(loc), src)
-      fmap[counter] = fmap(counter)-1
-      fmap[rip] = tst(fmap(counter)==0, fmap[rip]+i.length, fmap[rip])
+      cnt = fmap(counter)
+      fmap[loc] = tst(cnt==0, fmap(loc), src)
+      fmap[rip] = tst(cnt==0, fmap[rip]+i.length, fmap[rip])
+      fmap[counter] = tst(cnt==0,cnt,cnt-1)
   else:
       fmap[loc] = src
       fmap[rip] = fmap[rip]+i.length
@@ -386,7 +391,7 @@ def i_CALL(i,fmap):
 
 
 def i_CALLF(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   pc = fmap[rip]+i.length
 
 def i_JMP(i,fmap):
@@ -398,7 +403,7 @@ def i_JMP(i,fmap):
   fmap[rip] = target
 
 def i_JMPF(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   pc = fmap[rip]+i.length
 
 #------------------------------------------------------------------------------
@@ -431,11 +436,11 @@ def i_LOOPNE(i,fmap):
 
 #------------------------------------------------------------------------------
 def i_LSL(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
 
 def i_LTR(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
 
 #######################
@@ -477,8 +482,8 @@ def i_INT(i,fmap):
   fmap[rip] = ext('INT',port=op1,size=64)
 
 def i_INC(i,fmap):
-  op1 = i.operands[0]
   fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
   a = fmap(op1)
   b = cst(1,a.size)
   x,carry,overflow = AddWithCarry(a,b)
@@ -492,8 +497,8 @@ def i_INC(i,fmap):
   fmap[op1] = x
 
 def i_DEC(i,fmap):
-  op1 = i.operands[0]
   fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
   a = fmap(op1)
   b = cst(1,a.size)
   x,carry,overflow = SubWithBorrow(a,b)
@@ -507,8 +512,8 @@ def i_DEC(i,fmap):
   fmap[op1] = x
 
 def i_NEG(i,fmap):
-  op1 = i.operands[0]
   fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
   a = cst(0,op1.size)
   b = fmap(op1)
   x,carry,overflow = SubWithBorrow(a,b)
@@ -522,30 +527,30 @@ def i_NEG(i,fmap):
   fmap[op1] = x
 
 def i_NOT(i,fmap):
-  op1 = i.operands[0]
   fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
   x = ~fmap(op1)
   op1,x = _r32_zx64(op1,x)
   fmap[op1] = x
 
 def i_SETcc(i,fmap):
-  op1 = i.operands[0]
   fmap[rip] = fmap[rip]+i.length
+  op1 = i.operands[0]
   x = tst(fmap(i.cond[1]),cst(1,op1.size),cst(0,op1.size))
   op1,x = _r32_zx64(op1,x)
   fmap[op1] = x
 
 def i_MOV(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   op1,op2 = _r32_zx64(op1,op2)
   fmap[op1] = op2
 
 def i_MOVBE(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   dst = i.operands[0]
   _t = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   if i.misc['opdsz']==16:
     fmap[dst[0 : 8]] = _t[8 :16]
     fmap[dst[8 :16]] = _t[0 : 8]
@@ -560,31 +565,31 @@ def i_MOVBE(i,fmap):
     fmap[dst[56:64]] = _t[0 : 8]
 
 def i_MOVSX(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   x = op2.signextend(op1.size)
   op1,x = _r32_zx64(op1,x)
   fmap[op1] = x
 
 def i_MOVSXD(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   fmap[op1] = op2.signextend(op1.size)
 
 def i_MOVZX(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   x = op2.zeroextend(op1.size)
   op1,x = _r32_zx64(op1,x)
   fmap[op1] = x
 
 def i_ADC(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   a=fmap(op1)
   c = fmap(cf)
   x,carry,overflow = AddWithCarry(a,op2,c)
@@ -598,9 +603,9 @@ def i_ADC(i,fmap):
   fmap[op1] = x
 
 def i_ADD(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   a=fmap(op1)
   x,carry,overflow = AddWithCarry(a,op2)
   fmap[pf]  = parity8(x[0:8])
@@ -613,9 +618,9 @@ def i_ADD(i,fmap):
   fmap[op1] = x
 
 def i_SBB(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   a=fmap(op1)
   c=fmap(cf)
   x,carry,overflow = SubWithBorrow(a,op2,c)
@@ -629,9 +634,9 @@ def i_SBB(i,fmap):
   fmap[op1] = x
 
 def i_SUB(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   a=fmap(op1)
   x,carry,overflow = SubWithBorrow(a,op2)
   fmap[pf]  = parity8(x[0:8])
@@ -644,9 +649,9 @@ def i_SUB(i,fmap):
   fmap[op1] = x
 
 def i_AND(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   if op2.size<op1.size:
     op2 = op2.signextend(op1.size)
   x=fmap(op1)&op2
@@ -659,9 +664,9 @@ def i_AND(i,fmap):
   fmap[op1] = x
 
 def i_OR(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   x=fmap(op1)|op2
   fmap[zf] = x==0
   fmap[sf] = x<0
@@ -769,13 +774,13 @@ def i_XCHG(i,fmap):
   fmap[op2] = tmp1
 
 def i_SHR(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   REX = i.misc['REX']
   W=0
   if REX: W=REX[0]
   mask = 0x3f if W==1 else 0x1f
   op1 = i.operands[0]
   count = fmap(i.operands[1]&mask)
-  fmap[rip] = fmap[rip]+i.length
   a = fmap(op1)
   if count._is_cst:
     if count.value==0: return # flags unchanged
@@ -798,13 +803,13 @@ def i_SHR(i,fmap):
   fmap[op1] = res
 
 def i_SAR(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   REX = i.misc['REX']
   W=0
   if REX: W=REX[0]
   mask = 0x3f if W==1 else 0x1f
   op1 = i.operands[0]
   count = fmap(i.operands[1]&mask)
-  fmap[rip] = fmap[rip]+i.length
   a = fmap(op1)
   if count._is_cst:
     if count.value==0: return
@@ -827,13 +832,13 @@ def i_SAR(i,fmap):
   fmap[op1] = res
 
 def i_SHL(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   REX = i.misc['REX']
   W=0
   if REX: W=REX[0]
   mask = 0x3f if W==1 else 0x1f
   op1 = i.operands[0]
   count = fmap(i.operands[1]&mask)
-  fmap[rip] = fmap[rip]+i.length
   a = fmap(op1)
   x = a<<count
   if count._is_cst:
@@ -858,6 +863,7 @@ def i_SHL(i,fmap):
 i_SAL = i_SHL
 
 def i_ROL(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   REX = i.misc['REX']
   W=0
   if REX: W=REX[0]
@@ -865,7 +871,6 @@ def i_ROL(i,fmap):
   op1 = i.operands[0]
   size = op1.size
   count = fmap(i.operands[1]&mask)%size
-  fmap[rip] = fmap[rip]+i.length
   a = fmap(op1)
   x = ROL(a,count)
   if count._is_cst:
@@ -882,6 +887,7 @@ def i_ROL(i,fmap):
   fmap[op1] = x
 
 def i_ROR(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   REX = i.misc['REX']
   W=0
   if REX: W=REX[0]
@@ -889,7 +895,6 @@ def i_ROR(i,fmap):
   op1 = i.operands[0]
   size = op1.size
   count = fmap(i.operands[1]&mask)%size
-  fmap[rip] = fmap[rip]+i.length
   a = fmap(op1)
   x = ROR(a,count)
   if count._is_cst:
@@ -906,6 +911,7 @@ def i_ROR(i,fmap):
   fmap[op1] = x
 
 def i_RCL(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   REX = i.misc['REX']
   W=0
   if REX: W=REX[0]
@@ -914,7 +920,6 @@ def i_RCL(i,fmap):
   size = op1.size
   if size<32: size=size+1 # count cf
   count = fmap(i.operands[1]&mask)%size
-  fmap[rip] = fmap[rip]+i.length
   a = fmap(op1)
   x,carry = ROLWithCarry(a,count,fmap(cf))
   if count._is_cst:
@@ -931,6 +936,7 @@ def i_RCL(i,fmap):
   fmap[op1] = x
 
 def i_RCR(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   REX = i.misc['REX']
   W=0
   if REX: W=REX[0]
@@ -939,7 +945,6 @@ def i_RCR(i,fmap):
   size = op1.size
   if size<32: size=size+1 # count cf
   count = fmap(i.operands[1]&mask)%size
-  fmap[rip] = fmap[rip]+i.length
   a = fmap(op1)
   x,carry = RORWithCarry(a,count,fmap(cf))
   if count._is_cst:
@@ -956,19 +961,19 @@ def i_RCR(i,fmap):
   fmap[op1] = x
 
 def i_CMOVcc(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  fmap[rip] = fmap[rip]+i.length
   a = fmap(op1)
   x = tst(fmap(i.cond[1]),op2,a)
   op1,x = _r32_zx64(op1,x)
   fmap[op1] = x
 
 def i_SHRD(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
   op3 = fmap(i.operands[2])
-  fmap[rip] = fmap[rip]+i.length
   # op3 is a cst:
   n = op3.value
   r = op1.size-n
@@ -980,10 +985,10 @@ def i_SHRD(i,fmap):
   fmap[op1] = x
 
 def i_SHLD(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
   op3 = fmap(i.operands[2])
-  fmap[rip] = fmap[rip]+i.length
   n = op3.value
   r = op1.size-n
   x = (fmap(op1)<<n) | (op2>>r)
@@ -1038,76 +1043,76 @@ def i_RDRAND(i,fmap):
    for f in (of,sf,zf,af,pf): fmap[f] = bit0
 
 def i_RDTSC(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
    fmap[rdx] = top(64)
    fmap[rax] = top(64)
 
 def i_RDTSCP(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
    fmap[rdx] = top(64)
    fmap[rax] = top(64)
    fmap[rcx] = top(64)
 
 def i_BOUND(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
    # #UD #BR exceptions not implemented
 
 def i_LFENCE(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
 
 def i_MFENCE(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
 
 def i_SFENCE(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
 
 def i_MWAIT(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
 
 def i_LGDT(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
 
 def i_SGDT(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
 
 def i_LIDT(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
 
 def i_SIDT(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
 
 def i_LLDT(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
 
 def i_SLDT(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
 
 def i_LMSW(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
    fmap[cr(0)[0:16]] = top(16)
 
 def i_SMSW(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
    dst = i.operands[0]
    fmap[dst] = top(16)
 
 def i_BSF(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   dst,src = i.operands
   x = fmap(src)
@@ -1115,7 +1120,7 @@ def i_BSF(i,fmap):
   fmap[dst] = top(dst.size)
 
 def i_BSR(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   dst,src = i.operands
   x = fmap(src)
@@ -1123,7 +1128,7 @@ def i_BSR(i,fmap):
   fmap[dst] = top(dst.size)
 
 def i_POPCNT(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   dst,src = i.operands
   fmap[dst] = top(dst.size)
   fmap[cf] = bit0
@@ -1134,134 +1139,134 @@ def i_POPCNT(i,fmap):
   fmap[rip] = fmap[rip]+i.length
 
 def i_LZCNT(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   dst,src = i.operands
   fmap[dst] = top(dst.size)
   fmap[cf] = fmap[zf] = top(1)
   fmap[rip] = fmap[rip]+i.length
 
 def i_TZCNT(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   dst,src = i.operands
   fmap[dst] = top(dst.size)
   fmap[cf] = fmap[zf] = top(1)
   fmap[rip] = fmap[rip]+i.length
 
 def i_BT(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   dst,src = i.operands
   fmap[cf] = top(1)
 
 def i_BTC(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   dst,src = i.operands
   fmap[cf] = top(1)
   fmap[dst] = top(dst.size)
 
 def i_BTR(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   dst,src = i.operands
   fmap[cf] = top(1)
   fmap[dst] = top(dst.size)
 
 def i_BTS(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   dst,src = i.operands
   fmap[cf] = top(1)
   fmap[dst] = top(dst.size)
 
 def i_CLFLUSH(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   # cache not supported
 
 def i_INVD(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   # cache not supported
 
 def i_INVLPG(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   # cache not supported
 
 def i_CLI(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   # interruptions not supported
 
 def i_PREFETCHT0(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   # interruptions not supported
 def i_PREFETCHT1(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   # interruptions not supported
 def i_PREFETCHT2(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   # interruptions not supported
 def i_PREFETCHNTA(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   # interruptions not supported
 def i_PREFETCHW(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   # interruptions not supported
 
 def i_LAR(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   dst,src = i.operands
   fmap[zf] = top(1)
   fmap[dst] = top(dst.size)
 
 def i_STR(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
   dst = i.operands[0]
   fmap[dst] = top(dst.size)
 
 def i_RDMSR(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
 
 def i_RDPMC(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
 
 def i_RSM(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
 
 def i_SYSENTER(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = top(64)
   fmap[rsp] = top(64)
   fmap[cs]  = top(16)
   fmap[ss]  = top(16)
 
 def i_SYSEXIT(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = top(64)
   fmap[rsp] = top(64)
   fmap[cs]  = top(16)
   fmap[ss]  = top(16)
 
 def i_SYSCALL(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = top(64)
   fmap[rcx] = top(64)
   fmap[r11] = top(64)
 
 def i_SYSRET(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = top(64)
   fmap[rsp] = top(64)
 

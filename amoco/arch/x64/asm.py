@@ -1428,7 +1428,7 @@ def i_PSRLW(i,fmap):
   src1 = fmap(op1)
   src2 = fmap(op2)
   val1 = (src1[i:i+16] for i in range(0,op1.size,16))
-  res  = [v1>>src2.value for v1 in val1]
+  res  = [v1>>src2 for v1 in val1]
   fmap[op1] = composer(res)
 
 def i_PSRLD(i,fmap):
@@ -1438,7 +1438,7 @@ def i_PSRLD(i,fmap):
   src1 = fmap(op1)
   src2 = fmap(op2)
   val1 = (src1[i:i+32] for i in range(0,op1.size,32))
-  res  = [v1>>src2.value for v1 in val1]
+  res  = [v1>>src2 for v1 in val1]
   fmap[op1] = composer(res)
 
 def i_PSRLQ(i,fmap):
@@ -1448,7 +1448,7 @@ def i_PSRLQ(i,fmap):
   src1 = fmap(op1)
   src2 = fmap(op2)
   val1 = (src1[i:i+64] for i in range(0,op1.size,64))
-  res  = [v1>>src2.value for v1 in val1]
+  res  = [v1>>src2 for v1 in val1]
   fmap[op1] = composer(res)
 
 def i_PSLLQ(i,fmap):
@@ -1458,7 +1458,7 @@ def i_PSLLQ(i,fmap):
   src1 = fmap(op1)
   src2 = fmap(op2)
   val1 = (src1[i:i+64] for i in range(0,op1.size,64))
-  res  = [v1<<src2.value for v1 in val1]
+  res  = [v1<<src2 for v1 in val1]
   fmap[op1] = composer(res)
 
 def i_PSHUFD(i,fmap):

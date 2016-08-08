@@ -4,8 +4,6 @@ from amoco.config import conf
 from amoco.logger import Log
 logger = Log(__name__)
 
-from grandalf.layouts import SugiyamaLayout
-
 from amoco.ui.graphics import Engine
 from amoco.ui.render import Token,vltable
 
@@ -73,10 +71,10 @@ class blockView(View):
     def __str__(self):
         return str(self._vltable())
 
-
 class funcView(View):
     _is_func = True
     def __init__(self,func):
+        from grandalf.layouts import SugiyamaLayout
         super(funcView,self).__init__(of=func)
         self.layout = SugiyamaLayout(func.cfg)
 

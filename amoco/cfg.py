@@ -10,7 +10,6 @@ from amoco.logger import Log
 logger = Log(__name__)
 
 from grandalf.graphs import Vertex,Edge,Graph
-from grandalf.layouts import SugiyamaLayout
 
 from amoco.system.core import MemoryZone
 

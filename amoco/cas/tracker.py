@@ -51,12 +51,3 @@ class generation(OrderedDict):
             d[k] = self[k]
         return d
 
-    # With python 2 we need to define __del__ because the garbage collector
-    # is not efficient enough
-    # However, this definition creates memory leaks if we have circular
-    # references (a generation object containg a reference to itself)
-    # It nevers happen when used by amoco mappers
-    def __del__(self):
-        self.__dict__['_OrderedDict__root'][:] = [None]
-        for _ in self.__dict__['_OrderedDict__map']:
-            self.__dict__['_OrderedDict__map'][_][:] = [None]

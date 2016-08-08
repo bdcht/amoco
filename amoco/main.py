@@ -77,7 +77,10 @@ class lsweep(object):
     def getblock(self,val):
         p = self.prog
         target = p.cpu.cst(val,p.cpu.PC().size)
-        return next(self.iterblocks(target))
+        ib = self.iterblocks(target)
+        b = next(ib)
+        ib.close()
+        return b
 
     # poorman's cfg builder that assumes calls return to next block.
     # and link blocks based on direct concrete targets without computing
@@ -126,7 +129,9 @@ class lsweep(object):
         # to be cut, lets handle those missed targets:
         while len(C)>0:
             ato,L = C.popitem()
-            n = cfg.node(next(self.iterblocks(ato)))
+            ib = self.iterblocks(ato)
+            n = cfg.node(next(ib))
+            ib.close()
             n = self.G.add_vertex(n)
             for (p,why) in L:
                 if why is code.tag.FUNC_CALL:

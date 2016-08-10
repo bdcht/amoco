@@ -22,7 +22,7 @@ from amoco.cas.expressions import exp,top
 #   .__getitem__ => extraction of bit slices.
 #   .__setitem__ => overwrite given bit slice.
 class datadiv(object):
-    __slot__ = ['val']
+    __slots__ = ['val']
 
     def __init__(self,data):
         self.val = data
@@ -103,7 +103,7 @@ def mergeparts(P):
 # mo are abstractions for 'memory objects'. Such obj is located at a virtual
 # address in Memory. Data contained in the obj is stored as datadiv object.
 class mo(object):
-    __slot__ = ['vaddr','data']
+    __slots__ = ['vaddr','data']
 
     def __init__(self,vaddr,data):
         self.vaddr=vaddr
@@ -154,7 +154,7 @@ class mo(object):
 
 #------------------------------------------------------------------------------
 class MemoryZone(object):
-    __slot__ = ['rel','_map','__cache','__dead']
+    __slots__ = ['rel','_map','__cache','__dead']
 
     def __init__(self,rel=None,D=None):
         self.rel = rel
@@ -309,7 +309,7 @@ class MemoryZone(object):
 
 #------------------------------------------------------------------------------
 class MemoryMap(object):
-    __slot__ = ['_zones','perms']
+    __slots__ = ['_zones','perms']
 
     def __init__(self,D=None):
         self._zones = {None:MemoryZone()}

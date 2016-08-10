@@ -22,6 +22,9 @@ try:
         default_level = logging._levelNames.get(conf.get('log','level'),0)
     if conf.has_option('log','file'):
         logfilename  = conf.get('log','file')
+    elif conf.getboolean('log','tempfile'):
+        import tempfile
+        logfilename  = tempfile.mkstemp('.log',prefix="amoco-")[1]
     else:
         logfilename  = None
 except ImportError:

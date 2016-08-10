@@ -21,7 +21,7 @@ conf.set('cas', 'complexity' , '100'  )
 # log section
 conf.add_section('log')
 conf.set('log', 'level', 'ERROR')
-#conf.set('log', 'file', '/tmp/amoco.log')
+conf.set('log', 'tempfile', 'True')
 
 # ui section
 conf.add_section('ui')

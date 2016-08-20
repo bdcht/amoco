@@ -974,10 +974,12 @@ def i_SHRD(i,fmap):
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
   op3 = fmap(i.operands[2])
-  # op3 is a cst:
-  n = op3.value
-  r = op1.size-n
-  x = (fmap(op1)>>n) | (op2<<r)
+  if not op3._is_cst:
+      x = top(op1.size)
+  else:
+      n = op3.value
+      r = op1.size-n
+      x = (fmap(op1)>>n) | (op2<<r)
   fmap[sf] = (x<0)
   fmap[zf] = (x==0)
   fmap[pf] = parity8(x[0:8])
@@ -989,9 +991,13 @@ def i_SHLD(i,fmap):
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
   op3 = fmap(i.operands[2])
-  n = op3.value
-  r = op1.size-n
-  x = (fmap(op1)<<n) | (op2>>r)
+  if not op3._is_cst:
+      x = top(op1.size)
+  else:
+      n = op3.value
+      r = op1.size-n
+      x = (fmap(op1)<<n) | (op2>>r)
+  fmap[op1] = x
   fmap[sf] = (x<0)
   fmap[zf] = (x==0)
   fmap[pf] = parity8(x[0:8])

@@ -46,8 +46,8 @@ def sse_ps(obj,Mod,REG,RM,data):
 
 # xmm/mmx, xmm/m64
 @ispec_ia32("*>[ {0f}{5a} /r ]", mnemonic="CVTPS2PD", _op1sz=128)
-@ispec_ia32("*>[ {0f}{2c} /r ]", mnemonic="CVTTPS2PI", _op1sz=64)
-@ispec_ia32("*>[ {0f}{2d} /r ]", mnemonic="CVTPS2PI", _op1sz=64)
+@ispec_ia32("*>[ {0f}{2c} /r ]", mnemonic="CVTTPS2PI", _op1sz='mm')
+@ispec_ia32("*>[ {0f}{2d} /r ]", mnemonic="CVTPS2PI", _op1sz='mm')
 def sse_ps(obj,Mod,REG,RM,data,_op1sz):
     if not check_nopfx(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
@@ -59,7 +59,7 @@ def sse_ps(obj,Mod,REG,RM,data,_op1sz):
 # xmm, mmx/m64
 @ispec_ia32("*>[ {0f}{2a} /r ]", mnemonic="CVTPI2PS")
 def sse_ps(obj,Mod,REG,RM,data):
-    if not check_nopfx(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
@@ -107,7 +107,7 @@ def sse_ps(obj,Mod,REG,RM,data):
 # mmx, mmx
 @ispec_ia32("*>[ {0f}{f7} /r ]", mnemonic="MASKMOVQ")
 def sse_ps(obj,Mod,REG,RM,data):
-    if not check_nopfx(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     obj.misc['REX'] = None
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_reg: raise InstructionError(obj)
@@ -128,7 +128,7 @@ def sse_pd(obj,Mod,REG,RM,data, _inv):
         W,R,X,B = REX
         if W==1: obj.mnemonic='MOVQ'
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = env.getreg(REG,64)
+    op1 = env.getreg(REG,'mm')
     obj.operands = [op1,op2] if not _inv else [op2,op1]
     obj.type = type_data_processing
 
@@ -205,9 +205,9 @@ def sse_pd(obj,Mod,REG,RM,data, _inv):
 @ispec_ia32("*>[ {0f}{fe} /r ]", mnemonic="PADDD")
 @ispec_ia32("*>[ {0f}{d4} /r ]", mnemonic="PADDQ")
 def sse_pd(obj,Mod,REG,RM,data):
-    if not check_nopfx(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(obj,REG,64)
+    op1 = getregR(obj,REG,'mm')
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -221,7 +221,7 @@ def sse_pd(obj,Mod,REG,RM,data):
 @ispec_ia32("*>[ {0f}{73} /2 ]", mnemonic="PSRLQ")
 @ispec_ia32("*>[ {0f}{73} /6 ]", mnemonic="PSLLQ")
 def sse_pd(obj,Mod,RM,data):
-    if not check_nopfx(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     obj.operands = [op2]
     if data.size<8: raise InstructionError(obj)
@@ -234,9 +234,9 @@ def sse_pd(obj,Mod,RM,data):
 @ispec_ia32("*>[ {0f}{70} /r ]", mnemonic="PSHUFW")
 @ispec_ia32("*>[ {0f}{3a}{0f} /r ]", mnemonic="PALIGNR")
 def sse_pd(obj,Mod,REG,RM,data):
-    if not check_nopfx(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(obj,REG,64)
+    op1 = getregR(obj,REG,'mm')
     obj.operands = [op1,op2]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
@@ -250,7 +250,7 @@ def sse_pd(obj,Mod,REG,RM,data):
     if not check_nopfx(obj,set_opdsz_32): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = 16
-    op1 = getregR(obj,REG,64)
+    op1 = getregR(obj,REG,'mm')
     obj.operands = [op1,op2]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]
@@ -261,7 +261,7 @@ def sse_pd(obj,Mod,REG,RM,data):
 # r32, mmx, imm8
 @ispec_ia32("*>[ {0f}{c5} /r ]", mnemonic="PEXTRW")
 def sse_pd(obj,Mod,REG,RM,data):
-    if not check_nopfx(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: raise InstructionError(obj)
     op1 = getregR(obj,REG,32)
@@ -276,9 +276,9 @@ def sse_pd(obj,Mod,REG,RM,data):
 # mmx/m64, mmx
 @ispec_ia32("*>[ {0f}{7f} /r ]", mnemonic="MOVQ")
 def sse_pd(obj,Mod,REG,RM,data):
-    if not check_nopfx(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
-    op1 = getregR(obj,REG,64)
+    op1 = getregR(obj,REG,'mm')
     obj.operands = [op2,op1]
     obj.type = type_data_processing
 
@@ -300,7 +300,7 @@ def sse_pd(obj,Mod,REG,RM,data):
 @ispec_ia32("*>[ {0f}{16} /r ]", mnemonic="MOVHPS", _inv=False)
 @ispec_ia32("*>[ {0f}{17} /r ]", mnemonic="MOVHPS", _inv=True)
 def sse_pd(obj,Mod,REG,RM,data,_inv):
-    if not check_nopfx(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_mem: raise InstructionError(obj)
     op1 = getregR(obj,REG,128)
@@ -331,10 +331,10 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
 # mmx, m64
 @ispec_ia32("*>[ {0f}{e7} /r ]", mnemonic="MOVNTQ",  _inv=True)
 def sse_pd(obj,Mod,REG,RM,data,_inv):
-    if not check_nopfx(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_nopfx(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_mem: raise InstructionError(obj)
-    op1 = env.getreg(REG,64)
+    op1 = env.getreg(REG,'mm')
     obj.operands = [op1,op2] if not _inv else [op2,op1]
     obj.type = type_data_processing
 
@@ -441,7 +441,7 @@ def sse_sd(obj,Mod,REG,RM,data):
     if not check_f2(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_reg: raise InstructionError(obj)
-    op1 = getregR(obj,REG,64)
+    op1 = getregR(obj,REG,'mm')
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -524,7 +524,7 @@ def sse_pd(obj,Mod,REG,RM,data, _inv):
 # xmm, mmx
 @ispec_ia32("*>[ {0f}{d6} /r ]", mnemonic="MOVQ2DQ")
 def sse_sd(obj,Mod,REG,RM,data):
-    if not check_f3(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_f3(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_reg: raise InstructionError(obj)
     op1 = getregR(obj,REG,128)
@@ -766,7 +766,7 @@ def sse_pd(obj,Mod,REG,RM,data,_inv):
 # xmm, mmx/m64
 @ispec_ia32("*>[ {0f}{2a} /r ]", mnemonic="CVTPI2PD")
 def sse_pd(obj,Mod,REG,RM,data):
-    if not check_66(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_66(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     op1 = getregR(obj,REG,128)
     obj.operands = [op1,op2]
@@ -904,7 +904,7 @@ def sse_pd(obj,Mod,REG,RM,data, _inv):
 @ispec_ia32("*>[ {0f}{16} /r ]", mnemonic="MOVHPD", _inv=False)
 @ispec_ia32("*>[ {0f}{17} /r ]", mnemonic="MOVHPD", _inv=True)
 def sse_pd(obj,Mod,REG,RM,data,_inv):
-    if not check_66(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_66(obj,set_opdsz_mm): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_mem: raise InstructionError(obj)
     op1 = getregR(obj,REG,128)

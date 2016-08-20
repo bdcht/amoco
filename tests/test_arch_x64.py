@@ -194,3 +194,9 @@ def test_decoder_027():
   assert i.mnemonic=='CVTTSD2SI'
   assert i.operands[0].ref == 'rsi'
   assert i.operands[1].ref == 'xmm3'
+
+def test_decoder_028():
+  i = cpu.disassemble('f\x0f\x16\x15\x0c\x00\x00\x00')
+  assert i.mnemonic=='MOVHPD'
+  assert i.operands[0].ref == 'xmm2'
+  assert i.operands[1].size == 64

@@ -708,6 +708,24 @@ def ia32_r32_seg(obj,Mod,RM,REG,data,_seg):
     obj.operands = [op1, op2]
     obj.type = type_system
 
+@ispec_ia32("*>[ {0f}{ad} /r ]", mnemonic = "SHRD")
+@ispec_ia32("*>[ {0f}{a5} /r ]", mnemonic = "SHLD")
+def ia32_rm32_op3cl(obj,Mod,RM,REG,data):
+    op1,data = getModRM(obj,Mod,RM,data)
+    op2 = env.getreg(REG,op1.size)
+    obj.operands = [op1, op2, env.cl]
+    obj.type = type_data_processing
+
+@ispec_ia32("*>[ {0f}{ac} /r ]", mnemonic = "SHRD")
+@ispec_ia32("*>[ {0f}{a4} /r ]", mnemonic = "SHLD")
+def ia32_rm32_op3cst(obj,Mod,RM,REG,data):
+    op1,data = getModRM(obj,Mod,RM,data)
+    op2 = env.getreg(REG,op1.size)
+    imm = data[0:8]
+    obj.operands = [op1, op2, env.cst(imm.int(),8)]
+    obj.bytes += pack(imm)
+    obj.type = type_data_processing
+
 # conditionals:
 @ispec_ia32("*>[ {0f} cc(4) 0010 /r ]", mnemonic = "CMOVcc") # 0f 4x /r
 def ia32_CMOVcc(obj,cc,Mod,RM,REG,data):

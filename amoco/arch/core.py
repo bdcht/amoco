@@ -97,7 +97,7 @@ class instruction(icore):
 
     @staticmethod
     def formatter(i,toks=False):
-        t = (Token.Mnemonic,i.mnemonic)
+        t = [(Token.Mnemonic,i.mnemonic)]
         t+= [(Token.Literal,op) for op in map(str,i.operands[0:1])]
         t+= [(Token.Literal,', '+op) for op in map(str,i.operands[1:])]
         return t if toks else highlight(t)
@@ -115,16 +115,18 @@ class instruction(icore):
                 self.address,
                 self.mnemonic,
                 self.operands,
+                self.formatter,
                 dict(self.misc))
 
     def __setstate__(self,state):
-        b,t,s,a,m,o,D = state
+        b,t,s,a,m,o,f,D = state
         self.bytes = b
         self.type = t
         self.spec = s
         self.address = a
         self.mnemonic = m
         self.operands = o
+        self.formatter = f
         self.misc = defaultdict(lambda: None)
         self.misc.update(D.iteritems())
 

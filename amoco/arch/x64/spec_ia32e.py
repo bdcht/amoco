@@ -712,7 +712,7 @@ def ia32_r32_seg(obj,Mod,RM,REG,data,_seg):
 @ispec_ia32("*>[ {0f}{a5} /r ]", mnemonic = "SHLD")
 def ia32_rm32_op3cl(obj,Mod,RM,REG,data):
     op1,data = getModRM(obj,Mod,RM,data)
-    op2 = env.getreg(REG,op1.size)
+    op2 = getregR(obj,REG,op1.size)
     obj.operands = [op1, op2, env.cl]
     obj.type = type_data_processing
 
@@ -720,7 +720,7 @@ def ia32_rm32_op3cl(obj,Mod,RM,REG,data):
 @ispec_ia32("*>[ {0f}{a4} /r ]", mnemonic = "SHLD")
 def ia32_rm32_op3cst(obj,Mod,RM,REG,data):
     op1,data = getModRM(obj,Mod,RM,data)
-    op2 = env.getreg(REG,op1.size)
+    op2 = getregR(obj,REG,op1.size)
     imm = data[0:8]
     obj.operands = [op1, op2, env.cst(imm.int(),8)]
     obj.bytes += pack(imm)

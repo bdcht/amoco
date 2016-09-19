@@ -45,7 +45,8 @@ It features:
 Amoco is still *work in progress*. See Todo_ for a list of features to be
 merged from develop branch or to be more thoroughly implemented.
 
-User documentation and API can be found at `https://amoco.readthedocs.org`
+User documentation and API can be found at
+`http://amoco.readthedocs.io/en/latest/index.html`
 
 Todo
 ====

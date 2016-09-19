@@ -53,7 +53,7 @@ setup(
     install_requires = ['grandalf>=0.555', 'crysp>0.1', 'pyparsing'],
     extras_require={
         'test': ['pytest'],
-        'full': ['pygments','ply','zodb'],
+        'full': ['pygments','ply','sqlalchemy'],
     },
     package_data = {
     },

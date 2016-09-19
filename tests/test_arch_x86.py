@@ -229,6 +229,16 @@ def test_decoder_028():
   op1,op2 = i.operands
   assert op1.size==op2.size==128
 
+def test_pickle_instruction():
+  import pickle
+  pickler = lambda x: pickle.dumps(x,2)
+  c = '\xff\x9c\xc3\x88\x67\xeb\x01'
+  i = cpu.disassemble(c)
+  i.address = cst(0x1000,32)
+  p = pickler(i)
+  j = pickle.loads(p)
+  assert str(j)==str(i)
+
 #------------------------------------------------------------------------------
 
 

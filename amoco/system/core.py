@@ -373,7 +373,7 @@ class MemoryMap(object):
 
 #------------------------------------------------------------------------------
 class CoreExec(object):
-    __slots__ = ['bin','cpu','mmap']
+    __slots__ = ['bin','cpu','mmap','symbols']
 
     def __init__(self,p,cpu=None):
         self.bin = p
@@ -382,6 +382,7 @@ class CoreExec(object):
         self.load_binary()
         if cpu is not None:
             cpu.ext.stubs = stubs
+        self.symbols = {}
 
     def initenv(self):
         return None
@@ -528,7 +529,7 @@ class DataIO(object):
         try:
             return self.f.name
         except AttributeError:
-            return self.f.getvalue()
+            return '(sc-%s...)'%(self.f.getvalue().encode('hex')[:8])
 
     filename = name
 

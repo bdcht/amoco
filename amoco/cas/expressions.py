@@ -670,7 +670,7 @@ class ext(reg):
             return (lambda env,**kargs:None)
 
     def call(self,env,**kargs):
-        logger.info('stub %s called'%self.ref)
+        logger.info('stub %s explicit call'%self.ref)
         if not 'size' in kargs: kargs.update(size=self.size)
         res = self.stub(self.ref)(env,**kargs)
         if res is None: return top(self.size)
@@ -678,7 +678,7 @@ class ext(reg):
 
     # used when the expression is a target used to build a block
     def __call__(self,env):
-        logger.info('stub %s called'%self.ref)
+        logger.info('stub %s implicit call'%self.ref)
         self.stub(self.ref)(env,**self._subrefs)
 ##
 
@@ -929,6 +929,10 @@ class mem(exp):
 
     def simplify(self):
         self.a.simplify()
+        if self.a.base._is_vec:
+            seg,disp = self.a.seg,self.a.disp
+            v = vec([mem(a,self.size,seg,disp,mods=self.mods) for a in self.a.base.l])
+            return v if self.a.base._is_def else vecw(v)
         return self
 
     def addr(self,env):
@@ -1084,12 +1088,15 @@ class slc(exp):
             if rst==0:
                 a = ptr(self.x.a.base,self.x.a.seg,self.x.a.disp+off)
                 return mem(a,self.size)
-        if self.x._is_eqn and self.x.op.type==2:
+        if self.x._is_eqn and (self.x.op.type==2 or
+                              (self.x.op.symbol in '+-' and self.pos==0)):
             r = self.x.r[self.pos:self.pos+self.size]
             if self.x.op.unary:
                 return self.x.op(r)
             l = self.x.l[self.pos:self.pos+self.size]
             return self.x.op(l,r)
+        if self.x._is_vec:
+            return vec([x[self.pos:self.pos+self.size] for x in self.x.l])
         else:
             return self
 

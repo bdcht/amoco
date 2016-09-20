@@ -189,7 +189,7 @@ class block(object):
         if len(misc)==0:
             for i in self.instr: misc.update(i.misc)
         s = [tag.sig(k) for k in misc]
-        return '(%s)'%(''.join(s))
+        return '(%s)'%(''.join(sorted(s)))
 
 #------------------------------------------------------------------------------
 class func(block):

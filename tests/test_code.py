@@ -18,7 +18,7 @@ def test_block(sc1):
     X = loads(x)
     assert len(X.instr)==1
     Y = loads(y)
-    assert Y.map.inputs()[0]==code.mem(code.reg('esp',32),32)
+    assert Y.map.inputs()==b1.map.inputs()
 
 def test_func(ploop):
     p = system.loader.load_program(ploop)

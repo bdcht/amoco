@@ -213,7 +213,10 @@ def ia32_rm32(obj,reg):
 
 @ispec_ia32("16>[ {0f} reg(3) 1 0011 ]", mnemonic = "BSWAP") # 0f c4 +rd
 def ia32_bswap(obj,reg):
-    obj.operands = [getregRW(obj,reg,32)]
+    # Intel's manual suggests to use getregRW "Using a REX prefix in the form
+    # of REX.R permits access to additional registers (R8-R15)", but in reality
+    # it is encoded by REX.B, e.g. GNU as converts "bswap %r13d" to "41 0F CD".
+    obj.operands = [getregRB(obj,reg,32)]
     obj.type = type_data_processing
 
 # implicit register:

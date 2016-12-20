@@ -53,6 +53,14 @@ def getregRW(obj,REG,size):
     if W==1: size=64
     return env.getreg(REG+(R<<3),size)
 
+# using REX.B + REX.W to get ModRM 'reg' register
+def getregRB(obj,REG,size):
+    if size==8 and obj.misc['REX'] is None:
+        return getreg8_legacy(REG)
+    W,R,X,B = getREX(obj)
+    if W==1: size=64
+    return env.getreg(REG+(B<<3),size)
+
 # using REX.B to get ModRM 'r/m' register
 def getregB(obj,REG,size):
     if size==8 and obj.misc['REX'] is None:

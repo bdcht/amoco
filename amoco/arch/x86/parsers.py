@@ -211,7 +211,8 @@ class att_syntax(object): # Used as a namespace
                 i.misc.update({'pfx':['rep',   None,None,None], 'rep':True})
             if i.mnemonic in ('REPNZ','REPNE'):
                 i.misc.update({'pfx':['repne',None,None, None], 'repne':True})
-            toks.pop(0)
+            del toks[0] # toks.pop(0) is broken for pyparsing 2.0.2
+            # https://bugs.launchpad.net/ubuntu/+source/pyparsing/+bug/1381564
             i.mnemonic = toks[0].upper()
         # Get operands
         if len(toks) > 1:
@@ -305,7 +306,7 @@ class att_syntax(object): # Used as a namespace
             else:
                 if i.operands[1]._is_mem: i.operands[1].size = 128
         elif i.mnemonic in (
-            'CVTSI2SS',
+            'CVTSI2SS','CVTSI2SD',
             ):
             if i.operands[1]._is_mem: i.operands[1].size = 32
         elif i.mnemonic in (
@@ -354,10 +355,18 @@ class att_syntax(object): # Used as a namespace
                     break
                 i.mnemonic = _.upper()
                 sz = {'b':8, 'w':16, 'l':32, 'q':64}[mnemo[-1]]
+                if 'q' == mnemo[-1]:
+                    i.misc.update({'REX':(1,0,0,0)})
+                def set_size(e, sz):
+                    if e._is_mem: e.size = sz
+                    if e._is_cst: e.size = sz; e.v &= e.mask
+                    if e._is_lab: e.size = sz
+                    if e._is_eqn:
+                        e.size = sz
+                        if e.l is not None: set_size(e.l, sz)
+                        set_size(e.r, sz)
                 for _ in i.operands:
-                    if _._is_mem: _.size = sz
-                    if _._is_cst: _.size = sz; _.v &= _.mask
-                    if _._is_lab: _.size = sz
+                    set_size(_, sz)
             for _ in att_mnemo_suffix_one_iflt:
                 if mnemo[:-1] != _: continue
                 i.mnemonic = _.upper()

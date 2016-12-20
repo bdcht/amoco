@@ -538,6 +538,7 @@ def att_mnemo_generic(i,s,m):
             if m == value ])[0]
     elif m in att_mnemo_suffix_one_ptr:
         if m == 'push' and (i.operands[0]._is_cst
+                         or i.operands[0]._is_eqn
                          or i.operands[0]._is_lab
                          or i.operands[0]._is_reg):
             if i.misc.get('opdsz',None) == 16:  m += 'w'
@@ -597,12 +598,6 @@ def att_mnemo_macosx(i):
             if   m[4:] == 'p':  m = m[:4]+'rp'
             elif m[4:] == 'rp': m = m[:4]+'p'
             else: NEVER
-    if m == 'test':
-        # clang sometimes uses Intel argument order for 'test'
-        # verified for Apple LLVM version 7.0.2 (clang-700.1.81)
-        if i.operands[1]._is_slc or \
-          (i.operands[1]._is_reg and not i.operands[1]._is_lab):
-            i.operands.reverse()
     return att_mnemo_generic(i,s,m)
 
 def att_deref(op):
@@ -629,9 +624,20 @@ def att_deref(op):
         s = '%{}:{}'.format(seg,s)
     return s
 
-def att_opers(i):
+def att_opers_macosx(i):
+    if i.mnemonic == 'TEST':
+        # clang sometimes uses Intel argument order for 'test'
+        # verified for Apple LLVM version 7.0.2 (clang-700.1.81)
+        if i.operands[1]._is_slc or \
+          (i.operands[1]._is_reg and not i.operands[1]._is_lab):
+            return att_opers(i, operands=i.operands)
+    return att_opers(i)
+
+def att_opers(i, operands=None):
     s = []
-    for op in reversed(i.operands):
+    if operands is None:
+        operands = reversed(i.operands)
+    for op in operands:
         if op._is_mem:
             op = att_deref(op)
             if i.mnemonic in ('CALL','JMP'): op = '*'+op
@@ -668,6 +674,10 @@ def att_oprel(i):
     if op._is_eqn and op.op.symbol == '+' \
         and op.l._is_lab:
         return [(Token.Address,'%s%+d'%(op.l.ref,op.r))]
+    if op._is_eqn and op.op.symbol == '+' \
+        and op.l._is_eqn and op.l.op.symbol == '+' \
+        and op.l.l._is_lab and op.l.r._is_reg and op.l.r.ref == 'rip':
+        return [(Token.Address,'%s%+d(%%rip)'%(op.l.l.ref,op.r))]
     return [(Token.Constant,'{%s}'%op)]
 
 # AT&T syntax, as used in GNU binutils
@@ -682,7 +692,7 @@ IA32_Binutils_ATT = Formatter(IA32_Binutils_ATT_formats)
 IA32_Binutils_ATT.default = att_format_default
 
 # AT&T syntax, as used by clang on MacOSX
-attm_format_default = (                    att_mnemo_macosx,att_opers)
+attm_format_default = (                    att_mnemo_macosx,att_opers_macosx)
 attm_format_str     = (default_prefix_name,att_mnemo_macosx,att_opers)
 attm_format_rel     = (                    att_mnemo_macosx,att_oprel)
 IA32_MacOSX_ATT_formats = {

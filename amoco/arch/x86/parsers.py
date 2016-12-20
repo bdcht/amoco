@@ -219,7 +219,7 @@ class att_syntax(object): # Used as a namespace
             i.operands = list(reversed(toks[1][0:]))
         # Convert mnemonics, set operand sizes
         if i.mnemonic in ('CALLL','CALLQ','JMPL','JMPQ','RETL','RETQ',
-                          'BSWAPL','FUCOMPI'):
+                          'BSWAPL','BSWAPQ','FUCOMPI'):
             # clang on MacOS X
             if i.mnemonic[-1] in ('L','Q'):
                 i.mnemonic = i.mnemonic[:-1]

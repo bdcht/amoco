@@ -581,7 +581,7 @@ def att_mnemo_binutils(i):
             if   m[4:] == 'p':  m = m[:4]+'rp'
             elif m[4:] == 'rp': m = m[:4]+'p'
             else: NEVER
-        elif len(i.operands) == 2 and str(i.operands[1]) == 'st0':
+        elif len(i.operands) == 2 and str(i.operands[0]) != 'st0':
             if   m[4:] == '':   m = m+'r'
             elif m[4:] == 'r':  m = m[:4]
             else: NEVER
@@ -592,11 +592,14 @@ def att_mnemo_macosx(i):
     m = s[-1][1]
     if m == 'sal': m = 'shl' # clang assembler does not understand 'sal'
     if m.startswith('fsub') or m.startswith('fdiv'):
-        # Buggy too, but not the same as binutils
-        # only the 'p' variants are erroneous!
+        # same as binutils
         if m[-1] == 'p':
             if   m[4:] == 'p':  m = m[:4]+'rp'
             elif m[4:] == 'rp': m = m[:4]+'p'
+            else: NEVER
+        elif len(i.operands) == 2 and str(i.operands[0]) != 'st0':
+            if   m[4:] == '':   m = m+'r'
+            elif m[4:] == 'r':  m = m[:4]
             else: NEVER
     return att_mnemo_generic(i,s,m)
 

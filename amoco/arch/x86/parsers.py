@@ -306,17 +306,22 @@ class att_syntax(object): # Used as a namespace
             else:
                 if i.operands[1]._is_mem: i.operands[1].size = 128
         elif i.mnemonic in (
-            'CVTSI2SS','CVTSI2SD',
+            'CVTSI2SS','CVTSI2SD','CVTTSS2SI','CVTTSS2SIL','CVTTSS2SIQ',
             ):
             if i.operands[1]._is_mem: i.operands[1].size = 32
+            # gcc 4.9.2 generates cvttss2siq %xmm0, %r15
+            # which is useless, because the size of the output is
+            # determined by the output register
+            if i.mnemonic[-1] in 'LQ': i.mnemonic = i.mnemonic[:-1]
         elif i.mnemonic in (
             'MOVLPD','MOVLPS','MOVHPD','MOVHPS',
             'MOVDDUP', 'PSHUFW',
-            'CVTSD2SS','CVTSD2SI','CVTTSD2SI',
+            'CVTSD2SS','CVTSD2SI','CVTTSD2SI','CVTTSD2SIL','CVTTSD2SIQ',
             'CVTPI2PD','CVTPI2PS','CVTPS2PI','CVTPS2PD','CVTDQ2PD',
             ):
             if i.operands[0]._is_mem: i.operands[0].size = 64
             if i.operands[1]._is_mem: i.operands[1].size = 64
+            if i.mnemonic[-1] in 'LQ': i.mnemonic = i.mnemonic[:-1]
         elif i.mnemonic in (
             'PSHUFD','PSHUFLW','PSHUFHW',
             'MOVDQA','MOVDQU','MOVSLDUP','MOVSHDUP',

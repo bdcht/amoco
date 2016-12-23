@@ -380,7 +380,7 @@ class att_syntax(object): # Used as a namespace
                     if _._is_mem: _.size = 64
             for _ in att_mnemo_float_optional_suffix:
                 if mnemo[:-1] != _: continue
-                if mnemo[-1] in ('p','r','z','1'): continue
+                if mnemo[-1] in ('i','p','r','z','1'): continue
                 i.mnemonic = _.upper()
                 sz = {'s':32, 'l':64, 't':80}[mnemo[-1]]
                 for _ in i.operands:
@@ -400,6 +400,23 @@ class att_syntax(object): # Used as a namespace
             idx = mnemo_sse_cmp_predicate.index(i.mnemonic[3:-2].lower())
             i.operands.append(expressions.cst(idx))
             i.mnemonic = i.mnemonic[:3] + i.mnemonic[-2:]
+        elif i.mnemonic in ('FADD','FSUB','FSUBR',
+                            'FMUL','FDIV','FDIVR',
+                            'FCOMI','FCOMIP','FUCOMI','FUCOMIP',
+                           ) \
+                and len(i.operands) == 1 \
+                and not i.operands[0]._is_mem:
+            i.operands.insert(0,att_syntax.env.st(0))
+        elif i.mnemonic in ('FADDP','FSUBP','FSUBRP',
+                            'FMULP','FDIVP','FDIVRP',
+                           ) \
+                and len(i.operands) == 1 \
+                and not i.operands[0]._is_mem:
+            i.operands.append(att_syntax.env.st(0))
+        elif i.mnemonic in ('FCOM','FCOMP','FUCOM','FUCOMP',
+                           ) \
+                and len(i.operands) == 0:
+            i.operands.append(att_syntax.env.st(1))
         return i
     instr.setParseAction(action_instr)
 

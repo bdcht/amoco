@@ -67,3 +67,15 @@ def test_memory_004(M,sc1,p,y):
     c.setendian(+1)
     exp.setendian(+1)
 
+def test_pickle_memorymap(a,m):
+    from pickle import dumps,loads,HIGHEST_PROTOCOL
+    pickler = lambda x: dumps(x,HIGHEST_PROTOCOL)
+    m[mem(a,32)] = cst(0xcafebabe,32)
+    p = pickler(m.memory())
+    M = loads(p)
+    parts = M.read(ptr(a+1),2)
+    assert len(parts)==1
+    assert parts[0]==cst(0xfeba,16)
+
+
+

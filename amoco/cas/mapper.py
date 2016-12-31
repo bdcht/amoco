@@ -65,23 +65,24 @@ class mapper(object):
         if t.colsize[1]>58: t.colsize[1]=58
         return str(t)
 
-    def __getstate__(self):
-        return (self.__map,self.csi)
-    def __setstate__(self,state):
-        self.__map,self.csi = state
-        self.__Mem = MemoryMap()
-        for loc,v in self:
-            if loc._is_ptr: self._Mem_write(loc,v)
-
     # list antecedent locations (used in the mapping)
     def inputs(self):
-        return sum(map(locations_of,self.__map.itervalues()),[])
+        r = []
+        for l,v in self.__map.iteritems():
+            for lv in locations_of(v):
+                if lv._is_reg and l._is_reg:
+                    if (lv == l) or (lv.type==l.type==regtype.FLAGS):
+                        continue
+                r.append(lv)
+        return r
 
     # list image locations (modified in the mapping)
     def outputs(self):
         L = []
         for l in sum(map(locations_of,self.__map.iterkeys()),[]):
+            if l._is_reg and l.type in (regtype.PC,regtype.FLAGS): continue
             if l._is_ptr: l = mem(l,self.__map[l].size)
+            if self.__map[l]==l: continue
             L.append(l)
         return L
 
@@ -103,6 +104,7 @@ class mapper(object):
     def clear(self):
         self.__map.clear()
         self.__Mem = MemoryMap()
+        self.conds = []
 
     def memory(self):
         return self.__Mem

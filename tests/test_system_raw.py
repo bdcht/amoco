@@ -8,3 +8,6 @@ def test_raw_001(samples):
         if f[-4:]=='.raw':
             p = RawExec(DataIO(file(f,'rb')))
 
+def test_raw_002(sc1):
+    p = RawExec(DataIO(sc1))
+

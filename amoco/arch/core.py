@@ -1,5 +1,21 @@
 #!/usr/bin/env python
 
+"""
+arch/core.py
+============
+
+The architecture's core module implements essential classes
+for the definition of new cpu architectures:
+
+- the :class:`instruction` class models cpu instructions decoded by the disassembler.
+- the :class:`disassembler` class implements the instruction decoding logic based \
+        on provided specifications.
+- the :class:`ispec` class is a function decorator that allows to define the \
+        specification of an instruction.
+- the :class:`Formatter` class is used for instruction pretty printing
+
+"""
+
 # This code is part of Amoco
 # Copyright (C) 2006-2014 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
@@ -44,7 +60,7 @@ class icore(object):
         self.operands = []
         # we add a misc defaultdict container.
         # see x86 specs for example of misc usage.
-        self.misc = defaultdict(lambda: None)
+        self.misc = defaultdict(_core_misc_default)
 
     @classmethod
     def set_uarch(cls,uarch):
@@ -76,6 +92,11 @@ class icore(object):
 # -----------------
 
 class instruction(icore):
+    """The generic instruction class allows to define instruction for any cpu
+    instructions set and provides a common API for all arch-independent methods.
+    It extends the :class:`icore` with an :attr:`address` attribute and formatter
+    methods.
+    """
 
     def __init__(self,istr):
         icore.__init__(self,istr)
@@ -108,27 +129,6 @@ class instruction(icore):
     def toks(self):
         return self.formatter(i=self,toks=True)
 
-    def __getstate__(self):
-        return (self.bytes,
-                self.type,
-                self.spec,
-                self.address,
-                self.mnemonic,
-                self.operands,
-                self.formatter,
-                dict(self.misc))
-
-    def __setstate__(self,state):
-        b,t,s,a,m,o,f,D = state
-        self.bytes = b
-        self.type = t
-        self.spec = s
-        self.address = a
-        self.mnemonic = m
-        self.operands = o
-        self.formatter = f
-        self.misc = defaultdict(lambda: None)
-        self.misc.update(D.iteritems())
 
 class InstructionError(Exception):
     def __init__(self,i):
@@ -138,13 +138,31 @@ class InstructionError(Exception):
 
 class DecodeError(Exception): pass
 
+def _core_misc_default():
+    return None
+
 # disassembler core  class
 # ------------------------
-class disassembler(object):
 
-    # specmodules: list of python modules containing ispec decorated funcs
-    # iset: lambda used to select module (ispec list)
-    # endian: instruction fetch endianess (1: little, -1: big)
+class disassembler(object):
+    """The generic disassembler class will decode a byte string based on provided
+    sets of instructions specifications and various parameters like endianess and
+    ways to select the appropriate instruction set.
+
+    Arguments:
+
+      specmodules: list of python modules containing ispec decorated funcs
+      iset: lambda used to select module (ispec list)
+      endian: instruction fetch endianess (1: little, -1: big)
+
+    Attributes:
+
+      maxlen: the length of the longest instruction found in provided specmodules.
+      iset: the lambda used to select the right specifications for decoding
+      endian: the lambda used to define endianess.
+      specs: the *tree* of :class:`ispec` objects that defines the cpu architecture.
+    """
+
     def __init__(self,specmodules,iset=(lambda *args,**kargs:0),endian=(lambda *args, **kargs:1)):
         self.maxlen = max((s.mask.size/8 for s in sum((m.ISPECS for m in specmodules),[])))
         self.iset = iset
@@ -155,12 +173,13 @@ class disassembler(object):
         # so we keep an __i instruction for decoding until a non prefix ispec is used.
         self.__i  = None
 
-    # setup will (recursively) organize the provided ispecs list into an optimal tree so that
-    # __call__ can efficiently find the matching ispec format for a given bytestring
-    # (we don't want to search until a match, so we need to separate formats as much
-    # as possible). The output tree is (f,l) where f is the submask to check at this level
-    # and l is a defaultdict such that l[x] is the subtree of formats for which submask is x.
     def setup(self,ispecs):
+        """setup will (recursively) organize the provided ispecs list into an optimal tree so that
+        __call__ can efficiently find the matching ispec format for a given bytestring
+        (we don't want to search until a match, so we need to separate formats as much
+        as possible). The output tree is (f,l) where f is the submask to check at this level
+        and l is a defaultdict such that l[x] is the subtree of formats for which submask is x.
+        """
         # sort ispecs from high constrained to low constrained:
         ispecs.sort(lambda x,y: cmp(x.mask.hw(),y.mask.hw()), reverse=True)
         if len(ispecs)<2: return (0,ispecs)
@@ -208,84 +227,110 @@ class disassembler(object):
         self.__i = None
         return None
 
-# ispec (parametrable) decorator
 # -----------------------------------------
-# @ispec allows to easily define instruction decoders based on architectures specifications.
-# The 'spec' argument is a human-friendly string that describes how the ispec object will
-# (on request) decode a given bytestring and how it will expose various decoded entities to
-# the decorated function in order to define an instruction instance.
-# It uses the following syntax :
-#
-#   'LEN<[ FORMAT ]' : LEN indicates the bit length corresponding to the FORMAT. Here,
-#                      FORMAT is interpreted as a list of directives ordered
-#                      from MSB (bit index LEN-1) to LSB (bit index 0). This is the default
-#                      direction if the '<' indicator is missing. LEN%8!=0 is unsupported.
-# or
-#   'LEN>[ FORMAT ]' : here FORMAT is ordered from LS bit to MS bit.
-# if LEN is '*', the FORMAT is of variable length, which removes checks and allows to
-# use a variable length directive at the end of the FORMAT.
-#
-# possibly terminated with an optional '+' char to indicate that the spec is a prefix.
-# In this case, the bytestring prefix matching the ispec format is stacked temporarily
-# until the rest of the bytestring matches a non prefix ispec.
-#
-# The directives composing the FORMAT string are used to associate symbols to bits
-# located at dedicated offsets within the bitstring to be decoded. A directive has the
-# following syntax:
-#
-# '-' (indicates that current bit position within FORMAT is not decoded)
-# '0' (indicates that current bit position within FORMAT must be 0)
-# '1' (indicates that current bit position within FORMAT must be 1)
-# or
-# 'type SYMBOL location'
-#    where:
-#    type is an optional modifier char with possible values:
-#      '.' indicates that the symbol will be an attribute of the instruction instance.
-#      '~' indicates that the decoded value will be returned as a Bits instance.
-#      '#' indicates that the decoded value will be returned as a string of 0/1 chars.
-#      '=' indicates that decoding should END at current position (overlapping)
-#      if not present, the symbol will be passed as keyword argument to the function with
-#      value decoded as an integer.
-#
-#    SYMBOL: is a mandatory string matching regex [A-Za-z_][0-9A-Za-z_]*
-#
-#    location: is an optional string matching the following expressions
-#      '( len )'    : indicates that the value is decoded from the next len bits starting
-#                     from the current position of the directive within the FORMAT string.
-#      '(*)'        : indicates a 'variable length directive' for which the value is decoded
-#                     from the current position with all remaining bits in the FORMAT.
-#                     If the FORMAT LEN is also variable then all remaining bits from the
-#                     instruction buffer input string are used.
-#      if ommitted, default location is '(1)'.
-#
-# The special directive {byte} is a shortcut for 8 fixed bits. For example
-# 8>[{2f}] is equivalent to 8>[ 1111 0100 ], or 8<[ 0010 1111 ].
-#
-# Example:
-#
-# @ispec(32[ .cond(4) 101 1 imm24(24) ]", mnemonic="BL", _flag=True)
-# def f(obj,imm24,_flag):
-#     [...]
-#
-# This statement creates an ispec object with hook f, and registers this object automatically
-# in a SPECS list object within the module where the statement is found.
-# Upon calling the decode method of this ispec object with a provided bytestring:
-#  => will proceed with decoding ONLY if bits 27,26,25,24 are 1,0,1,1 or raise exception
-#  => will instanciate an instruction object (obj)
-#  => will decode 4 bits at position [28,29,30,31] and provide this value as an integer
-#     in 'obj.cond' instruction instance attribute.
-#  => will decode 24 bits at positions 23..0 and provide this value as an integer as
-#     argument 'imm24' of the decorated function f.
-#  => will set obj.mnemonic to 'BL' and pass argument _flag=True to f.
-#  => will call f(obj,...)
-#  => will return obj
 
-# additional arguments to ispec decorator **must** be provided with symbol=value form and
-# are declared as attributes/values within the instruction instance *before* calling the
-# decorated function. In the previous example, the instruction has attribute mnemonic
-# with value 'BL' when the function is called.
-# -----------------------------------------
 class ispec(object):
+    """ispec (customizable) decorator
+
+    @ispec allows to easily define instruction decoders based on architecture specifications.
+
+    Arguments:
+
+        spec (str):
+            a human-friendly *format* string that describes how the ispec object will
+            (on request) decode a given bytestring and how it will expose various 
+            decoded entities to the decorated function in order to define an instruction.
+        **kargs: 
+            additional arguments to ispec decorator **must** be provided with ``symbol=value``
+            form and are declared as attributes/values within the instruction instance *before* 
+            calling the decorated function.
+
+    Attributes:
+
+        format (str): the spec format passed as argument (see above).
+        hook (callable): the decorated python function to be called during decoding.
+        iattr (dict): the dictionary of instruction attributes to add before decoding.
+        fargs (dict): the dictionary of keywords arguments to pass the hook.
+        size (int): the bit length of the format (``LEN`` value)
+        fix (Bits): the values of fixed bits within the format
+        mask (Bits): the mask of fixed bits within the format
+
+    Examples:
+
+        This statement creates an ispec object with hook ``f``, and registers this object
+        automatically in a SPECS list object within the module where the statement is found::
+
+            @ispec("32[ .cond(4) 101 1 imm24(24) ]", mnemonic="BL", _flag=True)
+            def f(obj,imm24,_flag):
+                [...]
+
+        When provided with a bytestring, the :meth:`decode` method of this ispec object will:
+
+         - proceed with decoding ONLY if bits 27,26,25,24 are 1,0,1,1 or raise an exception
+         - instanciate an instruction object (obj)
+         - decode 4 bits at position [28,29,30,31] and provide this value as an integer \
+              in 'obj.cond' instruction instance attribute.
+         - decode 24 bits at positions 23..0 and provide this value as an integer as \
+              argument 'imm24' of the decorated function f.
+         - set obj.mnemonic to 'BL' and pass argument _flag=True to f.
+         - call f(obj,...)
+         - return obj
+
+    Note:
+
+        The ``spec`` argument uses the following patterns:
+
+          - ``LEN<[ FORMAT ]`` :
+              ``LEN`` is an integer that defines the bit length of the ``FORMAT``
+              (LEN%8!=0 is not supported.)
+              The ``FORMAT`` is a sequence of *directives* ordered
+              from MSB (bit index LEN-1) to LSB (bit index 0).
+              (This is the default direction if the '<' char is missing.)
+          - ``LEN>[ FORMAT ]`` :
+              same as above but ``FORMAT`` is ordered from LSB to MSB.
+
+        If ``LEN`` is the special char ``*``, the ``FORMAT`` has a variable length,
+        which removes some verifications and allows to terminate the ``FORMAT`` with
+        a variable length directive.
+
+        The spec string is possibly terminated with an optional ``+`` char to indicate that it
+        represents an instruction *prefix*. In this case, the bytestring prefix matching the
+        ispec format is stacked temporarily until the rest of the bytestring matches a non
+        prefix ispec.
+
+        The directives defining the ``FORMAT`` string are used to associate symbols to bits
+        located at dedicated offsets within the bitstring to be decoded. A directive has the
+        following syntax:
+
+        * ``-`` (indicates that current bit position is not decoded)
+        * ``0`` (indicates that current bit position must be 0)
+        * ``1`` (indicates that current bit position must be 1)
+        
+        or
+        
+        * ``type SYMBOL location`` where:
+           
+           * ``type`` is an *optional* modifier char with possible values:
+             
+             * ``.`` indicates that the ``SYMBOL`` will be an *attribute* of the :class:`instruction`.
+             * ``~`` indicates that the decoded value will be returned as a Bits instance.
+             * ``#`` indicates that the decoded value will be returned as a string of [01] chars.
+             * ``=`` indicates that decoding should *end* at current position (overlapping)
+             
+             if not present, the ``SYMBOL`` will be passed as a keyword argument to the function with
+             value decoded as an integer.
+
+           * ``SYMBOL``: is a mandatory string matching regex ``[A-Za-z_][0-9A-Za-z_]*``
+           * ``location``: is an optional string matching the following expressions:
+             
+             * ``( len )``    : indicates that the value is decoded from the next len bits starting from the current position of the directive within the ``FORMAT`` string.
+             * ``(*)``        : indicates a *variable length directive* for which the value is decoded from the current position with all remaining bits in the ``FORMAT``.\
+                                If the ``LEN`` is also variable then all remaining bits from the instruction buffer input string are used.
+             default location value is ``(1)``.
+             
+        The special directive ``{byte}`` is a shortcut for 8 fixed bits. For example
+        ``8>[{2f}]`` is equivalent to ``8>[ 1111 0100 ]``, or ``8<[ 0010 1111 ]``.
+    """
     __slots__ = ['format','iattr','fargs','ast','fix','mask','pfx','size','hook']
 
     def __init__(self,format,**kargs):
@@ -458,9 +503,18 @@ class ispec(object):
         self.hook = handler
         return handler
 
-# Formatter is used for instruction pretty printing
 # -------------------------------------------------
+
 class Formatter(object):
+    """Formatter is used for instruction pretty printing
+
+    Basically, a ``Formatter`` object is created from a dict associating a key with a list
+    of functions or format string. The key is either one of the mnemonics or possibly
+    the name of a @ispec-decorated function (this allows to group formatting styles rather
+    than having to declare formats for every possible mnemonic.)
+    When the instruction is printed, the formatting list elements are "called" and
+    concatenated to produce the output string.
+    """
 
     def __init__(self,formats):
         self.formats = formats
@@ -493,6 +547,7 @@ class Formatter(object):
 
 # ispec format parser:
 #---------------------
+
 integer    = pp.Regex(r'[1-9][0-9]*')
 indxdir    = pp.oneOf(['<','>'])
 fixbit     = pp.oneOf(['0','1'])

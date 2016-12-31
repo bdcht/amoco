@@ -147,3 +147,20 @@ def test_merge(m,r,w,x,y,a,b):
     assert mm4w._is_vec
     assert w in mm4w
     assert 0x1000 in mm4w
+
+def test_pickle_mapper(a,m):
+    from pickle import dumps,loads,HIGHEST_PROTOCOL
+    pickler = lambda x: dumps(x,HIGHEST_PROTOCOL)
+    x = cst(0x1,32)
+    m[a] = a+3
+    m[mem(a,8)] = x[0:8]
+    m.conds.append(a==0)
+    p = pickler(m)
+    w = loads(p)
+    assert w.conds[0]==(a==0)
+    assert w(a)==(a+3)
+    M = w.memory()
+    parts = M.read(ptr(w(a)),1)
+    assert len(parts)==1
+    assert parts[0]==x[0:8]
+

@@ -146,6 +146,10 @@ def op_to_z3(e,slv=None):
     elif op.symbol == '//' : op = operator.rshift
     elif op.symbol == '>>>': op = z3.RotateRight
     elif op.symbol == '<<<': op = z3.RotateLeft
+    elif op.symbol == '**' :
+        l = l.zeroextend(2*l.size)
+        r = r.zeroextend(2*r.size)
+        op = (l*r).op
     z3l = l.to_smtlib(slv)
     z3r = r.to_smtlib(slv)
     if z3.is_bool(z3l):

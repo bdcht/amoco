@@ -8,16 +8,9 @@ addons:
   apt:
     packages:
     - unzip
-    - python3
 before_install:
-  - wget -q -O /tmp/z3.zip https://github.com/Z3Prover/z3/archive/z3-4.5.0.zip
-  - mkdir z3
-  - unzip -q -d z3 /tmp/z3.zip
-  - cd z3/z3-z3-4.5.0
-  - python scripts/mk_make.py
-  - cd build; make install
-  - cd ..; python3 scripts/mk_make.py
-  - cd build; make install
+  - pip install z3-solver
+  - pip3 install z3-solver
 install:
   - python setup.py install
   - python3 setup.py install

@@ -10,7 +10,6 @@ addons:
     - unzip
 before_install:
   - pip install z3-solver
-  - pip3 install z3-solver
 install:
   - python setup.py install
   - python3 setup.py install
@@ -21,4 +20,3 @@ env:
   - TOXENV=py27
   - TOXENV=py27-full
   - TOXENV=py3
-  - TOXENV=py3-full

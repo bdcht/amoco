@@ -15,11 +15,9 @@ before_install:
   - export PYTHONPATH=$PYTHONPATH:$(pwd)/z3
 install:
   - python setup.py install
-  - python3 setup.py install
   - pip install tox
 script:
   - tox
 env:
   - TOXENV=py27
   - TOXENV=py27-full
-  - TOXENV=py3

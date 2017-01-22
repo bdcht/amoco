@@ -15,9 +15,9 @@ before_install:
   - unzip -q -d z3 -j /tmp/z3.zip
   - cd z3
   - python scripts/mk_make.py
-  - cd build; make install
+  - cd build; make install; make clean
   - python3 scripts/mk_make.py
-  - cd build; make install
+  - cd build; make install; make clean
 install:
   - python setup.py install
   - python3 setup.py install

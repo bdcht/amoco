@@ -72,6 +72,12 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.5.0`_
+
+  * support python3 (>=3.5)
+  * allow loading multiple cpu archs (fix issue #21 and #64)
+  * update README and sphinx docs
+
 - `v2.4.6`_
 
   * add sphinx documentation (rst files and docstrings)
@@ -213,6 +219,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.5.0: https://github.com/bdcht/amoco/releases/tag/v2.5.0
 .. _v2.4.6: https://github.com/bdcht/amoco/releases/tag/v2.4.6
 .. _v2.4.5: https://github.com/bdcht/amoco/releases/tag/v2.4.5
 .. _v2.4.4: https://github.com/bdcht/amoco/releases/tag/v2.4.4

@@ -45,7 +45,7 @@ For example, from the directory ``amoco/tests``, do::
    	e_shstrndx  :27
 
 If the file uses a supported executable format (currently ``PE`` of ``ELF``) and
-targets a supported plateform (see :ref:`system` and :ref:`arch` packages),
+targets a supported plateform (see :ref:`system <system>` and :ref:`arch <arch>` packages),
 the returned object is an *abstraction* of the memory mapped program::
 
    In [5]: print(p.mmap)

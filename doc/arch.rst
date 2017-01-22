@@ -6,11 +6,12 @@ The architecture package
 Supported CPU architectures are implemented in this package as subpackages and all
 use the :mod:`arch.core` generic classes. The interface to a CPU used by
 :ref:`system <system>` classes is generally provided by a ``cpu_XXX.py``
-module in the CPU subpackage.
+module in the architecture's subpackage.
 
-This module shall:
+This CPU module shall:
 
 - provide the CPU *environment* (registers and other internals)
+- provide an instruction class based on :class:`arch.core.instruction`
 - provide an instance of :class:`core.disassembler` class, which requires to:
 
   - define the :class:`@ispec` of every instruction for the generic decoder,

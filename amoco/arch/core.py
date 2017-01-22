@@ -153,6 +153,7 @@ class disassembler(object):
     Arguments:
 
       specmodules: list of python modules containing ispec decorated funcs
+      iclass: the specific instruction class based on :class:`instruction` 
       iset: lambda used to select module (ispec list)
       endian: instruction fetch endianess (1: little, -1: big)
 

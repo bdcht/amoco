@@ -51,7 +51,7 @@ setup(
     keywords='binary analysis symbolic execution',
     packages=find_packages(exclude=['docs','tests*']),
     url = 'https://github.com/bdcht/amoco',
-    install_requires = ['grandalf>=0.5555', 'crysp>=0.9', 'pyparsing'],
+    install_requires = ['grandalf>=0.55555', 'crysp>=0.9', 'pyparsing'],
     extras_require={
         'test': ['pytest'],
         'app' : ['pygments','SQLAlchemy','Click','blinker'],

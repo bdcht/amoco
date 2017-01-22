@@ -1,9 +1,6 @@
 os:
   - linux
 language: python
-python:
-    - '2.7'
-    - '3.6'
 branches:
   only:
   - release
@@ -11,13 +8,19 @@ addons:
   apt:
     packages:
     - unzip
+    - python3
 before_install:
-  - wget -q -O /tmp/z3.zip https://github.com/Z3Prover/bin/raw/master/releases/z3-4.4.0-x64-ubuntu-14.04.zip
+  - wget -q -O /tmp/z3.zip https://github.com/Z3Prover/z3/archive/z3-4.5.0.zip
   - mkdir z3
   - unzip -q -d z3 -j /tmp/z3.zip
-  - export PYTHONPATH=$PYTHONPATH:$(pwd)/z3
+  - cd z3
+  - python scripts/mk_make.py
+  - cd build; make install
+  - python3 scripts/mk_make.py
+  - cd build; make install
 install:
   - python setup.py install
+  - python3 setup.py install
   - pip install tox
 script:
   - tox

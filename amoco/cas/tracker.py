@@ -50,7 +50,7 @@ class nextgeneration(OrderedDict):
     # order at generation g is conserved;
     def getgen(self,g):
         d = nextgeneration()
-        for k in self.od.iterkeys():
+        for k in self.od:
             d[k] = self.keygen(k,g)
         return d
 

@@ -120,7 +120,7 @@ def opers_att(i):
         elif op._is_reg:
             s.append((Token.Register,'%{}'.format(op)))
         else:
-            raise ValueError,op
+            raise(ValueError,op)
         s.append((Token.Literal,', '))
     if len(s)>0: s.pop()
     return s

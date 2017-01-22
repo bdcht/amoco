@@ -12,12 +12,18 @@ from amoco.system import elf
 from amoco.system import pe
 
 #------------------------------------------------------------------------------
-# read_program is responsible of identifying the program header (ELF/PE).
-# It returns an ELF or PE class instance.
-# loading the associated "system" (Linux/Windows) and "environment" (x86/etc),
-# based on information from its header.
-#------------------------------------------------------------------------------
 def read_program(filename):
+    '''
+    Identifies the program header (ELF/PE) and returns an ELF, PE or DataIO
+    instance.
+
+    Args:
+        filename (str): the program to read.
+
+    Returns:
+        an instance of currently supported program format (ELF, PE)
+
+    '''
     obj = None
     try:
         # open file as a ELF object:
@@ -37,7 +43,7 @@ def read_program(filename):
 
     logger.warning('unknown format')
     try:
-        data = file(filename,'rb')
+        data = open(filename,'rb')
     except (TypeError,IOError):
         data = filename
     return DataIO(data)
@@ -45,12 +51,20 @@ def read_program(filename):
 ##
 
 #------------------------------------------------------------------------------
-# load_program is responsible of providing a "program" class instance
-# depending on the detected "system" (Linux/Win32) and "environment" (x86).
-#------------------------------------------------------------------------------
-def load_program(file):
+def load_program(f):
+    '''
+    Detects program format header (ELF/PE), and *maps* the program in abstract
+    memory, loading the associated "system" (linux/win) and "arch" (x86/arm),
+    based header informations.
 
-    p = read_program(file)
+    Arguments:
+        f (str):
+
+    Returns:
+        an ELF, PE or RawExec system instance
+    '''
+
+    p = read_program(f)
 
     if isinstance(p,(elf.Elf32,elf.Elf64)):
 
@@ -75,7 +89,7 @@ def load_program(file):
             logger.info("leon2 program created")
             return ELF(p)
         else:
-            logger.error('machine type not supported:\n%s'%p.Ehdr)
+            logger.error(u'machine type not supported:\n%s'%p.Ehdr)
             raise ValueError
 
     elif isinstance(p,pe.PE):

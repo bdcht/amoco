@@ -22,7 +22,7 @@ def test_memory_001(M,sc1):
 
 def test_memory_002(M,sc1,p):
     M.write(0x0, sc1)
-    M.write(p, 'A'*8)
+    M.write(p, b'A'*8)
     assert len(M._zones)==2
     # write little-endian 16 bits constant:
     M.write(p+2,cst(0x4243,16))
@@ -33,7 +33,7 @@ def test_memory_002(M,sc1,p):
 
 def test_memory_003(M,sc1,p,y):
     M.write(0x0, sc1)
-    M.write(p, 'A'*8)
+    M.write(p, b'A'*8)
     M.write(p+2,cst(0x4243,16))
     # overwrite string with symbolic reg y:
     M.write(cst(0x10,32), y)
@@ -44,7 +44,7 @@ def test_memory_003(M,sc1,p,y):
 
 def test_memory_004(M,sc1,p,y):
     M.write(0x0, sc1)
-    M.write(p, 'A'*8)
+    M.write(p, b'A'*8)
     M.write(p+2,cst(0x4243,16))
     M.write(cst(0x10,32), y)
     # test big endian cases:
@@ -55,14 +55,14 @@ def test_memory_004(M,sc1,p,y):
     assert M.read(p+3,1)[0]==0x43
     res = M.read(cst(0x12,32),4)
     assert res[0] == y[0:16]
-    assert res[1] == '\xc0@'
+    assert res[1] == b'\xc0@'
     res = M.read(p,6)
-    assert res[0]==res[2]=='AA'
+    assert res[0]==res[2]==b'AA'
     M.write(cst(0x12,32),p.base)
     res = M.read(cst(0x10,32),8)
     assert res[0]==y[16:32]
     assert res[1]==p.base
-    assert res[2]=='\xcd\x80'
+    assert res[2]==b'\xcd\x80'
     # return to default
     c.setendian(+1)
     exp.setendian(+1)

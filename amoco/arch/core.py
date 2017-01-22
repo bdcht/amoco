@@ -21,12 +21,13 @@ for the definition of new cpu architectures:
 # published under GPLv2 license
 
 from crysp.bits import *
-
+import types
 from collections import defaultdict
 import pyparsing as pp
 import inspect
 import importlib
-
+from functools import reduce
+import codecs
 from amoco.logger import Log
 logger = Log(__name__)
 
@@ -52,8 +53,8 @@ type_other             : "other",
 
 class icore(object):
 
-    def __init__(self,istr=''):
-        self.bytes    = istr
+    def __init__(self,istr=b''):
+        self.bytes    = bytes(istr)
         self.type     = type_undefined
         self.spec     = None
         self.mnemonic = None
@@ -70,17 +71,17 @@ class icore(object):
         return INSTRUCTION_TYPES[self.type]
 
     # calling the asm implementation of this instruction:
-    def __call__(self,map):
+    def __call__(self,fmap):
         if self.type in (type_undefined,type_unpredictable):
             logger.error('%s instruction'%self.typename())
         try:
             i_xxx = self._uarch['i_%s'%self.mnemonic]
         except AttributeError:
-            logger.warning('no uarch defined (%s)'%self.mnemonic)
+            logger.warning(u'no uarch defined (%s)'%self.mnemonic)
         except KeyError:
-            logger.warning('instruction %s not implemented'%self.mnemonic)
+            logger.warning(u'instruction %s not implemented'%self.mnemonic)
         else:
-            i_xxx(self,map)
+            i_xxx(self,fmap)
 
     @property
     def length(self):
@@ -163,8 +164,9 @@ class disassembler(object):
       specs: the *tree* of :class:`ispec` objects that defines the cpu architecture.
     """
 
-    def __init__(self,specmodules,iset=(lambda *args,**kargs:0),endian=(lambda *args, **kargs:1)):
-        self.maxlen = max((s.mask.size/8 for s in sum((m.ISPECS for m in specmodules),[])))
+    def __init__(self,specmodules,iclass=instruction,iset=(lambda *args,**kargs:0),endian=(lambda *args, **kargs:1)):
+        self.iclass = iclass
+        self.maxlen = max((s.mask.size//8 for s in sum((m.ISPECS for m in specmodules),[])))
         self.iset = iset
         self.endian = endian
         # build ispecs tree for each set:
@@ -181,7 +183,7 @@ class disassembler(object):
         and l is a defaultdict such that l[x] is the subtree of formats for which submask is x.
         """
         # sort ispecs from high constrained to low constrained:
-        ispecs.sort(lambda x,y: cmp(x.mask.hw(),y.mask.hw()), reverse=True)
+        ispecs.sort(key=(lambda x: x.mask.hw()), reverse=True)
         if len(ispecs)<2: return (0,ispecs)
         # find separating mask:
         localmask = reduce(lambda x,y:x&y, (s.mask for s in ispecs))
@@ -193,7 +195,7 @@ class disassembler(object):
         for s in ispecs:
             l[ s.fix.ival & f ].append(s)
         if len(l)==1: # if subtree has only 1 spec, we're done here
-            return (0,l.values()[0])
+            return (0,list(l.values())[0])
         for x,S in l.items():
             l[x] = self.setup(S)
         return (f,l)
@@ -208,14 +210,14 @@ class disassembler(object):
             if f==0: # we are on a leaf...
                 for s in l: # lets search linearly over this branch
                     try:
-                        i = s.decode(bytestring,e,i=self.__i,ival=b.ival)
+                        i = s.decode(bytestring,e,i=self.__i,ival=b.ival,iclass=self.iclass)
                     except (DecodeError,InstructionError):
-                        logger.debug('exception raised by disassembler:'
-                                     'decoding %s with spec %s'%(bytestring.encode('hex'),s.format))
+                        logger.debug(u'exception raised by disassembler:'
+                                     u'decoding %s with spec %s'%(codecs.encode(bytestring,'hex'),s.format))
                         continue
                     if i.spec.pfx is True:
                         if self.__i is None: self.__i = i
-                        return self(bytestring[s.mask.size/8:],**kargs)
+                        return self(bytestring[s.mask.size//8:],**kargs)
                     self.__i = None
                     if 'address' in kargs:
                         i.address = kargs['address']
@@ -358,7 +360,7 @@ class ispec(object):
     def setup(self,kargs):
         self.iattr = {}
         self.fargs = {}
-        for k,v in kargs.iteritems():
+        for k,v in iter(kargs.items()):
             if   k.startswith('_'): self.fargs[k]=v
             else: self.iattr[k] = v
         self.ast = self.buildspec()
@@ -425,13 +427,13 @@ class ispec(object):
                 sta = i
                 sto = i+loc
                 if sta<0 or sto>size:
-                    logger.error('ispec directive out of bound in %s'%self.format)
+                    logger.error(u'ispec directive out of bound in %s'%self.format)
                 if opt!='=': count += loc
                 i = sto
                 if opt=='=' and go<0: i=i-loc
             else:
                 if opt=='=':
-                    logger.error('ispec directive invalid length in %s'%self.format)
+                    logger.error(u'ispec directive invalid length in %s'%self.format)
                 sta = i
                 sto = None
                 i   = size
@@ -451,9 +453,9 @@ class ispec(object):
         return ast
 
     # decode always receive input bytes in ascending memory order
-    def decode(self,istr,endian=1,i=None,ival=None):
+    def decode(self,istr,endian=1,i=None,ival=None,iclass=instruction):
         # check spec :
-        blen = self.fix.size/8
+        blen = self.fix.size//8
         if len(istr)<blen: raise DecodeError
         bs = istr[0:blen]
         # Bits object created with LSB to MSB byte string:
@@ -465,19 +467,21 @@ class ispec(object):
             b = b//Bits(istr[blen:],bitorder=1)
         # create & update instruction object:
         if i is None:
-            i = instruction(bs)
+            i = iclass(bs)
         else:
             i.bytes += bs
         i.spec = self
         # set instruction attributes from directives, and then
         # call hook function with instruction as first parameter
         # and fargs (note that hook can thus overwrite previous attributes)
-        for k,v in self.iattr.iteritems():
-            if type(v)==type(lambda:1): v=v(b)
+        for k,v in iter(self.iattr.items()):
+            if isinstance(v,types.FunctionType):
+                v=v(b)
             setattr(i,k,v)
         kargs={}
-        for k,v in self.fargs.iteritems():
-            if type(v)==type(lambda:1): v=v(b)
+        for k,v in iter(self.fargs.items()):
+            if isinstance(v,types.FunctionType):
+                v=v(b)
             kargs[k] = v
         # and call hooks:
         try:
@@ -485,7 +489,7 @@ class ispec(object):
         except InstructionError:
             # clean up:
             i.bytes = i.bytes[:-len(bs)]
-            for k in self.iattr.iterkeys(): delattr(i,k)
+            for k in iter(self.iattr.keys()): delattr(i,k)
             raise InstructionError(i)
         return i
 
@@ -496,10 +500,11 @@ class ispec(object):
     def __call__(self, handler):
         m = inspect.getmodule(handler)
         ispec_register(self,m)
-        varnames = handler.func_code.co_varnames
-        for k in self.fargs.iterkeys():
+        varnames = handler.__code__.co_varnames
+        fname = handler.__name__
+        for k in iter(self.fargs.keys()):
             if k not in varnames:
-                logger.error('ispec symbol not found in decorated function %s'%handler.func_name)
+                logger.error(u'ispec symbol not found in decorated function %s'%fname)
         self.hook = handler
         return handler
 
@@ -522,14 +527,16 @@ class Formatter(object):
 
     def getkey(self,i):
         if i.mnemonic in self.formats: return i.mnemonic
-        if i.spec.hook.func_name in self.formats: return i.spec.hook.func_name
+        fname = i.spec.hook.__name__
+        if fname in self.formats: return fname
         return None
 
     def getparts(self,i):
         try:
             fmts = self.formats[i.mnemonic]
         except KeyError:
-            fmts = self.formats.get(i.spec.hook.func_name,self.default)
+            fname = i.spec.hook.__name__
+            fmts = self.formats.get(fname,self.default)
         return fmts
 
     def __call__(self,i,toks=False):
@@ -588,7 +595,7 @@ def test_parser():
         try:
             res = raw_input('ispec>')
             s = ispec(res,mnemonic="TEST")
-            print s.ast
+            print(s.ast)
             return s
         except EOFError:
             return

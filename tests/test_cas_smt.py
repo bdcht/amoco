@@ -15,7 +15,7 @@ def test_reg_bv(x,y):
     xv,yv = (m[v].as_long() for v in m)
     assert m.eval(xl.to_smtlib()).as_long() == 0xa
     assert m.eval(xh.to_smtlib()).as_long() == 0x84
-    assert ((xv^0xcafebabe)+(yv+(xv>>2)))&0xffffffffL == 0
+    assert ((xv^0xcafebabe)+(yv+(xv>>2)))&0xffffffff == 0
 
 @pytest.mark.skipif(not has_solver,reason="no smt solver loaded")
 def test_mem_bv():

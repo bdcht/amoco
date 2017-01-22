@@ -44,7 +44,7 @@ class CX(Rect):
         self.registered.remove(item)
 
     def eventhandler(*args):
-        print "CX eventhandler on",args
+        print("CX eventhandler on",args)
 
 #------------------------------------------------------------------------------
 # decorators for eventhandlers: this sets the 'clicked' field to the mouse
@@ -155,7 +155,7 @@ class Node_basic(Group):
         return False
 
     def notifyhandler(self,prop):
-        #print "notify %s on "%prop.name,self
+        #print("notify %s on "%(prop.name,self))
         for cx in self.cx:
             for e in cx.registered: e.update_points()
 
@@ -370,7 +370,7 @@ class Node_codeblock(Group):
 
     @mouse1moves
     def eventhandler(self,item,e):
-        #print "*** CODEBLOCK EVENT =",e
+        #print("*** CODEBLOCK EVENT =",e)
         if e.type is gtk.gdk.ENTER_NOTIFY:
             self.codebox.set_properties(line_width=2.0)
         elif e.type is gtk.gdk.LEAVE_NOTIFY:
@@ -378,7 +378,7 @@ class Node_codeblock(Group):
         return False
 
     def notifyhandler(self,prop):
-        #print "notify %s on "%prop.name,self
+        #print("notify %s on "%(prop.name,self))
         for cx in self.cx:
             for e in cx.registered: e.update_points()
 
@@ -391,7 +391,11 @@ class Node_codeblock(Group):
         self.shadbox.set_properties(width=w,height=h)
 
 
-def intersect2lines((x1,y1),(x2,y2),(x3,y3),(x4,y4)):
+def intersect2lines(X1,X2,X3,X4):
+    (x1,y1) = X1
+    (x2,y2) = X2
+    (x3,y3) = X3
+    (x4,y4) = X4
     b = (x2-x1,y2-y1)
     d = (x4-x3,y4-y3)
     det = b[0]*d[1] - b[1]*d[0]

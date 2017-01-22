@@ -1,7 +1,9 @@
 os:
   - linux
 language: python
-python: 2.7
+python:
+    - '2.7'
+    - '3.6'
 branches:
   only:
   - release
@@ -22,3 +24,5 @@ script:
 env:
   - TOXENV=py27
   - TOXENV=py27-full
+  - TOXENV=py3
+  - TOXENV=py3-full

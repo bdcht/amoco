@@ -36,7 +36,7 @@ class ELF(CoreExec):
     # call dynamic linker to populate mmap with shared libs:
     # for now, the external libs are seen through the elf dynamic section:
     def load_shlib(self):
-        for k,f in self.bin._Elf32__dynamic(None).iteritems():
+        for k,f in self.bin._Elf32__dynamic(None).items():
             self.mmap.write(k,cpu.ext(f,size=32))
 
     # lookup in bin if v is associated with a function or variable name:

@@ -24,8 +24,8 @@ def pop(fmap,l):
 def parity(x):
   x = x.zeroextend(64)
   x = x ^ (x>>1)
-  x = (x ^ (x>>2)) & 0x1111111111111111L
-  x = x * 0x1111111111111111L
+  x = (x ^ (x>>2)) & 0x1111111111111111
+  x = x * 0x1111111111111111
   p = (x>>60).bit(0)
   return p
 
@@ -195,7 +195,7 @@ def i_CQO(i,fmap):
 
 def i_PUSHFQ(i,fmap):
   fmap[rip] = fmap[rip]+i.length
-  push(fmap,fmap(rflags)&0x0000000000fcffffL)
+  push(fmap,fmap(rflags)&0x0000000000fcffff)
 
 def i_POPFQ(i,fmap):
   fmap[rip] = fmap[rip]+i.length

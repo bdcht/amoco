@@ -83,7 +83,7 @@ def test_op(a,b):
     base,offset = extract_offset(e)
     assert offset == -1
     assert e.r._is_cst
-    assert e.r.v == 0xffffffffL
+    assert e.r.v == 0xffffffff
     assert e.r.sf == True
 
 def test_op1_slc(a,b):

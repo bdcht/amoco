@@ -1,7 +1,7 @@
 import pytest
 from amoco.main import *
 
-from cPickle import dumps,loads,HIGHEST_PROTOCOL
+from pickle import dumps,loads,HIGHEST_PROTOCOL
 pickler = lambda x: dumps(x,HIGHEST_PROTOCOL)
 
 def test_block(sc1):

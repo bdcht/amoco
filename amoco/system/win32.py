@@ -35,7 +35,7 @@ class PE(CoreExec):
     # call dynamic linker to populate mmap with shared libs:
     # for now, the external libs are seen through the elf dynamic section:
     def load_shlib(self):
-        for k,f in self.bin.functions.iteritems():
+        for k,f in self.bin.functions.items():
             self.mmap.write(k,cpu.ext(f,size=32))
 
     def initenv(self):

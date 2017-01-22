@@ -6,10 +6,14 @@
 # published under GPLv2 license
 
 import struct
-
+from datetime import datetime
 from amoco.system.core import DataIO
 from amoco.logger import *
 logger = Log(__name__)
+
+from collections import defaultdict
+from amoco.ui.render import Token,highlight
+
 
 # our exception handler:
 class PEError(Exception):
@@ -19,9 +23,57 @@ class PEError(Exception):
         return str(self.message)
 ##
 
+#------------------------------------------------------------------------------
+# formatting facilities:
+
+# init of reverse dict to get constant name from value.
+# This dict is updated by using 'with' statement of Consts.
+PE_CONSTS = defaultdict(dict)
+
+class Consts(object):
+    def __init__(self,name):
+        self.name = name
+    def __enter__(self):
+        PE_CONSTS[self.name] = {}
+        self.globnames = set(globals().keys())
+    def __exit__(self,exc_type,exc_value,traceback):
+        G = globals()
+        for k in set(G.keys())-self.globnames:
+            PE_CONSTS[self.name][G[k]] = k
+
+def default_formatter():
+    return token_default_fmt
+
+def token_default_fmt(k,x,cls=None):
+    if 'RVA'  in k: return token_address_fmt(k,x)
+    if 'flags' in k: return token_flag_fmt(k,x)
+    return highlight([(Token.Literal,str(x))])
+
+def token_address_fmt(k,x,cls=None):
+    return highlight([(Token.Address,hex(x))])
+
+def token_constant_fmt(k,x,cls=None):
+    return highlight([(Token.Constant,str(x))])
+
+def token_name_fmt(k,x,cls=None):
+    try:
+        return highlight([(Token.Name,PE_CONSTS[k][x])])
+    except KeyError:
+        return token_constant_fmt(k,x)
+
+def token_flag_fmt(k,x,cls):
+    s = []
+    for v,name in PE_CONSTS["%s%s"%(cls,k)].items():
+        if (x&v): s.append(highlight([(Token.Name,name)]))
+    return ','.join(s)
+
+
+#------------------------------------------------------------------------------
 class PEcore(object):
     order = '<' #le
     pfx = ''
+    ksz = 20
+    fkeys = defaultdict(default_formatter)
     def __init__(self,data,offset=0):
         self.set(data[offset:offset+len(self)])
     def set(self,data):
@@ -29,71 +81,97 @@ class PEcore(object):
         self.__dict__.update(zip(self.keys,S))
     def pack(self):
         return struct.pack(self.order+self.fmt,*(getattr(self,k) for k in self.keys))
+    @classmethod
+    def func_formatter(cls,**kargs):
+        for key,func in kargs.items():
+            cls.fkeys[key] = func
+    @classmethod
+    def address_formatter(cls,*keys):
+        for key in keys:
+            cls.fkeys[key] = token_address_fmt
+    @classmethod
+    def name_formatter(cls,*keys):
+        for key in keys:
+            cls.fkeys[key] = token_name_fmt
+    @classmethod
+    def flag_formatter(cls,*keys):
+        for key in keys:
+            cls.fkeys[key] = token_flag_fmt
+    def strkey(self,k,cname):
+        fmt = u'%%s%%-%ds:%%s'%self.ksz
+        return fmt%(self.pfx,k,self.fkeys[k](k,getattr(self,k),cls=cname))
     def __str__(self):
-        return '\n'.join(
-                ("%s%-12s:%s"%(self.pfx,k,str(getattr(self,k))) for k in self.keys))
+        cname = self.__class__.__name__
+        s = u'\n'.join(self.strkey(k,cname) for k in self.keys)
+        return u"[%s]\n%s"%(cname,s)
     def __len__(self):
         return struct.calcsize(self.fmt)
+
 
 # The PE file header(s).
 #------------------------------------------------------------------------------
 
-IMAGE_DOS_SIGNATURE=0x5A4D
-IMAGE_OS2_SIGNATURE=0x454E
-IMAGE_OS2_SIGNATURE_LE=0x454C
-IMAGE_VXD_SIGNATURE=0x454C
+with Consts('Signature'):
+    IMAGE_DOS_SIGNATURE=0x5A4D
+    IMAGE_OS2_SIGNATURE=0x454E
+    IMAGE_OS2_SIGNATURE_LE=0x454C
+    IMAGE_VXD_SIGNATURE=0x454C
+    IMAGE_NT_SIGNATURE=0x00004550
 
 class DOSHdr(PEcore):
     fmt = 'H58xI'
     keys = ('e_magic', 'e_lfanew')
     def __init__(self,data,offset=0):
-        if data[offset:offset+2]!='MZ': raise PEError('no DOS Header found')
+        if data[offset:offset+2]!=b'MZ': raise PEError('no DOS Header found')
         PEcore.__init__(self,data,offset)
 
-IMAGE_NT_SIGNATURE=0x00004550
 IMAGE_NUMBEROF_DIRECTORY_ENTRIES=16
-IMAGE_ORDINAL_FLAG=0x80000000L
-IMAGE_ORDINAL_FLAG64=0x8000000000000000L
-OPTIONAL_HEADER_MAGIC_PE=0x10b
-OPTIONAL_HEADER_MAGIC_PE_PLUS=0x20b
+IMAGE_ORDINAL_FLAG=0x80000000
+IMAGE_ORDINAL_FLAG64=0x8000000000000000
 
-IMAGE_FILE_MACHINE_UNKNOWN=0
-IMAGE_FILE_MACHINE_AM33=0x1d3
-IMAGE_FILE_MACHINE_AMD64=0x8664
-IMAGE_FILE_MACHINE_ARM=0x1c0
-IMAGE_FILE_MACHINE_EBC=0xebc
-IMAGE_FILE_MACHINE_I386=0x14c
-IMAGE_FILE_MACHINE_IA64=0x200
-IMAGE_FILE_MACHINE_MR32=0x9041
-IMAGE_FILE_MACHINE_MIPS16=0x266
-IMAGE_FILE_MACHINE_MIPSFPU=0x366
-IMAGE_FILE_MACHINE_MIPSFPU16=0x466
-IMAGE_FILE_MACHINE_POWERPC=0x1f0
-IMAGE_FILE_MACHINE_POWERPCFP=0x1f1
-IMAGE_FILE_MACHINE_R4000=0x166
-IMAGE_FILE_MACHINE_SH3=0x1a2
-IMAGE_FILE_MACHINE_SH3DSP=0x1a3
-IMAGE_FILE_MACHINE_SH4=0x1a6
-IMAGE_FILE_MACHINE_SH5=0x1a8
-IMAGE_FILE_MACHINE_THUMB=0x1c2
-IMAGE_FILE_MACHINE_WCEMIPSV2=0x169
+with Consts('Magic'):
+    OPTIONAL_HEADER_MAGIC_PE=0x10b
+    OPTIONAL_HEADER_MAGIC_PE_PLUS=0x20b
 
-IMAGE_FILE_RELOCS_STRIPPED=0x0001
-IMAGE_FILE_EXECUTABLE_IMAGE=0x0002
-IMAGE_FILE_LINE_NUMS_STRIPPED=0x0004
-IMAGE_FILE_LOCAL_SYMS_STRIPPED=0x0008
-IMAGE_FILE_AGGRESIVE_WS_TRIM=0x0010
-IMAGE_FILE_LARGE_ADDRESS_AWARE=0x0020
-IMAGE_FILE_16BIT_MACHINE=0x0040
-IMAGE_FILE_BYTES_REVERSED_LO=0x0080
-IMAGE_FILE_32BIT_MACHINE=0x0100
-IMAGE_FILE_DEBUG_STRIPPED=0x0200
-IMAGE_FILE_REMOVABLE_RUN_FROM_SWAP=0x0400
-IMAGE_FILE_NET_RUN_FROM_SWAP=0x0800
-IMAGE_FILE_SYSTEM=0x1000
-IMAGE_FILE_DLL=0x2000
-IMAGE_FILE_UP_SYSTEM_ONLY=0x4000
-IMAGE_FILE_BYTES_REVERSED_HI=0x8000
+with Consts('Machine'):
+    IMAGE_FILE_MACHINE_UNKNOWN=0
+    IMAGE_FILE_MACHINE_AM33=0x1d3
+    IMAGE_FILE_MACHINE_AMD64=0x8664
+    IMAGE_FILE_MACHINE_ARM=0x1c0
+    IMAGE_FILE_MACHINE_EBC=0xebc
+    IMAGE_FILE_MACHINE_I386=0x14c
+    IMAGE_FILE_MACHINE_IA64=0x200
+    IMAGE_FILE_MACHINE_MR32=0x9041
+    IMAGE_FILE_MACHINE_MIPS16=0x266
+    IMAGE_FILE_MACHINE_MIPSFPU=0x366
+    IMAGE_FILE_MACHINE_MIPSFPU16=0x466
+    IMAGE_FILE_MACHINE_POWERPC=0x1f0
+    IMAGE_FILE_MACHINE_POWERPCFP=0x1f1
+    IMAGE_FILE_MACHINE_R4000=0x166
+    IMAGE_FILE_MACHINE_SH3=0x1a2
+    IMAGE_FILE_MACHINE_SH3DSP=0x1a3
+    IMAGE_FILE_MACHINE_SH4=0x1a6
+    IMAGE_FILE_MACHINE_SH5=0x1a8
+    IMAGE_FILE_MACHINE_THUMB=0x1c2
+    IMAGE_FILE_MACHINE_WCEMIPSV2=0x169
+
+with Consts('COFFHdrCharacteristics'):
+    IMAGE_FILE_RELOCS_STRIPPED=0x0001
+    IMAGE_FILE_EXECUTABLE_IMAGE=0x0002
+    IMAGE_FILE_LINE_NUMS_STRIPPED=0x0004
+    IMAGE_FILE_LOCAL_SYMS_STRIPPED=0x0008
+    IMAGE_FILE_AGGRESIVE_WS_TRIM=0x0010
+    IMAGE_FILE_LARGE_ADDRESS_AWARE=0x0020
+    IMAGE_FILE_16BIT_MACHINE=0x0040
+    IMAGE_FILE_BYTES_REVERSED_LO=0x0080
+    IMAGE_FILE_32BIT_MACHINE=0x0100
+    IMAGE_FILE_DEBUG_STRIPPED=0x0200
+    IMAGE_FILE_REMOVABLE_RUN_FROM_SWAP=0x0400
+    IMAGE_FILE_NET_RUN_FROM_SWAP=0x0800
+    IMAGE_FILE_SYSTEM=0x1000
+    IMAGE_FILE_DLL=0x2000
+    IMAGE_FILE_UP_SYSTEM_ONLY=0x4000
+    IMAGE_FILE_BYTES_REVERSED_HI=0x8000
 
 class COFFHdr(PEcore):
     fmt = 'IHHIIIHH'
@@ -107,8 +185,11 @@ class COFFHdr(PEcore):
         'SizeOfOptionalHeader',
         'Characteristics')
     def __init__(self,data,offset=0):
-        if data[offset:offset+2]!='PE': raise PEError('no PE Header found')
+        if data[offset:offset+2]!=b'PE': raise PEError('no PE Header found')
         PEcore.__init__(self,data,offset)
+        self.name_formatter('Signature','Machine')
+        self.flag_formatter('Characteristics')
+        self.func_formatter(TimeDateStamp = (lambda k,x,cls: str(datetime.utcfromtimestamp(x))))
 
 class OptionalHdr(PEcore):
     fmt = 'HBBIIIIII'+'IIIHHHHHHIIIIHH'+'IIII'+'II'
@@ -146,9 +227,9 @@ class OptionalHdr(PEcore):
         )
     def __init__(self,data,offset=0):
         magic = data[offset:offset+2]
-        if magic=='\x0b\x01':
+        if magic==b'\x0b\x01':
             logger.verbose('PE32 Magic found')
-        elif magic=='\x0b\x02':
+        elif magic==b'\x0b\x02':
             logger.verbose('PE32+ Magic found')
             l = list(self.fmt)
             l.pop(8)
@@ -158,10 +239,14 @@ class OptionalHdr(PEcore):
             k = list(self.keys)
             k.pop(8)
             self.keys = tuple(k)
-        elif magic=='\x07\x01':
+        elif magic==b'\x07\x01':
             logger.info('ROM Magic found (unsupported)')
         else:
             logger.error('unknown Magic')
+        self.name_formatter('Magic')
+        self.address_formatter('AddressOfEntryPoint','BaseOfCode','BaseOfData','ImageBase')
+        self.address_formatter('Checksum')
+        self.flag_formatter('DllCharacteristics','LoaderFlags')
         # parse structure
         self.DataDirectories = {}
         PEcore.__init__(self,data,offset)
@@ -176,7 +261,7 @@ class OptionalHdr(PEcore):
             l += len(d)
 
     def __len__(self):
-        dirslen = sum(map(len,self.DataDirectories.itervalues()))
+        dirslen = sum(map(len,self.DataDirectories.values()))
         return struct.calcsize(self.fmt)+dirslen
 ##
 
@@ -203,41 +288,43 @@ class DataDirectory(PEcore):
 
 # PE Sections
 #------------------------------------------------------------------------------
-IMAGE_SCN_CNT_CODE=0x00000020
-IMAGE_SCN_CNT_INITIALIZED_DATA=0x00000040
-IMAGE_SCN_CNT_UNINITIALIZED_DATA=0x00000080
-IMAGE_SCN_LNK_OTHER=0x00000100
-IMAGE_SCN_LNK_INFO=0x00000200
-IMAGE_SCN_LNK_REMOVE=0x00000800
-IMAGE_SCN_LNK_COMDAT=0x00001000
-IMAGE_SCN_MEM_FARDATA=0x00008000
-IMAGE_SCN_MEM_PURGEABLE=0x00020000
-IMAGE_SCN_MEM_16BIT=0x00020000
-IMAGE_SCN_MEM_LOCKED=0x00040000
-IMAGE_SCN_MEM_PRELOAD=0x00080000
-IMAGE_SCN_ALIGN_1BYTES=0x00100000
-IMAGE_SCN_ALIGN_2BYTES=0x00200000
-IMAGE_SCN_ALIGN_4BYTES=0x00300000
-IMAGE_SCN_ALIGN_8BYTES=0x00400000
-IMAGE_SCN_ALIGN_16BYTES=0x00500000
-IMAGE_SCN_ALIGN_32BYTES=0x00600000
-IMAGE_SCN_ALIGN_64BYTES=0x00700000
-IMAGE_SCN_ALIGN_128BYTES=0x00800000
-IMAGE_SCN_ALIGN_256BYTES=0x00900000
-IMAGE_SCN_ALIGN_512BYTES=0x00A00000
-IMAGE_SCN_ALIGN_1024BYTES=0x00B00000
-IMAGE_SCN_ALIGN_2048BYTES=0x00C00000
-IMAGE_SCN_ALIGN_4096BYTES=0x00D00000
-IMAGE_SCN_ALIGN_8192BYTES=0x00E00000
-IMAGE_SCN_ALIGN_MASK=0x00F00000
-IMAGE_SCN_LNK_NRELOC_OVFL=0x01000000
-IMAGE_SCN_MEM_DISCARDABLE=0x02000000
-IMAGE_SCN_MEM_NOT_CACHED=0x04000000
-IMAGE_SCN_MEM_NOT_PAGED=0x08000000
-IMAGE_SCN_MEM_SHARED=0x10000000
-IMAGE_SCN_MEM_EXECUTE=0x20000000
-IMAGE_SCN_MEM_READ=0x40000000
-IMAGE_SCN_MEM_WRITE=0x80000000
+
+with Consts('SectionHdrCharacteristics'):
+    IMAGE_SCN_CNT_CODE=0x00000020
+    IMAGE_SCN_CNT_INITIALIZED_DATA=0x00000040
+    IMAGE_SCN_CNT_UNINITIALIZED_DATA=0x00000080
+    IMAGE_SCN_LNK_OTHER=0x00000100
+    IMAGE_SCN_LNK_INFO=0x00000200
+    IMAGE_SCN_LNK_REMOVE=0x00000800
+    IMAGE_SCN_LNK_COMDAT=0x00001000
+    IMAGE_SCN_MEM_FARDATA=0x00008000
+    IMAGE_SCN_MEM_PURGEABLE=0x00020000
+    IMAGE_SCN_MEM_16BIT=0x00020000
+    IMAGE_SCN_MEM_LOCKED=0x00040000
+    IMAGE_SCN_MEM_PRELOAD=0x00080000
+    IMAGE_SCN_ALIGN_1BYTES=0x00100000
+    IMAGE_SCN_ALIGN_2BYTES=0x00200000
+    IMAGE_SCN_ALIGN_4BYTES=0x00300000
+    IMAGE_SCN_ALIGN_8BYTES=0x00400000
+    IMAGE_SCN_ALIGN_16BYTES=0x00500000
+    IMAGE_SCN_ALIGN_32BYTES=0x00600000
+    IMAGE_SCN_ALIGN_64BYTES=0x00700000
+    IMAGE_SCN_ALIGN_128BYTES=0x00800000
+    IMAGE_SCN_ALIGN_256BYTES=0x00900000
+    IMAGE_SCN_ALIGN_512BYTES=0x00A00000
+    IMAGE_SCN_ALIGN_1024BYTES=0x00B00000
+    IMAGE_SCN_ALIGN_2048BYTES=0x00C00000
+    IMAGE_SCN_ALIGN_4096BYTES=0x00D00000
+    IMAGE_SCN_ALIGN_8192BYTES=0x00E00000
+    IMAGE_SCN_ALIGN_MASK=0x00F00000
+    IMAGE_SCN_LNK_NRELOC_OVFL=0x01000000
+    IMAGE_SCN_MEM_DISCARDABLE=0x02000000
+    IMAGE_SCN_MEM_NOT_CACHED=0x04000000
+    IMAGE_SCN_MEM_NOT_PAGED=0x08000000
+    IMAGE_SCN_MEM_SHARED=0x10000000
+    IMAGE_SCN_MEM_EXECUTE=0x20000000
+    IMAGE_SCN_MEM_READ=0x40000000
+    IMAGE_SCN_MEM_WRITE=0x80000000
 
 class SectionHdr(PEcore):
     fmt = '8sIIIIIIHHI'
@@ -257,6 +344,9 @@ class SectionHdr(PEcore):
             self.Name = self.Name.decode('utf-8').strip('\0')
         except UnicodeDecodeError:
             logger.info('SectionHdr: Name string decode error %s'%repr(self.Name))
+        self.name_formatter('Name')
+        self.address_formatter('RVA')
+        self.flag_formatter('Characteristics')
 
     def group(self):
         return self.Name.partition('$')
@@ -316,6 +406,8 @@ class StdSymbolRecord(PEcore):
             'NumberOfAuxSymbols')
     def __init__(self,data):
         PEcore.__init__(self,data)
+        self.func_formatter(_Name=lambda k,x,cls: highlight([(Token.Name,self.Name)]))
+        self.func_formatter(StorageClass=lambda k,x,cls: highlight([(Token.Name,self.classname())]))
         self.AuxSymbols = []
         data = data[len(self):]
         if self.Type>>8==0x20 and self.StorageClass==2 and self.SectionNumber>IMAGE_SYM_UNDEF:
@@ -499,7 +591,7 @@ class ImportTableEntry(PEcore):
 class ImportLookupTable(object):
     def __init__(self,data,magic):
         size = {0x20b:64, 0x10b:32}[magic]
-        self.elsize = size/8
+        self.elsize = size//8
         self.fmt = 'Q' if size==64 else 'I'
         self.readimports(data)
 
@@ -517,9 +609,9 @@ class ImportLookupTable(object):
 class NameTableEntry(object):
     def __init__(self,data):
         hint = struct.unpack('H',data[:2])
-        s,_,_ = data[2:].partition('\0')
+        s,_,_ = data[2:].partition(b'\0')
         self.hint = hint
-        self.symbol = s
+        self.symbol = str(s.decode())
 
 #------------------------------------------------------------------------------
 class TLSTable(PEcore):
@@ -532,7 +624,7 @@ class TLSTable(PEcore):
             'Characteristics')
     def __init__(self,data,magic):
         size = {0x20b:64, 0x10b:32}[magic]
-        self.elsize = size/8
+        self.elsize = size//8
         if magic==0x20b:
             self.fmt='Q'*len(self.keys)
         PEcore.__init__(self,data)
@@ -570,7 +662,7 @@ class PE(PEcore):
         try:
             f = open(filename,'rb')
         except (TypeError,IOError):
-            f = str(filename)
+            f = bytes(filename)
         data = DataIO(f)
         self.data = data
         # parse DOS header:
@@ -629,7 +721,7 @@ class PE(PEcore):
             bytes = self.data[sta:sto].ljust(S.VirtualSize)
             if pagesize:
                 # note: bytes are not truncated, only extended if needed...
-                bytes = bytes.ljust(pagesize,'\x00')
+                bytes = bytes.ljust(pagesize,b'\x00')
             if raw: return bytes
             else  : return {addr: bytes}
         elif S==0:
@@ -642,7 +734,7 @@ class PE(PEcore):
         D = {}
         imports = self.Opt.DataDirectories.get('ImportTable',None)
         if imports is not None:
-            data = ''
+            data = b''
             while len(data)<imports.Size:
                 try:
                     nextdata = self.getdata(imports.RVA+len(data))
@@ -657,8 +749,8 @@ class PE(PEcore):
             for e in self.ImportTable.dlls:
                 try:
                     dllname = self.getdata(e.NameRVA)
-                    e.Name = dllname.partition('\0')[0]
-                except ValueError:
+                    e.Name = str(dllname.partition(b'\0')[0].decode())
+                except:
                     logger.warning('invalid dll name RVA in ImportTable')
                 try:
                     if e.ImportLookupTableRVA != 0:
@@ -707,5 +799,28 @@ class PE(PEcore):
         D = {}
         return D
 
+    def __str__(self):
+        ss = ['DOS header:']
+        tmp = self.DOS.pfx
+        self.DOS.pfx = '\t'
+        ss.append(str(self.DOS))
+        self.DOS.pfx = tmp
+        ss += ['\nPE header:']
+        tmp = self.NT.pfx
+        self.NT.pfx = '\t'
+        ss.append(str(self.NT))
+        self.NT.pfx = tmp
+        ss += ['\nOptional header:']
+        tmp = self.Opt.pfx
+        self.Opt.pfx = '\t'
+        ss.append(str(self.Opt))
+        self.Opt.pfx = tmp
+        ss += ['\nSections:']
+        for s in self.sections:
+            tmp = s.pfx
+            s.pfx = '\t'
+            ss.append(str(s)); ss.append('---')
+            s.pfx = tmp
+        return '\n'.join(ss)
 ## End of class PE
 

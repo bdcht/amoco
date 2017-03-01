@@ -3,7 +3,10 @@
 # This code is part of Amoco
 # Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
-from builtins import object
+try:
+    from builtins import object
+except ImportError:
+    pass
 from operator import itemgetter
 from amoco.logger import Log
 logger = Log(__name__)

@@ -479,7 +479,7 @@ def test_parser(cls):
         try:
             res = raw_input('%s> '%cls.__name__)
             E = cls.instr.parseString(res,True)
-            print E
+            print(E)
         except EOFError:
             return
 

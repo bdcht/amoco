@@ -18,7 +18,7 @@ class MSP430(CoreExec):
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):
         # use 32K RAM
-        self.mmap.write(0x0200,'\0'*0x8000)
+        self.mmap.write(0x0200,b'\0'*0x8000)
         self.mmap.write(0x4400,self.bin)
 
     def initenv(self):

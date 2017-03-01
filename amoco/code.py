@@ -24,7 +24,7 @@ all provide a common API with:
 import pdb
 import heapq
 from collections import defaultdict
-
+from functools import reduce
 from amoco.cas.mapper import *
 
 from amoco.config import conf
@@ -152,7 +152,7 @@ class block(object):
         try:
             pos = I.index(address)
         except ValueError:
-            logger.warning("invalid attempt to cut block %s at %s"%(self.name,address))
+            logger.warning(u"invalid attempt to cut block %s at %s"%(self.name,address))
             return 0
         else:
             self.instr = self.instr[:pos]
@@ -165,18 +165,21 @@ class block(object):
 
     def __str__(self):
         T = self.view._vltable(formatter='Null')
-        return '\n'.join([r.show(raw=True,**T.rowparams) for r in T.rows])
+        return u'\n'.join([r.show(raw=True,**T.rowparams) for r in T.rows])
 
     def __repr__(self):
-        return '<%s object (%s) at 0x%08x>'%(self.__class__.__name__,self.name,id(self))
+        return u'<%s object (%s) at 0x%08x>'%(self.__class__.__name__,self.name,id(self))
 
     def raw(self):
        """returns the *raw* bytestring of the block instructions.
        """
-       return ''.join([i.bytes for i in self.instr])
+       return b''.join([i.bytes for i in self.instr])
 
     def __cmp__(self,b):
         return cmp(self.raw(),b.raw())
+
+    def __eq__(self,b):
+        return self.raw()==b.raw()
 
     def __hash__(self):
         return hash(self.address)
@@ -188,8 +191,8 @@ class block(object):
         misc.update(self.misc)
         if len(misc)==0:
             for i in self.instr: misc.update(i.misc)
-        s = [tag.sig(k) for k in misc]
-        return '(%s)'%(''.join(sorted(s)))
+        s = list(sorted([tag.sig(k) for k in misc]))
+        return u'(%s)'%(u''.join(s))
 
 #------------------------------------------------------------------------------
 class func(block):
@@ -268,7 +271,7 @@ class func(block):
         # lets walk the function's cfg, in rank priority order:
         while len(spool)>0:
             count += 1
-            logger.progress(count,pfx='in %s makemap: '%self.name)
+            logger.progress(count,pfx=u'in %s makemap: '%self.name)
             # take lowest ranked node from spool:
             l,n = heapq.heappop(spool)
             m = heads.pop(n)
@@ -290,14 +293,14 @@ class func(block):
                     # apply edge contraints to the current mapper and
                     # try to execute target:
                     mtn = m.assume(econd)>>tn.data.map
-                except ValueError,err:
-                    logger.verbose("link %s ignored"%e)
+                except ValueError as err:
+                    logger.verbose(u"link %s ignored"%e)
                     continue
                 # and update heads and spool...
                 if tn in heads:
                     # check for widening:
                     if widening and tn.data.misc[tag.LOOP_START]==1:
-                        logger.verbose('widening at %s'%tn.name)
+                        logger.verbose(u'widening at %s'%tn.name)
                         mm = merge(heads[tn],mtn,widening)
                     else:
                         mm = merge(heads[tn],mtn)
@@ -313,13 +316,13 @@ class func(block):
                     if not (r,tn) in spool:
                         heapq.heappush(spool,(r,tn))
                 else:
-                    logger.verbose('fixpoint at %s'%tn.name)
+                    logger.verbose(u'fixpoint at %s'%tn.name)
         out = [heads[x] for x in self.cfg.leaves()]
         _map = reduce(merge,out) if out else None
         return _map
 
     def __str__(self):
-        return "%s{%d}"%(self.name,len(self.blocks))
+        return u"%s{%d}"%(self.name,len(self.blocks))
 
 #------------------------------------------------------------------------------
 # xfunc represents external functions. It is associated with an ext expression.
@@ -355,7 +358,7 @@ class xfunc(object):
         self.instr = []
         self.length = 0
         self.misc = defaultdict(_code_misc_default)
-        doc = x.stub(x.ref).func_doc
+        doc = x.stub(x.ref).__doc__
         if doc:
             for (k,v) in tag.list():
                 if (k in doc) or (v in doc):
@@ -371,7 +374,7 @@ class xfunc(object):
 
     def sig(self):
         s = [tag.sig(k) for k in self.misc]
-        return '(x:%s)'%(''.join(s))
+        return u'(x:%s)'%(u''.join(s))
 
 #------------------------------------------------------------------------------
 

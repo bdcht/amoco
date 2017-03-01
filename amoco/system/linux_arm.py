@@ -21,7 +21,7 @@ class ELF(CoreExec):
             for s in p.Phdr:
                 ms = p.loadsegment(s,PAGESIZE)
                 if ms!=None:
-                    vaddr,data = ms.items()[0]
+                    vaddr,data = list(ms.items())[0]
                     self.mmap.write(vaddr,data)
             # create the dynamic segments:
             self.load_shlib()
@@ -31,7 +31,7 @@ class ELF(CoreExec):
     # call dynamic linker to populate mmap with shared libs:
     # for now, the external libs are seen through the elf dynamic section:
     def load_shlib(self):
-        for k,f in self.bin._Elf32__dynamic(None).iteritems():
+        for k,f in self.bin._Elf32__dynamic(None).items():
             self.mmap.write(k,cpu.ext(f,size=32))
 
     def initenv(self):

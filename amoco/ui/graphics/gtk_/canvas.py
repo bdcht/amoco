@@ -62,6 +62,6 @@ class  Canvas(GooCanvas):
                 self.props.scale *= 0.8
             return True
         elif e.type == gtk.gdk.BUTTON_PRESS:
-            print "click:(%d,%d)"%e.get_coords()
+            print("click:(%d,%d)"%e.get_coords())
         return False
 

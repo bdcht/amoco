@@ -35,7 +35,7 @@ try:
             for h in logger.handlers: alog.addHandler(h)
             alog.setLevel(logger.level)
 except ImportError:
-    logger.warning("package sqlalchemy not found.")
+    logger.warning(u"package sqlalchemy not found.")
     has_sql = False
 
 def create(filename=None):
@@ -58,7 +58,7 @@ def create(filename=None):
         Session.configure(bind=engine)
         Case.metadata.create_all(bind=engine,checkfirst=True)
     else:
-        logger.error('No Session defined')
+        logger.error(u'No Session defined')
         engine = None
     return engine
 
@@ -104,7 +104,7 @@ if has_sql:
 
         def __repr__(self):
             s = (self.id, self.name, self.binfmt, self.arch, self.method)
-            return "<Case #{}: {:<.016} ({},{}) using {}>".format(*s)
+            return u"<Case #{}: {:<.016} ({},{}) using {}>".format(*s)
 
     class FuncData(Base):
         """This class holds pickled :class:`~cas.mapper.mapper` and

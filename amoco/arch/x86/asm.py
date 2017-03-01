@@ -252,7 +252,7 @@ def i_POPAD(i,fmap):
 
 def i_PUSHFD(i,fmap):
   fmap[eip] = fmap[eip]+i.length
-  push(fmap,fmap(eflags)&0x00fcffffL)
+  push(fmap,fmap(eflags)&0x00fcffff)
 
 def i_POPFD(i,fmap):
   fmap[eip] = fmap[eip]+i.length

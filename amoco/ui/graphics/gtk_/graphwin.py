@@ -93,11 +93,11 @@ class GraphScene(object):
                   if x in mvmt: x.view._obj.shadbox.set_properties(fill_color='orange')
                   self.greens.append(x)
         except StopIteration:
-            print 'drawer terminated'
+            print('drawer terminated')
             del self.drawer
             del self.greens
         except AttributeError:
-            print 'drawer created'
+            print('drawer created')
             self.drawer=self.sug.draw_step()
             self.greens=[]
 

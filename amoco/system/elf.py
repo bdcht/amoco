@@ -5,12 +5,16 @@
 # published under GPLv2 license
 
 import struct
-import pdb
+import codecs
 from collections import defaultdict
-from amoco.logger import *
 from amoco.ui.render import Token,highlight
-
+from amoco.logger import *
 logger = Log(__name__)
+
+try:
+    IntType = (int,long)
+except NameError:
+    IntType = (int,)
 
 def Elf(filename):
     try:
@@ -93,12 +97,11 @@ class Elfcore(object):
         for key in keys:
             cls.fkeys[key] = token_flag_fmt
     def strkey(self,k):
-        fmt = '%%s%%-%ds:%%s'%self.ksz
+        fmt = u'%%s%%-%ds:%%s'%self.ksz
         return fmt%(self.pfx,k,self.fkeys[k](k,getattr(self,k)))
     def __str__(self):
-        fmt = '%%s%%-%ds:%%s'%self.ksz
-        s = '\n'.join(self.strkey(k) for k in self.keys)
-        return "[%s]\n%s"%(self.__class__.__name__,s)
+        s = u'\n'.join(self.strkey(k) for k in self.keys)
+        return u"[%s]\n%s"%(self.__class__.__name__,s)
 
 # The ELF file header.
 #------------------------------------------------------------------------------
@@ -122,7 +125,7 @@ class Elf32_Ehdr(Elfcore):
     # overload Elfcore methods to take into account the e_ident dict:
     def __init__(self, data):
         S = struct.unpack('B3sBBBBBxxxxxxx',data[:16])
-        if S[0]!=0x7f or S[1]!='ELF':
+        if S[0]!=0x7f or S[1]!=b'ELF':
             raise ElfError('Wrong magic number, not an ELF file ?')
         self.e_ident = dict(zip(EI_KEYS,S))
         try:
@@ -143,10 +146,9 @@ class Elf32_Ehdr(Elfcore):
         e_ident_s = struct.pack('B3sBBBBBxxxxxxx',*[self.e_ident[k] for k in EI_KEYS])
         return e_ident_s+Elfcore.pack(self)
 
-    # patched Elfcore str to have entrypoint in hex:
     def __str__(self):
         s = list(Elfcore.__str__(self).partition('\n'))
-        x = '; '.join([token_name_fmt(k,v) for (k,v) in self.e_ident.iteritems()])
+        x = '; '.join([token_name_fmt(k,v) for (k,v) in iter(self.e_ident.items())])
         fmt = '\n%%s%%-%ds:%%s'%self.ksz
         s.insert(1,fmt%(self.pfx,'e_ident',x))
         return ''.join(s)
@@ -584,7 +586,7 @@ class Elf32_Note(Elfcore):
         self.set(data[:12])
         p = 12+self.namesz
         self.name = data[12:p]
-        if p%4<>0: p = ((p+4)/4)*4
+        if p%4!=0: p = ((p+4)//4)*4
         self.desc = data[p:p+self.descsz]
 
 # legal values for note segment descriptor types for core files:
@@ -720,12 +722,13 @@ class Elf32(object):
 
     def __init__(self,filename):
         try:
-            self.__file = file(filename,'rb')
+            f = open(filename,'rb')
         except (TypeError,IOError):
             from amoco.system.core import DataIO
-            self.__file = DataIO(filename)
+            f = DataIO(bytes(filename))
+        self.__file = f
         data = self.__file.read(52)
-        if len(data)<52: data = data.ljust(52,'\x00')
+        if len(data)<52: data = data.ljust(52,b'\x00')
         self.Ehdr   = Elf32_Ehdr(data)
 
         self.dynamic = False
@@ -737,14 +740,14 @@ class Elf32(object):
             n,l = self.Ehdr.e_phnum,self.Ehdr.e_phentsize
             data = self.__file.read(n*l)
             for pht in range(n):
-                logger.progress(pht,n,'parsing Phdrs ')
+                logger.progress(pht,n,u'parsing Phdrs ')
                 self.Phdr.append(Elf32_Phdr(data[pht*l:]))
                 if self.Phdr[-1].p_type == PT_LOAD:
                     if not self.basemap: self.basemap = self.Phdr[-1].p_vaddr
                 elif self.Phdr[-1].p_type == PT_DYNAMIC:
                     self.dynamic = True
                 elif not self.Phdr[-1].p_type in ELF_CONSTS['p_type'].keys():
-                    logger.verbose('invalid segment detected (removed)')
+                    logger.verbose(u'invalid segment detected (removed)')
                     self.Phdr.pop()
 
         # read section header table: unused by loader, can raise error
@@ -777,7 +780,8 @@ class Elf32(object):
                     s.name = ''
             else:
                 for s in self.Shdr:
-                    s.name = data[s.sh_name:].split('\0')[0]
+                    name = data[s.sh_name:].split(b'\0')[0]
+                    s.name = codecs.decode(name)
 
         self.functions = self.__functions()
         self.variables = self.__variables()
@@ -799,14 +803,13 @@ class Elf32(object):
             try:
                 addr = int(target,16)
             except ValueError:
-                for a,f in self.functions.iteritems():
+                for a,f in iter(self.functions.items()):
                     if f[0]==target: addr = int(a,16); break
-        elif type(target) in [int,long]:
+        elif isinstance(target,IntType):
             addr = target
         if addr is None:
             # target is propably a symbol not found in functions
             return None,0,0
-
         # now we have addr so we can see in which section/segment it is...
         # sections are smaller than segments so we try first with Shdr
         # but this may lead to errors because what really matters are segments
@@ -848,7 +851,7 @@ class Elf32(object):
         if S:
             if S.p_type==PT_LOAD:
                 self.__file.seek(S.p_offset)
-                return self.__file.read(S.p_filesz).ljust(S.p_memsz,'\x00')
+                return self.__file.read(S.p_filesz).ljust(S.p_memsz,b'\x00')
         return None
     ##
     def loadsegment(self,S,pagesize=None):
@@ -858,20 +861,20 @@ class Elf32(object):
                 if S.p_offset != (S.p_vaddr%S.p_align):
                     logger.verbose('wrong p_vaddr/p_align [%08x/%0d]'%(S.p_vaddr,S.p_align))
                 base = S.p_vaddr
-                bytes = self.__file.read( S.p_filesz ).ljust(S.p_memsz,'\x00')
+                bytes_ = self.__file.read( S.p_filesz ).ljust(S.p_memsz,b'\x00')
                 if pagesize:
                     # note: bytes are not truncated, only extended if needed...
-                    bytes = bytes.ljust(pagesize,'\x00')
-                return {base:bytes}
+                    bytes_ = bytes_.ljust(pagesize,b'\x00')
+                return {base:bytes_}
         return None
     ##
 
     def readsection(self,sect):
         S = None
-        if type(sect)==str:
+        if isinstance(sect,str):
             for st in self.Shdr:
                 if st.name==sect: S=st; break
-        elif type(sect) in [int,long]:
+        elif isinstance(sect,IntType):
             S = self.Shdr[sect]
         else:
             S = sect
@@ -902,7 +905,7 @@ class Elf32(object):
         if (section.sh_size%l)!=0:
             raise ElfError('symbol table size mismatch')
         else:
-            n = section.sh_size/l
+            n = section.sh_size//l
         symtab = []
         for i in range(n):
             symtab.append( Elf32_Sym(data[i*l:]) )
@@ -930,7 +933,7 @@ class Elf32(object):
         if (section.sh_size%l)!=0:
             raise ElfError('relocation table size mismatch')
         else:
-            n = section.sh_size/l
+            n = section.sh_size//l
         reltab = []
         if   section.sh_type==SHT_REL:
             for i in range(n):
@@ -953,7 +956,7 @@ class Elf32(object):
         if (section.sh_size%l)!=0:
             raise ElfError('dynamic linking size mismatch')
         else:
-            n = section.sh_size/l
+            n = section.sh_size//l
         dyntab = []
         for i in range(n):
             dyntab.append( Elf32_Dyn(data[i*l:]) )
@@ -976,7 +979,7 @@ class Elf32(object):
         D = self.__symbols(STT_FUNC)
         # fltr applies to section name only :
         if fltr:
-            for k,v in D.iteritems():
+            for k,v in iter(D.items()):
                 if self.Shdr[v[2]].name != fltr: D.pop(k)
         if self.dynamic:
             D.update(self.__dynamic(STT_FUNC))
@@ -986,7 +989,7 @@ class Elf32(object):
         D = self.__symbols(STT_OBJECT)
         # fltr applies also to section name :
         if fltr:
-            for k,v in D.iteritems():
+            for k,v in iter(D.items()):
                 if self.Shdr[v[2]].name != fltr: D.pop(k)
         return D
 
@@ -996,7 +999,7 @@ class Elf32(object):
         if self.readsection('.strtab'):
             for sym in self.symtab:
                 if sym.st_type==t and sym.st_value:
-                    D[sym.st_value] = (self.strtab[sym.st_name],
+                    D[sym.st_value] = (str(self.strtab[sym.st_name].decode()),
                                        sym.st_size,
                                        sym.st_info,
                                        sym.st_shndx)
@@ -1015,7 +1018,7 @@ class Elf32(object):
                         for r in self.reltab:
                             if r.r_offset:
                                 sym = self.symtab[ r.r_sym ]
-                                D[r.r_offset] = self.strtab[sym.st_name]
+                                D[r.r_offset] = str(self.strtab[sym.st_name].decode())
         else:
             # need to build a fake strtab with our own symbol names:
             pass #TODO
@@ -1053,12 +1056,12 @@ class Elf32_Str:
         self.data = data
 
     def __getitem__(self,i):
-        z = self.data[i:].index('\0')
+        z = self.data[i:].index(b'\0')
         return self.data[i:i+z]
 
     def as_dict(self):
         D = {}
-        cstrings = self.data.split('\0')
+        cstrings = self.data.split(b'\0')
         p=0
         for cs in cstrings:
             D[p] = cs
@@ -1067,7 +1070,7 @@ class Elf32_Str:
 
     def __str__(self):
         return '\n'.join(
-             ("0x%08x: %s"%(k,v) for (k,v) in self.as_dict().iteritems()))
+             ("0x%08x: %s"%(k,v) for (k,v) in iter(self.as_dict().items())))
 ## End of class Elf32_Str
 
 # -----------------------------------------------------------------------------
@@ -1096,7 +1099,7 @@ class Elf64_Ehdr(Elfcore):
     # overload Elfcore methods to take into account the e_ident dict:
     def __init__(self, data):
         S = struct.unpack('B3sBBBBBxxxxxxx',data[:16])
-        if S[0]!=0x7f or S[1]!='ELF':
+        if S[0]!=0x7f or S[1]!=b'ELF':
             raise ElfError('Wrong magic number, not an ELF file ?')
         self.e_ident = dict(zip(EI_KEYS,S))
         try:
@@ -1119,7 +1122,7 @@ class Elf64_Ehdr(Elfcore):
     # patched Elfcore str to have entrypoint in hex:
     def __str__(self):
         s = list(Elfcore.__str__(self).partition('\n'))
-        x = '; '.join([token_name_fmt(k,v) for (k,v) in self.e_ident.iteritems()])
+        x = '; '.join([token_name_fmt(k,v) for (k,v) in self.e_ident.items()])
         fmt = '\n%%s%%-%ds:%%s'%self.ksz
         s.insert(1,fmt%(self.pfx,'e_ident',x))
         return ''.join(s)
@@ -1142,7 +1145,7 @@ class Elf64_Shdr(Elfcore):
         'sh_entsize')
     def __init__(self,data):
         self.set(data[:struct.calcsize(self.fmt)])
-	self.name_formatter('sh_name','sh_type')
+        self.name_formatter('sh_name','sh_type')
     def __str__(self):
         if hasattr(self,'name'):
             self.pfx = '%-20s| '% ('<%s>'%self.name)
@@ -1191,10 +1194,10 @@ class Elf64_Rel(Elfcore):
         return self.r_info>>32
     r_sym = property(ELF64_R_SYM)
     def ELF64_R_TYPE(self):
-        return self.r_info&0xffffffffL
+        return self.r_info&0xffffffff
     r_type = property(ELF64_R_TYPE)
     def ELF64_R_INFO(self,sym,type):
-        self.r_info = sym<<32 + (type&0xffffffffL)
+        self.r_info = sym<<32 + (type&0xffffffff)
     def __str__(self):
         s = Elfcore.__str__(self)+'\n'
         s += self.strkey('r_type')
@@ -1234,7 +1237,7 @@ class Elf64_Note(Elfcore):
         self.set(data[:l])
         p = l+self.namesz
         self.name = data[l:p]
-        if p%8: p = ((p+8)/8)*8
+        if p%8: p = ((p+8)//8)*8
         self.desc = data[p:p+self.descsz]
 
 # Dynamic Section:
@@ -1274,12 +1277,13 @@ class Elf64(object):
 
     def __init__(self,filename):
         try:
-            self.__file = file(filename,'rb')
+            f = open(filename,'rb')
         except (TypeError,IOError):
             from amoco.system.core import DataIO
-            self.__file = DataIO(filename)
+            f = DataIO(bytes(filename))
+        self.__file = f
         data = self.__file.read(64)
-        if len(data)<64: data = data.ljust(64,'\x00')
+        if len(data)<64: data = data.ljust(64,b'\x00')
         self.Ehdr   = Elf64_Ehdr(data)
 
         self.dynamic = False
@@ -1291,14 +1295,14 @@ class Elf64(object):
             n,l = self.Ehdr.e_phnum,self.Ehdr.e_phentsize
             data = self.__file.read(n*l)
             for pht in range(n):
-                logger.progress(pht,n,'parsing Phdrs ')
+                logger.progress(pht,n,u'parsing Phdrs ')
                 self.Phdr.append(Elf64_Phdr(data[pht*l:]))
                 if self.Phdr[-1].p_type == PT_LOAD:
                     if not self.basemap: self.basemap = self.Phdr[-1].p_vaddr
                 elif self.Phdr[-1].p_type == PT_DYNAMIC:
                     self.dynamic = True
                 elif not self.Phdr[-1].p_type in ELF_CONSTS['p_type'].keys():
-                    logger.verbose('invalid segment detected (removed)')
+                    logger.verbose(u'invalid segment detected (removed)')
                     self.Phdr.pop()
 
         # read section header table: unused by loader, can raise error
@@ -1309,14 +1313,14 @@ class Elf64(object):
                 n,l = self.Ehdr.e_shnum,self.Ehdr.e_shentsize
                 data = self.__file.read(n*l)
                 for sht in range(n):
-                    logger.progress(sht,n,'parsing Shdrs ')
+                    logger.progress(sht,n,u'parsing Shdrs ')
                     S = Elf64_Shdr(data[sht*l:])
                     if S.sh_type in ELF_CONSTS['sh_type'].keys():
                         self.Shdr.append(S)
                     else:
                         raise StandardError
             except :
-                logger.verbose('invalid section detected (all Shdr removed)')
+                logger.verbose(u'invalid section detected (all Shdr removed)')
                 self.Shdr = []
 
         # read section's name string table:
@@ -1326,12 +1330,13 @@ class Elf64(object):
             self.__file.seek(S.sh_offset)
             data = self.__file.read(S.sh_size)
             if S.sh_type!=SHT_STRTAB:
-                logger.verbose('section names not a string table')
+                logger.verbose(u'section names not a string table')
                 for s in self.Shdr:
-                    s.name = ''
+                    s.name = u''
             else:
                 for s in self.Shdr:
-                    s.name = data[s.sh_name:].split('\0')[0]
+                    name = data[s.sh_name:].split(b'\0')[0]
+                    s.name = codecs.decode(name)
 
         self.functions = self.__functions()
         self.variables = self.__variables()
@@ -1353,9 +1358,9 @@ class Elf64(object):
             try:
                 addr = int(target,16)
             except ValueError:
-                for a,f in self.functions.iteritems():
+                for a,f in iter(self.functions.items()):
                     if f[0]==target: addr = int(a,16); break
-        elif type(target) in [int,long]:
+        elif isinstance(target,IntType):
             addr = target
         if addr is None:
             # target is propably a symbol not found in functions
@@ -1402,7 +1407,7 @@ class Elf64(object):
         if S:
             if S.p_type==PT_LOAD:
                 self.__file.seek(S.p_offset)
-                return self.__file.read(S.p_filesz).ljust(S.p_memsz,'\x00')
+                return self.__file.read(S.p_filesz).ljust(S.p_memsz,b'\x00')
         return None
     ##
     def loadsegment(self,S,pagesize=None):
@@ -1410,32 +1415,34 @@ class Elf64(object):
             if S.p_type==PT_LOAD:
                 self.__file.seek( S.p_offset )
                 if S.p_offset != (S.p_vaddr%S.p_align):
-                    logger.verbose("wrong p_vaddr/p_align [%08x/%0d]"%(S.p_vaddr,S.p_align))
+                    logger.verbose(u"wrong p_vaddr/p_align [%08x/%0d]"%(S.p_vaddr,S.p_align))
                 base = S.p_vaddr
-                bytes = self.__file.read( S.p_filesz ).ljust(S.p_memsz,'\x00')
+                bytes_ = self.__file.read( S.p_filesz ).ljust(S.p_memsz,b'\x00')
                 if pagesize:
                     # note: bytes are not truncated, only extended if needed...
-                    bytes = bytes.ljust(pagesize,'\x00')
-                return {base:bytes}
+                    bytes_ = bytes_.ljust(pagesize,b'\x00')
+                return {base:bytes_}
         return None
     ##
 
     def readsection(self,sect):
         S = None
-        if type(sect)==str:
+        if isinstance(sect,str):
             for st in self.Shdr:
                 if st.name==sect: S=st; break
-        elif type(sect) in [int,long]:
+        elif isinstance(sect,IntType):
             S = self.Shdr[sect]
         else:
             S = sect
         if S:
-            if   S.sh_type==SHT_SYMTAB \
-                or S.sh_type==SHT_DYNSYM : return self.__read_symtab(S)
-            elif S.sh_type==SHT_STRTAB : return self.__read_strtab(S)
-            elif S.sh_type==SHT_REL \
-                or S.sh_type==SHT_RELA  : return self.__read_relocs(S)
-            elif S.sh_type==SHT_DYNAMIC : return self.__read_dynamic(S)
+            if S.sh_type==SHT_SYMTAB or S.sh_type==SHT_DYNSYM:
+                return self.__read_symtab(S)
+            elif S.sh_type==SHT_STRTAB:
+                return self.__read_strtab(S)
+            elif S.sh_type==SHT_REL or S.sh_type==SHT_RELA:
+                return self.__read_relocs(S)
+            elif S.sh_type==SHT_DYNAMIC:
+                return self.__read_dynamic(S)
             elif S.sh_type==SHT_PROGBITS:
                 self.__file.seek(S.sh_offset)
                 return self.__file.read(S.sh_size)
@@ -1443,8 +1450,8 @@ class Elf64(object):
     ##
 
     def __read_symtab(self,section):
-        if section.sh_type!=SHT_SYMTAB and section.sh_type!=SHT_DYNSYM :
-            logger.warning('not a symbol table section')
+        if section.sh_type!=SHT_SYMTAB and section.sh_type!=SHT_DYNSYM:
+            logger.warning(u'not a symbol table section')
             return None
         # read the section:
         self.__file.seek(section.sh_offset)
@@ -1452,9 +1459,9 @@ class Elf64(object):
         # and parse it into Elf64_Sym objects:
         l = section.sh_entsize
         if (section.sh_size%l)!=0:
-            raise ElfError('symbol table size mismatch')
+            raise ElfError(u'symbol table size mismatch')
         else:
-            n = section.sh_size/l
+            n = section.sh_size//l
         symtab = []
         for i in range(n):
             symtab.append( Elf64_Sym(data[i*l:]) )
@@ -1464,7 +1471,7 @@ class Elf64(object):
 
     def __read_strtab(self,section):
         if section.sh_type!=SHT_STRTAB:
-            raise ElfError('not a string table section')
+            raise ElfError(u'not a string table section')
         self.__file.seek(section.sh_offset)
         data = self.__file.read(section.sh_size)
         strtab = Elf64_Str(data)
@@ -1473,8 +1480,7 @@ class Elf64(object):
     ##
 
     def __read_relocs(self,section):
-        if  section.sh_type!=SHT_REL \
-        and section.sh_type!=SHT_RELA :
+        if  section.sh_type!=SHT_REL and section.sh_type!=SHT_RELA:
             logger.warning('not a relocation table section')
             return None
         self.__file.seek(section.sh_offset)
@@ -1483,7 +1489,7 @@ class Elf64(object):
         if (section.sh_size%l)!=0:
             raise ElfError('relocation table size mismatch')
         else:
-            n = section.sh_size/l
+            n = section.sh_size//l
         reltab = []
         if   section.sh_type==SHT_REL:
             for i in range(n):
@@ -1506,7 +1512,7 @@ class Elf64(object):
         if (section.sh_size%l)!=0:
             raise ElfError('dynamic linking size mismatch')
         else:
-            n = section.sh_size/l
+            n = section.sh_size//l
         dyntab = []
         for i in range(n):
             dyntab.append( Elf64_Dyn(data[i*l:]) )
@@ -1529,7 +1535,7 @@ class Elf64(object):
         D = self.__symbols(STT_FUNC)
         # fltr applies to section name only :
         if fltr:
-            for k,v in D.iteritems():
+            for k,v in iter(D.items()):
                 if self.Shdr[v[2]].name != fltr: D.pop(k)
         if self.dynamic:
             D.update(self.__dynamic(STT_FUNC))
@@ -1539,7 +1545,7 @@ class Elf64(object):
         D = self.__symbols(STT_OBJECT)
         # fltr applies also to section name :
         if fltr:
-            for k,v in D.iteritems():
+            for k,v in iter(D.items()):
                 if self.Shdr[v[2]].name != fltr: D.pop(k)
         return D
 
@@ -1549,7 +1555,7 @@ class Elf64(object):
         if self.readsection('.strtab'):
             for sym in self.symtab:
                 if sym.ELF64_ST_TYPE()==type and sym.st_value:
-                    D[sym.st_value] = (self.strtab[sym.st_name],
+                    D[sym.st_value] = (str(self.strtab[sym.st_name].decode()),
                                        sym.st_size,
                                        sym.st_info,
                                        sym.st_shndx)
@@ -1569,7 +1575,7 @@ class Elf64(object):
                         for r in self.reltab:
                             if r.r_offset:
                                 sym = self.symtab[ r.ELF64_R_SYM() ]
-                                D[r.r_offset] = self.strtab[sym.st_name]
+                                D[r.r_offset] = str(self.strtab[sym.st_name].decode())
         else:
             # need to build a fake strtab with our own symbol names:
             pass #TODO
@@ -1607,12 +1613,12 @@ class Elf64_Str:
         self.data = data
 
     def __getitem__(self,i):
-        z = self.data[i:].index('\0')
+        z = self.data[i:].index(b'\0')
         return self.data[i:i+z]
 
     def as_dict(self):
         D = {}
-        cstrings = self.data.split('\0')
+        cstrings = self.data.split(b'\0')
         p=0
         for cs in cstrings:
             D[p] = cs
@@ -1620,7 +1626,7 @@ class Elf64_Str:
         return D
 
     def __str__(self):
-        return '\n'.join(
-             ("0x%016x: %s"%(k,v) for (k,v) in self.as_dict().iteritems()))
+        return u'\n'.join(
+             (u"0x%016x: %s"%(k,v) for (k,v) in iter(self.as_dict().items())))
 ## End of class Elf64_Str
 

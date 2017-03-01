@@ -69,7 +69,7 @@ class lsweep(object):
     def iterblocks(self,loc=None):
         """iterator over basic blocks. The :attr:`instruction.type`
         attribute is used to detect the end of a block (type_control_flow).
-        The returned :class:`block` object is enhanced with plateform-specific 
+        The returned :class:`block` object is enhanced with plateform-specific
         informations (see :attr:`block.misc`).
 
         Arguments:
@@ -95,7 +95,7 @@ class lsweep(object):
                     try:
                         l.append(next(seq))
                     except StopIteration:
-                        logger.warning('no instruction in delay slot')
+                        logger.warning(u'no instruction in delay slot')
                 # create block instance:
                 b = code.block(l)
                 b.misc['cfi'] = i
@@ -129,7 +129,7 @@ class lsweep(object):
         return F
 
     def signature(self,func=None):
-        """provides the signature of a given function, 
+        """provides the signature of a given function,
         or the entire signature string.
         """
         if func is not None:
@@ -304,7 +304,7 @@ class fforward(lsweep):
 
         spool (list[_target]): the list of current targets to extend the
             :class:`cfg.graph`.
-          
+
     """
     policy = {'depth-first': True, 'branch-lazy': True}
 
@@ -356,7 +356,7 @@ class fforward(lsweep):
         will not be linked with its parent but rather will possibly start a
         new connected component of the cfg. When the component is declared
         as a function, the parent block is linked to a new node that embeds
-        the function instead. 
+        the function instead.
         """
         b = vtx.data
         callers = b.misc['callers']
@@ -390,7 +390,7 @@ class fforward(lsweep):
         """check if the target is the address of an external function.
         If True, the :class:`code.xfunc` node is linked to the parent
         and the spool is updated with this node.
-            
+
         Returns:
             `True` if target is external, `False` otherwise.
         """
@@ -425,7 +425,7 @@ class fforward(lsweep):
         return self.G
 
     def itercfg(self,loc=None):
-        """A generic *forward* analysis explorer. The default policy 
+        """A generic *forward* analysis explorer. The default policy
         is *depth-first* search (use policy=0 for breadth-first search.)
         The ret instructions are not followed (see lbackward analysis).
 
@@ -457,13 +457,13 @@ class fforward(lsweep):
                 # otherwise we add the new (parent,vtx) edge.
                 if parent is None:
                     self.add_root_node(vtx)
-                elif parent.data.misc[code.tag.FUNC_CALL]>0:
+                elif parent.data.misc[code.tag.FUNC_CALL]:
                     vtx = self.add_call_node(vtx,parent,econd)
                 else:
                     e_ = cfg.link(parent,vtx,data=econd)
                     e  = G.add_edge(e_)
                     if e is e_:
-                        logger.verbose('edge %s added'%e)
+                        logger.verbose(u'edge %s added'%e)
                 # now we try to populate spool with target addresses of current block:
                 if do_update:
                     self.update_spool(vtx,parent)
@@ -471,7 +471,7 @@ class fforward(lsweep):
                 yield vtx
                 if (not do_update or not lazy or
                    vtx.data.misc[code.tag.FUNC_END]): break
-                logger.verbose("lsweep fallback at %s"%vtx.data.name)
+                logger.verbose(u"lsweep fallback at %s"%vtx.data.name)
                 parent = vtx
                 econd  = None
 
@@ -486,13 +486,13 @@ class lforward(fforward):
 
     def get_targets(self,node,parent):
         """Computes expression of target address in the given node, based
-        on its parent address and symbolic map, using the architecture's 
+        on its parent address and symbolic map, using the architecture's
         program counter (PC).
 
         Arguments:
             node: the current node, not yet added to the cfg.
             parent: the parent node in the cfg that has targeted the
-                current node. 
+                current node.
 
         Returns:
             :class:`_target`:
@@ -528,14 +528,14 @@ class fbackward(lforward):
 
     def get_targets(self,node,parent):
         """Computes expression of target address in the given node, based
-        on backward evaluation of all *first-parent* symbolic maps, until the 
+        on backward evaluation of all *first-parent* symbolic maps, until the
         program counter (PC) expression is a constant or the function entry block
         is reached.
 
         Arguments:
             node: the current node, not yet added to the cfg.
             parent: the parent node in the cfg that has targeted the
-                current node. 
+                current node.
 
         Returns:
             :class:`_target`:
@@ -586,7 +586,7 @@ class lbackward(fforward):
     """link backward based analysis:
     a generalisation of *fast forward* where pc is evaluated by considering
     **all** paths that link to the current node.
-    
+
     Note:
       This is currently the most advanced stategy for performing cfg recovery
       in amoco.
@@ -616,7 +616,7 @@ class lbackward(fforward):
         if len(T)>0:
             logger.verbose('extending cfg of %s (new target found)'%f)
             for t in T:
-                for k,v in f.misc['heads'].iteritems():
+                for k,v in f.misc['heads'].items():
                     if v(pc)==t.cst: t.parent = k
         else:
             logger.info('lbackward: function %s done'%f)
@@ -645,12 +645,12 @@ class lbackward(fforward):
     def get_targets(self,node,parent):
         """Computes expression of target address in the given node, based
         on fast-forward evaluation taking into account the expressions
-        complexity and frame-aliasing parameters. 
+        complexity and frame-aliasing parameters.
 
         Arguments:
             node: the current node, not yet added to the cfg.
             parent: the parent node in the cfg that has targeted the
-                current node. 
+                current node.
 
         Returns:
             :class:`_target`:

@@ -37,10 +37,10 @@ import logging
 
 
 VERBOSE = 15
-logging.addLevelName(VERBOSE,'VERBOSE')
+logging.addLevelName(VERBOSE,u'VERBOSE')
 #logging.captureWarnings(True)
 
-default_format = logging.Formatter("%(name)s: %(levelname)s: %(message)s")
+default_format = logging.Formatter(u"%(name)s: %(levelname)s: %(message)s")
 
 try:
     from amoco import conf
@@ -49,7 +49,7 @@ try:
             level = conf.getint('log','level')
             if level is None: level = 0
         except ValueError:
-            level = logging._levelNames.get(conf.get('log','level'),0)
+            level = logging.__dict__.get(conf.get('log','level'),0)
         return level
     default_level = get_log_level()
     if conf.has_option('log','file'):
@@ -106,11 +106,11 @@ class Log(logging.Logger):
             fillr = min((count+1.)/total,1.)
             done = int(round(barlen*fillr))
             ratio = round(100. * fillr, 1)
-            s = ('='*done).ljust(barlen,'-')
-            term.write('%s[%s] %s%%\r'%(pfx,s,ratio))
+            s = (u'='*done).ljust(barlen,u'-')
+            term.write(u'%s[%s] %s%%\r'%(pfx,s,ratio))
         else:
-            s = ("%s[%d]"%(pfx,count)).ljust(80,' ')
-            term.write("%s\r"%s)
+            s = (u"%s[%d]"%(pfx,count)).ljust(80,u' ')
+            term.write(u"%s\r"%s)
 
     def setLevel(self,lvl):
         self.handlers[0].setLevel(lvl)

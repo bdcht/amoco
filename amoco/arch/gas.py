@@ -138,7 +138,7 @@ def setnumber(t,base,idx):
     try:
         x = int(t.value[idx:],base)
     except ValueError:
-        print "Illegal Integer Constant '%s'" % t.value
+        print("Illegal Integer Constant '%s'" % t.value)
         t.lexer.skip(1)
     else:
         t.value = x
@@ -308,7 +308,7 @@ class Gas:
             return t
 
         def t_ANY_error(self,t):
-            print "Illegal character '%s'" % t.value[0]
+            print("Illegal character '%s'" % t.value[0])
             t.lexer.skip(1)
 
         def build(self,**kargs):
@@ -320,7 +320,7 @@ class Gas:
             while 1:
                 tok = self._lexer.token()
                 if not tok: break
-                print tok
+                print(tok)
 
     class Parser(object):
         def __init__(self):
@@ -480,7 +480,7 @@ class Gas:
             p[0] = expr.cst(p[1])
 
         def p_error(self,p):
-            print 'Syntax Error',p
+            print('Syntax Error',p)
             self._parser.restart()
 
         def build(self,**kargs):
@@ -493,7 +493,7 @@ class Gas:
         self.lexer  = Gas.Lexer()
         self.parser = Gas.Parser()
         if not _has_ply:
-            print 'warning: Gas parser not supported (install python-ply)'
+            print('warning: Gas parser not supported (install python-ply)')
 
     def parse(self,data):
         try:

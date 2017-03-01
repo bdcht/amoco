@@ -91,7 +91,7 @@ zf       = slc(status,2,1,'zf')
 dcf      = slc(status,1,1,'dcf')
 cf       = slc(status,0,1,'cf')
 
-tmr0     = reg('tmr0',06)
+tmr0     = reg('tmr0',16)
 tmr0h    = slc(tmr0,8,8,'tmr0h')
 tmr0l    = slc(tmr0,0,8,'tmr0l')
 

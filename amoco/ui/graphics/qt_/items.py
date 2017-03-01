@@ -76,7 +76,7 @@ class Node_basic(QGraphicsItem):
         menu.exec_(event.screenPos())
 
     def print_out(self):
-        print 'Triggered'
+        print('Triggered')
 
 #------------------------------------------------------------------------------
 

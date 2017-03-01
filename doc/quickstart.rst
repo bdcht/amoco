@@ -24,9 +24,9 @@ For example, from the directory ``amoco/tests``, do::
 
    In [1]: import amoco
    In [2]: p = amoco.system.loader.load_program('samples/x86/flow.elf')
-   In [3]: print p
+   In [3]: print(p)
    <amoco.system.linux_x86.ELF object at 0x7f834b4187d0>
-   In [4]: print p.bin.Ehdr
+   In [4]: print(p.bin.Ehdr)
    ELF header:
    [Elf32_Ehdr]
    	e_ident     :ELF; ELFOSABI_SYSV; 1; ELFCLASS32; ELFDATA2LSB; 0; 127
@@ -45,10 +45,10 @@ For example, from the directory ``amoco/tests``, do::
    	e_shstrndx  :27
 
 If the file uses a supported executable format (currently ``PE`` of ``ELF``) and
-targets a supported plateform (see :ref:`system` and :ref:`arch` packages),
+targets a supported plateform (see :ref:`system <system>` and :ref:`arch <arch>` packages),
 the returned object is an *abstraction* of the memory mapped program::
 
-   In [5]: print p.mmap
+   In [5]: print(p.mmap)
    <MemoryZone rel=None :
    	 <mo [08048000,08049000] data:'\x7fELF\x01\x01\x01\x00\x00\x00...'>
    	 <mo [08049f14,08049ff0] data:'\xff\xff\xff\xff\x00\x00\x00\x0...'>
@@ -73,16 +73,16 @@ string as input and then manually load the suited architecture::
    amoco.system.raw: WARNING: a cpu module must be imported
    In [4]: from amoco.arch.x86 import cpu_x86
    In [5]: p.cpu = cpu_x86
-   In [6]: print p
+   In [6]: print(p)
    <amoco.system.raw.RawExec object at 0x7f3dc3d1cef0>
-   In [7]: print p.mmap
+   In [7]: print(p.mmap)
    <MemoryZone rel=None :
          <mo [00000000,00000024] data:'\xeb\x16^1\xd2RV\x89\xe1\x89\xf...'>>
 
 The shellcode is loaded at address 0 by default, but can be relocated with::
 
    In [8]: p.relocate(0x4000)
-   In [9]: print p.mmap
+   In [9]: print(p.mmap)
    <MemoryZone rel=None :
    	 <mo [00004000,00004024] data:'\xeb\x16^1\xd2RV\x89\xe1\x89\xf...'>>
 
@@ -95,13 +95,13 @@ example::
 
    In [10]: cpu_x86.disassemble('\xeb\x16')
    Out[10]: <amoco.arch.x86.spec_ia32 JMP ( length=2 type=2 )>
-   In [11]: print _
+   In [11]: print(_)
    jmp         .+22
 
 But when a mapped binary program is available, we can start disassembling instructions
 or *data* located at virtual addresses::
 
-   In [12]: print p.read_instruction(p.cpu.cst(0x4000,32))
+   In [12]: print(p.read_instruction(p.cpu.cst(0x4000,32)))
    jmp         *0x4018
    In [13]: p.read_data(p.cpu.cst(0x4000,32),2)
    Out[13]: ['\xeb\x16']
@@ -116,7 +116,7 @@ can use any of the code analysis strategies implemented in amoco to disassemble
    In [4]: z.getblock(0x8048380)
    Out[4]: <block object (0x8048380) at 0x7f1decec4c50>
    In [5]: b=_
-   In [6]: print b
+   In [6]: print(b)
    0x8048380 '31ed'          xor         ebp, ebp
    0x8048382 '5e'            pop         esi
    0x8048383 '89e1'          mov         ecx, esp

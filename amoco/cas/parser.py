@@ -54,8 +54,8 @@ def parse(s):
 def test_parser():
     while 1:
         try:
-            res = raw_input('amoco[test_parser]>')
+            res = raw_input(u'amoco[test_parser]>')
             E = p_expr.parseString(res,True)
-            print E
+            print(E)
         except EOFError:
             return

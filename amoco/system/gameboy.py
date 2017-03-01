@@ -42,7 +42,7 @@ card_type = {
 
 class Cardridge(object):
     def __init__(self,path):
-        self.__file = file(path,'rb')
+        self.__file = open(path,'rb')
         self.data = self.__file.read()
 
     @property
@@ -55,13 +55,13 @@ class Cardridge(object):
 
     def title(self):
         s = self.data[0x134:0x142]
-        return s.strip('\0')
+        return s.strip(b'\0')
 
     def colorgb(self):
-        return ord(self.data[0x143])==0x80
+        return ord(self.data[0x143:0x144])==0x80
 
     def licensee(self):
-        x = ord(self.data[0x14b])
+        x = ord(self.data[0x14b:0x14c])
         if x==0x33:
             return struct.unpack('>H',self.data[0x144:0x146])
         if x==0x79:
@@ -70,28 +70,28 @@ class Cardridge(object):
             return 'Konami'
 
     def supergb(self):
-        return ord(self.data[0x146])==03
+        return ord(self.data[0x146:0x147])==3
 
     def type(self):
-        return card_type.get(ord(self.data[0x147]),'Unknown')
+        return card_type.get(ord(self.data[0x147:0x148]),'Unknown')
 
     def romsize(self):
         D={0:2, 1:4, 2:8, 3:16, 4:32, 5:64, 6:128,
            0x52:72, 0x53:80, 0x54:96}
-        return D.get(ord(self.data[0x148]),None)
+        return D.get(ord(self.data[0x148:0x149]),None)
 
     def ramsize(self):
         D={0:None, 1:1, 2:1, 3:4, 4:16}
-        return D.get(ord(self.data[0x149]),None)
+        return D.get(ord(self.data[0x149:0x14a]),None)
 
     def destination(self):
-        if ord(self.data[0x14a])==0:
+        if ord(self.data[0x14a:0x14b])==0:
             return 'Japanese'
         else:
             return 'Non-Japanese'
 
     def complement_check(self):
-        return ord(self.data[0x14d])
+        return ord(self.data[0x14d:0x14e])
 
     def checksum(self):
         return struct.unpack('>H',self.data[0x14e:0x15])
@@ -109,13 +109,13 @@ class z80GB(object):
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):
-        self.mmap.write(0,self.card.data[:0x8000].ljust(0x8000,'\0'))
+        self.mmap.write(0,self.card.data[:0x8000].ljust(0x8000,b'\0'))
         # 8k video RAM:
-        self.mmap.write(0x8000,''.ljust(8192,'\0'))
+        self.mmap.write(0x8000,b''.ljust(8192,b'\0'))
         # 8k switchable RAM:
-        self.mmap.write(0xA000,''.ljust(8192,'\0'))
+        self.mmap.write(0xA000,b''.ljust(8192,b'\0'))
         # internal RAM:
-        self.mmap.write(0xC000,''.ljust(16382,'\0'))
+        self.mmap.write(0xC000,b''.ljust(16382,b'\0'))
 
     def read_data(self,vaddr,size):
         return self.mmap.read(vaddr,size)
@@ -124,7 +124,7 @@ class z80GB(object):
         maxlen = self.cpu.disassemble.maxlen
         try:
             istr = self.mmap.read(vaddr,maxlen)
-        except MemoryError,e:
+        except MemoryError as e:
             logger.warning("vaddr %s is not mapped"%vaddr)
             raise MemoryError(e)
         i = self.cpu.disassemble(istr[0],**kargs)

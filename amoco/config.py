@@ -41,10 +41,10 @@ Attributes:
 
 """
 
-import ConfigParser as cp
+from configparser import SafeConfigParser
 from collections import defaultdict
 
-conf = cp.SafeConfigParser()
+conf = SafeConfigParser()
 
 # define default config:
 #-----------------------
@@ -76,7 +76,7 @@ conf.set('ui', 'graphics', 'term')
 
 # overwrite with config file:
 import os
-conf.read([os.path.expanduser('~/.amocorc')])
+conf.read([os.path.expanduser(u'~/.amocorc')])
 
 #-----------------------
 

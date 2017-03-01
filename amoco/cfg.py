@@ -77,7 +77,7 @@ class node(Vertex):
         return self.data.view
 
     def __repr__(self):
-        return '<%s [%s] at 0x%x>'%(self.__class__.__name__,self.name,id(self))
+        return u'<%s [%s] at 0x%x>'%(self.__class__.__name__,self.name,id(self))
 
     def __cmp__(self,n):
         return cmp(hash(self),hash(n))
@@ -87,6 +87,11 @@ class node(Vertex):
 
     def __len__(self):
         return self.data.length
+
+    def __eq__(self,n):
+        return hash(self)==hash(n)
+    def __lt__(self,n):
+        return hash(self)<hash(n)
 
     def __getitem__(self,i):
         res = node(self.data.__getitem__(i))
@@ -133,20 +138,24 @@ class link(Edge):
     def __str__(self):
         n0 = self.v[0].name
         n1 = self.v[1].name
-        c = '?' if self.data else '-'
-        return "%s -%s-> %s"%(n0,c,n1)
+        c = u'?' if self.data else u'-'
+        return u"%s -%s-> %s"%(n0,c,n1)
 
     def __repr__(self):
-        return '<%s [%s] at 0x%x>'%(self.__class__.__name__,self.name,id(self))
+        return u'<%s [%s] at 0x%x>'%(self.__class__.__name__,self.name,id(self))
 
     @property
     def name(self):
         n0 = self.v[0].data.address
         n1 = self.v[1].data.address
-        return "%s -> %s"%(n0,n1)
+        return u"%s -> %s"%(n0,n1)
 
     def __cmp__(self,e):
         return cmp(hash(self),hash(e))
+    def __eq__(self,e):
+        return hash(self)==hash(e)
+    def __lt__(self,e):
+        return hash(self)<hash(e)
 
     def __hash__(self):
         return hash(self.name)
@@ -243,9 +252,9 @@ class graph(Graph):
         cutdone = oldblock.cut(vaddr)
         if not cutdone:
             if mz is self.overlay:
-                logger.warning("double overlay block at %s"%vaddr)
+                logger.warning(u"double overlay block at %s"%vaddr)
                 v = super(graph,self).add_vertex(v)
-                v.data.misc['double-overlay'] = 1
+                v.data.misc[u'double-overlay'] = 1
                 return v
             overlay = self.overlay or MemoryZone()
             return self.add_vertex(v,support=overlay)
@@ -264,7 +273,7 @@ class graph(Graph):
         if support is None:
             support=self.support
         else:
-            logger.verbose("add overlay block at %s"%vaddr)
+            logger.verbose(u"add overlay block at %s"%vaddr)
             self.overlay = support
         i = support.locate(vaddr)
         if i is not None:
@@ -283,9 +292,9 @@ class graph(Graph):
                         cutdone = v.data.cut(nextnode.data.address)
                         if not cutdone:
                             if support is self.overlay:
-                                logger.warning("double overlay block at %s"%vaddr)
+                                logger.warning(u"double overlay block at %s"%vaddr)
                                 v = super(graph,self).add_vertex(v)
-                                v.data.misc['double-overlay'] = 1
+                                v.data.misc[u'double-overlay'] = 1
                                 return v
                             support = self.overlay or MemoryZone()
         v = super(graph,self).add_vertex(v) # before support write !!
@@ -306,7 +315,7 @@ class graph(Graph):
         return None
 
     def signature(self):
-        return ''.join([signature(g) for g in self.C])
+        return u''.join([signature(g) for g in self.C])
 
 #------------------------------------------------------------------------------
 
@@ -323,5 +332,5 @@ def signature(g):
         s = []
         for n in p:
             s.append(n.data.sig())
-        S.append(''.join(s))
-    return '{[%s]}'%'] ['.join(S)
+        S.append(u''.join(s))
+    return u'{[%s]}'%u'] ['.join(S)

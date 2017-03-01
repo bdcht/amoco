@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from cStringIO import StringIO
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 from amoco.logger import Log
 logger = Log(__name__)
 
 import re
-
 try:
     from pygments.token import Token
     from pygments.style import Style
@@ -15,12 +17,13 @@ try:
 except ImportError:
     logger.info("pygments package not found, no renderer defined")
     has_pygments = False
+    from future.utils import with_metaclass
 
     class TokenType(type):
         def __getattr__(cls,key):
             return key
-    class Token:
-        __metaclass__ = TokenType
+    class Token(with_metaclass(TokenType)):
+        pass
 
     class NullFormatter(object):
         def __init__(self,**options):
@@ -124,8 +127,8 @@ class vltable(object):
         self.squash_r  = True
         self.colsize   = self.rowparams['colsize']
         self.update()
-        self.header    = ''
-        self.footer    = ''
+        self.header    = u''
+        self.footer    = u''
 
     def update(self,*rr):
         for c in range(self.ncols):
@@ -214,7 +217,7 @@ class vltable(object):
                 s.append(self.rows[i].show(**self.rowparams))
         if len(s)>self.maxlength:
             s = s[:self.maxlength-1]
-            s.append(highlight([(Token.Literal,'...')],formatter,outfile))
+            s.append(highlight([(Token.Literal,u'...')],formatter,outfile))
         if self.header: s.insert(0,self.header)
         if self.footer: s.append(self.footer)
         return '\n'.join(s)
@@ -223,11 +226,11 @@ class vltable(object):
 class tokenrow(object):
     def __init__(self,toks=None):
         if toks is None: toks = []
-        self.toks      = [(t,unicode(s)) for (t,s) in toks]
+        self.toks      = [(t,str(s)) for (t,s) in toks]
         self.maxwidth  = float('inf')
-        self.align     = '<'
-        self.fill      = ' '
-        self.separator = ''
+        self.align     = u'<'
+        self.fill      = u' '
+        self.separator = u''
         self.cols      = self.cut()
 
     def cut(self):
@@ -254,7 +257,7 @@ class tokenrow(object):
         cols = self.cols
         if j is not None: cols = self.cols[j:j+1]
         for c in cols:
-            r.append(''.join([t[1] for t in c]))
+            r.append(u''.join([t[1] for t in c]))
         return r
 
     def show(self,raw=False,**params):
@@ -288,12 +291,12 @@ class tokenrow(object):
                 sz += len(tv)
                 if sz>mz:
                     q = (sz-mz)
-                    toks[-1][1] = tv[0:-q]+'###'
+                    toks[-1][1] = tv[0:-q]+u'###'
                     skip = True
             if sz<mz:
                 pad = fill*(mz-sz)
-                if   align=='<': toks[-1][1] += pad
-                elif align=='>': toks[0][1] = pad+toks[0][1]
+                if   align==u'<': toks[-1][1] += pad
+                elif align==u'>': toks[0][1] = pad+toks[0][1]
             if i in hidden_c:
                 if not squash_c:
                     toks = [(TokenHide,highlight(toks,'Null',None))]
@@ -302,4 +305,4 @@ class tokenrow(object):
             r.append(highlight(toks,formatter,outfile))
             if tt==Token.Column and sep: r.append(sep)
         r.append(tail)
-        return ''.join(r)
+        return u''.join(r)

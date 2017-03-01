@@ -68,7 +68,7 @@ class mapper(object):
     # list antecedent locations (used in the mapping)
     def inputs(self):
         r = []
-        for l,v in self.__map.iteritems():
+        for l,v in iter(self.__map.items()):
             for lv in locations_of(v):
                 if lv._is_reg and l._is_reg:
                     if (lv == l) or (lv.type==l.type==regtype.FLAGS):
@@ -79,7 +79,7 @@ class mapper(object):
     # list image locations (modified in the mapping)
     def outputs(self):
         L = []
-        for l in sum(map(locations_of,self.__map.iterkeys()),[]):
+        for l in sum([locations_of(e) for e in self.__map],[]):
             if l._is_reg and l.type in (regtype.PC,regtype.FLAGS): continue
             if l._is_ptr: l = mem(l,self.__map[l].size)
             if self.__map[l]==l: continue
@@ -117,9 +117,13 @@ class mapper(object):
         d = cmp(self.__map.lastdict(),m.__map.lastdict())
         return d
 
+    def __eq__(self,m):
+        d = (self.__map.lastdict()==m.__map.lastdict())
+        return d
+
     # iterate over ordered correspondances:
     def __iter__(self):
-        for (loc,v) in self.__map.iteritems():
+        for (loc,v) in iter(self.__map.items()):
             yield (loc,v)
 
     # get a (plain) register value:
@@ -137,8 +141,8 @@ class mapper(object):
         n = self.aliasing(k)
         if n>0:
             f = lambda e:e[0]._is_ptr
-            items = filter(f,self.__map.items()[0:n])
-            res = mem(k.a,k.size,mods=items)
+            items = filter(f,list(self.__map.items())[0:n])
+            res = mem(k.a,k.size,mods=list(items))
         else:
             res = self._Mem_read(k.a,k.length)
             res.sf = k.sf
@@ -146,7 +150,7 @@ class mapper(object):
 
     def aliasing(self,k):
         if self.assume_no_aliasing: return 0
-        K = self.__map.keys()
+        K = list(self.__map.keys())
         n = self.__map.lastw
         try:
             i = K.index(k.a)
@@ -164,7 +168,7 @@ class mapper(object):
     def _Mem_read(self,a,l):
         try:
             res = self.__Mem.read(a,l)
-        except MemoryError,e: # no zone for location a;
+        except MemoryError: # no zone for location a;
             res = [exp(l*8)]
         if exp._endian==-1: res.reverse()
         P = []
@@ -203,7 +207,7 @@ class mapper(object):
         if k._is_ptr:
             loc = k
         else:
-            if k.size<>v.size:
+            if k.size!=v.size:
                 raise ValueError('size mismatch')
             try:
                 loc = k.addr(self)
@@ -315,7 +319,7 @@ class mapper(object):
             m[loc] = v
         if len(kargs)>0:
             argsz = kargs.get('size',32)
-            for k,v in kargs.iteritems():
+            for k,v in iter(kargs.items()):
                 m[reg(k,argsz)] = cst(v,argsz)
         return self.eval(m)
 

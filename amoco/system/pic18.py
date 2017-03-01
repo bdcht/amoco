@@ -27,7 +27,7 @@ class PIC18(CoreExec):
         maxlen = self.cpu.disassemble.maxlen
         try:
             istr = self.cmap.read(vaddr,maxlen)
-        except MemoryError,e:
+        except MemoryError as e:
             logger.warning("vaddr %s is not mapped"%vaddr)
             raise MemoryError(e)
         i = self.cpu.disassemble(istr[0],**kargs)
@@ -80,7 +80,7 @@ class PIC18(CoreExec):
 
     def pic_seg_handler(self,env,seg,base_disp):
         base,disp = base_disp
-        if not isinstance(seg,str):
+        if not isinstance(seg,bytes):
             base[8:12] = seg[0:4]
             seg = ''
         return self.cpu.ptr(base,seg,disp)

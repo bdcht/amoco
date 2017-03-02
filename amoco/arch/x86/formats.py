@@ -55,13 +55,13 @@ def oprel(i):
     return [(Token.Constant,'.%+d'%i.operands[0].value)]
 
 # main intel formats:
-format_intel_default = (mnemo,opers)
+format_intel_default = (pfx,mnemo,opers)
 
-format_intel_ptr = (mnemo,opers)
+format_intel_ptr = (pfx,mnemo,opers)
 
 format_intel_str = (pfx,mnemo,opers)
 
-format_intel_rel = (mnemo,oprel)
+format_intel_rel = (pfx,mnemo,oprel)
 
 # intel formats:
 IA32_Intel_formats = {
@@ -136,13 +136,13 @@ def oprel_att(i):
     return [(Token.Constant,'$.%+d'%i.operands[0].value)]
 
 # main at&t formats:
-format_att_default = (mnemo_att,opers_att)
+format_att_default = (pfx,mnemo_att,opers_att)
 
-format_att_ptr = (mnemo_att,opers_att)
+format_att_ptr = (pfx,mnemo_att,opers_att)
 
 format_att_str = (pfx,mnemo_att,opers_att)
 
-format_att_rel = (mnemo_att,oprel_att)
+format_att_rel = (pfx,mnemo_att,oprel_att)
 
 # formats:
 IA32_ATT_formats = {
@@ -459,9 +459,9 @@ def intel_oprel(i):
     return [(Token.Constant,'{%s}'%op)]
 
 # Intel syntax, as used in GNU binutils
-intel_format_default = (                    intel_mnemo,intel_opers)
+intel_format_default = (default_prefix_name,intel_mnemo,intel_opers)
 intel_format_str     = (default_prefix_name,intel_mnemo,intel_opers)
-intel_format_rel     = (                    intel_mnemo,intel_oprel)
+intel_format_rel     = (default_prefix_name,intel_mnemo,intel_oprel)
 IA32_Binutils_Intel_formats = {
     'ia32_strings' : intel_format_str,
     'ia32_imm_rel' : intel_format_rel,
@@ -682,9 +682,9 @@ def att_oprel(i):
     return [(Token.Constant,'{%s}'%op)]
 
 # AT&T syntax, as used in GNU binutils
-att_format_default = (                    att_mnemo_binutils,att_opers)
+att_format_default = (default_prefix_name,att_mnemo_binutils,att_opers)
 att_format_str     = (default_prefix_name,att_mnemo_binutils,att_opers)
-att_format_rel     = (                    att_mnemo_binutils,att_oprel)
+att_format_rel     = (default_prefix_name,att_mnemo_binutils,att_oprel)
 IA32_Binutils_ATT_formats = {
     'ia32_strings' : att_format_str,
     'ia32_imm_rel' : att_format_rel,
@@ -693,9 +693,9 @@ IA32_Binutils_ATT = Formatter(IA32_Binutils_ATT_formats)
 IA32_Binutils_ATT.default = att_format_default
 
 # AT&T syntax, as used by clang on MacOSX
-attm_format_default = (                    att_mnemo_macosx,att_opers_macosx)
+attm_format_default = (default_prefix_name,att_mnemo_macosx,att_opers_macosx)
 attm_format_str     = (default_prefix_name,att_mnemo_macosx,att_opers)
-attm_format_rel     = (                    att_mnemo_macosx,att_oprel)
+attm_format_rel     = (default_prefix_name,att_mnemo_macosx,att_oprel)
 IA32_MacOSX_ATT_formats = {
     'ia32_strings' : attm_format_str,
     'ia32_imm_rel' : attm_format_rel,

@@ -198,7 +198,7 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
         'COMI','UCOMI', 'CMP', 'SHUF',
         ) for s in ('PS','PD','SD','SS') ]
     def action_instr(toks):
-        i = instruction('')
+        i = instruction(b'')
         i.mnemonic = toks[0].upper()
         # Remove prefixes
         if i.mnemonic in ('REP','REPZ','REPNZ','REPE','REPNE'):

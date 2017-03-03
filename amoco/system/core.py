@@ -330,11 +330,7 @@ class MemoryMap(object):
         return self._zones[r]._map[idx]
 
     def reference(self,address):
-        try:
-            from builtins import int
-        except ImportError:
-            pass
-        if isinstance(address,(int)):
+        if isinstance(address,int):
             return (None,address)
         elif isinstance(address,str):
             return (address,0)

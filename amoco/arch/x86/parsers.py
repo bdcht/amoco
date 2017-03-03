@@ -113,7 +113,6 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
             print("EXP %s"%toks)
             FAIL
     exp.setParseAction(action_exp)
-    action_exp = staticmethod(action_exp)
 
     imm = '$'+exp
     imm.setParseAction(lambda toks:toks[1])
@@ -292,6 +291,8 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
             ):
             assert i.operands[0]._is_mem
             i.operands[0].size = 16
+        elif i.mnemonic == 'CMPXCHG':
+            if i.operands[0]._is_mem: i.operands[0].size = i.operands[1].size
         elif i.mnemonic in mmx_with_suffix2 and len(i.operands):
             if i.mnemonic.endswith('SS'):
                 if i.operands[1]._is_mem: i.operands[1].size = 32

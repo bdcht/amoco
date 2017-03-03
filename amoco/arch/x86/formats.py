@@ -180,6 +180,12 @@ def default_prefix_name(i):
             i.mnemonic.startswith('SCAS') or
             i.mnemonic.startswith('CMPS')):
         pfxgrp0 = 'repz'
+    # Special case: when gcc produces 'rep ret'
+    # http://mikedimmick.blogspot.fr/2008/03/what-heck-does-ret-mean.html
+    # it usually puts it on two separate lines, and old versions of
+    # GNU as don't like a true 'rep ret'
+    if pfxgrp0 == 'rep' and i.mnemonic == 'RET':
+        pfxgrp0 = 'rep;'
     return [(Token.Prefix,'%s '%pfxgrp0)]
 
 def default_mnemo_name(i):
@@ -205,15 +211,7 @@ def default_mnemo_name(i):
           }[i.cond[0]]
         op = op[:-2] + cc
     if op == 'retn': op = 'ret'
-    s = [(Token.Mnemonic,op)]
-    # Special case: when gcc produces 'rep ret'
-    # http://mikedimmick.blogspot.fr/2008/03/what-heck-does-ret-mean.html
-    # it usually puts it on two separate lines, and old versions of
-    # GNU as don't like a true 'rep ret'
-    if op == 'ret' and i.misc.get('pfx') is not None:
-        if i.misc['pfx'][0] == 'rep':
-            s = [(Token.Prefix,'rep; ')] + s
-    return s
+    return [(Token.Mnemonic,op)]
 
 def reg_name(r):
     assert r._is_reg

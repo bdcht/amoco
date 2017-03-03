@@ -90,7 +90,7 @@ class sparc_syntax:
             return tok
 
     def action_instr(toks):
-        i = instruction('')
+        i = instruction(b'')
         i.mnemonic = toks[0]
         if len(toks)>1: i.operands = toks[1][0:]
         return asmhelper(i)

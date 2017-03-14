@@ -130,12 +130,14 @@ def set_opdsz_32(obj):
 
 def check_f2(obj,f=do_nothing):
     if obj.misc['pfx'] and obj.misc['pfx'][0]=='repne':
+        obj.misc['pfx'][0] = None
         f(obj)
         return True
     return False
 
 def check_f3(obj,f=do_nothing):
     if obj.misc['pfx'] and obj.misc['pfx'][0]=='rep':
+        obj.misc['pfx'][0] = None
         f(obj)
         return True
     return False

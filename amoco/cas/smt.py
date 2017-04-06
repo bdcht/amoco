@@ -21,10 +21,15 @@ except ImportError:
 else:
     logger.info('z3 package imported')
     class solver(object):
-        def __init__(self,eqns=None):
+        def __init__(self,eqns=None,tactics=None,timeout=None):
             self.eqns = []
             self.locs = []
-            self.solver = z3.Solver()
+            if tactics:
+                s = z3.TryFor(z3.Then(*tactics),1000).solver()
+            else:
+                s = z3.Solver()
+            if timeout: s.set(timeout=1000)
+            self.solver = s
             if eqns: self.add(eqns)
             self._ctr = 0
 
@@ -122,21 +127,21 @@ def tst_to_z3(e,slv=None):
 
 def tst_verify(e,env):
     t = e.tst.eval(env).simplify()
-    s = solver()
+    s = solver(tactics=['simplify', 'elim-term-ite', 'solve-eqs', 'smt'])
     zt = cast_z3_bool(t,s)
     for c in env.conds:
         s.solver.add(cast_z3_bool(c,s))
     s.solver.push()
     s.solver.add(zt)
-    rtrue = (s.solver.check()==z3.sat)
+    rtrue = s.solver.check()
     s.solver.pop()
     s.solver.add(z3.Not(zt))
-    rfalse = (s.solver.check()==z3.sat)
-    if rtrue and rfalse: return t
-    if rtrue: return bit1
-    if rfalse: return bit0
-    # mapper conds are unsatisfiable:
-    raise ValueError(e)
+    rfalse = s.solver.check()
+    if rtrue==z3.sat and rfalse==z3.unsat: return bit1
+    if rtrue==z3.unsat and rfalse==z3.sat: return bit0
+    if rtrue==z3.sat and rfalse==z3.sat  : return t
+    logger.verbose('undecidable tst expression')
+    return t
 
 def op_to_z3(e,slv=None):
     e.simplify()

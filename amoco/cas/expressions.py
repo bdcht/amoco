@@ -199,6 +199,8 @@ class exp(object):
     @_checkarg_numeric
     def __truediv__(self,n): return oper('/',self,n)
     @_checkarg_numeric
+    def __div__(self,n): return oper('/',self,n)
+    @_checkarg_numeric
     def __mod__(self,n): return oper('%',self,n)
     @_checkarg_numeric
     def __floordiv__(self,n): return oper('//',self,n)
@@ -367,6 +369,10 @@ class cst(exp):
     def __truediv__(self,n):
         if n._is_cst: return cst(self.value//n.value,self.size)
         else : return exp.__truediv__(self,n)
+    @_checkarg_numeric
+    def __div__(self,n):
+        if n._is_cst: return cst(self.value//n.value,self.size)
+        else : return exp.__div__(self,n)
     @_checkarg_numeric
     def __mod__(self,n):
         if n._is_cst: return cst(self.value%n.value,self.size)

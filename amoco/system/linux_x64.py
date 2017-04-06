@@ -15,8 +15,9 @@ class ELF(CoreExec):
 
     def __init__(self,p):
         CoreExec.__init__(self,p,cpu)
-        self.symbols.update(self.bin.functions)
-        self.symbols.update(self.bin.variables)
+        if self.bin:
+            self.symbols.update(self.bin.functions)
+            self.symbols.update(self.bin.variables)
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):

@@ -1002,6 +1002,17 @@ def i_MUL(i,fmap):
   fmap[cf] = hi!=0
   fmap[of] = hi!=0
 
+def i_DIV(i,fmap):
+  fmap[eip] = fmap[eip]+i.length
+  src = i.operands[0]
+  m,d = {8:(al,ah), 16:(ax,dx), 32:(eax,edx)}[src.size]
+  md_ = composer([m,d])
+  s_ = src.zeroextend(md_.size)
+  q_ = fmap(md_/s_)
+  r_ = fmap(md_%s_)
+  fmap[d]  = r_[0:d.size]
+  fmap[m]  = q_[0:m.size]
+
 def i_RDRAND(i,fmap):
    fmap[eip] = fmap[eip]+i.length
    dst = i.operands[0]

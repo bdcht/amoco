@@ -1041,6 +1041,19 @@ def i_MUL(i,fmap):
   m,lo = _r32_zx64(m,lo)
   fmap[m]  = lo
 
+def i_DIV(i,fmap):
+  fmap[rip] = fmap[rip]+i.length
+  src = i.operands[0]
+  m,d = {8:(al,ah), 16:(ax,dx), 32:(eax,edx), 64:(rax,rdx)}[src.size]
+  md_ = composer([m,d])
+  s_ = src.zeroextend(md_.size)
+  q_ = fmap(md_/s_)
+  r_ = fmap(md_%s_)
+  d,hi = _r32_zx64(d,r_[0:src.size])
+  fmap[d]  = hi
+  m,lo = _r32_zx64(m,q_[0:src.size])
+  fmap[m]  = lo
+
 def i_RDRAND(i,fmap):
    fmap[rip] = fmap[rip]+i.length
    dst = i.operands[0]

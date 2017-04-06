@@ -365,9 +365,6 @@ class xfunc(object):
                     self.misc[v] = 1
         self.view  = xfuncView(self)
 
-    def __hash__(self):
-        return hash(self.name)
-
     @property
     def support(self):
         return (self.address,self.address)

@@ -51,7 +51,7 @@ def read_program(filename):
 ##
 
 #------------------------------------------------------------------------------
-def load_program(f):
+def load_program(f,cpu=None):
     '''
     Detects program format header (ELF/PE), and *maps* the program in abstract
     memory, loading the associated "system" (linux/win) and "arch" (x86/arm),
@@ -109,4 +109,4 @@ def load_program(f):
     else:
         assert isinstance(p,DataIO)
         from amoco.system.raw import RawExec
-        return RawExec(p)
+        return RawExec(p,cpu)

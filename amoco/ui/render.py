@@ -77,7 +77,7 @@ else:
       'Terminal256':Terminal256Formatter(style=DefaultStyle),
       'TerminalDark':Terminal256Formatter(style=DarkStyle),
       'TerminalLight':Terminal256Formatter(style=LightStyle),
-      'Html':HtmlFormatter(style=LightStyle,nowrap=True),
+      'Html':HtmlFormatter(style=LightStyle),
     }
 
 default_formatter = NullFormatter()
@@ -220,7 +220,7 @@ class vltable(object):
             s.append(highlight([(Token.Literal,u'...')],formatter,outfile))
         if self.header: s.insert(0,self.header)
         if self.footer: s.append(self.footer)
-        return '\n'.join(s)
+        return u'\n'.join(s)
 
 
 class tokenrow(object):
@@ -287,10 +287,10 @@ class tokenrow(object):
             for tt,tv in c:
                 if tt==Token.Column: break
                 if skip: continue
-                toks.append([tt,tv])
+                toks.append([tt,u'%s'%tv])
                 sz += len(tv)
                 if sz>mz:
-                    q = (sz-mz)
+                    q = (sz-mz)+3
                     toks[-1][1] = tv[0:-q]+u'###'
                     skip = True
             if sz<mz:

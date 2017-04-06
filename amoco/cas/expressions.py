@@ -1284,8 +1284,8 @@ class op(exp):
         r = self.r.simplify()
         minus = (self.op.symbol=='-')
         if self.prop<4:
-            if l._is_def==0: return l
-            if r._is_def==0: return r
+            if l._is_def==0: return top(self.size)
+            if r._is_def==0: return top(self.size)
             # arithm/logic normalisation:
             # push cst to the right
             if l._is_cst:
@@ -1532,6 +1532,9 @@ def eqn2_helpers(e):
                 return cst(0,e.size)
         elif e.r.value==1 and e.op.symbol in ('*','/'):
             return e.l
+        elif e.r.value in (0xff,0xffff,0xffffffff) and e.op.symbol=='&':
+            s = {0xff:8,0xffff:16,0xffffffff:32}[e.r.value]
+            return e.l[0:s].zeroextend(e.size)
         if e.l._is_eqn:
             xop = e.op*e.l.op
             if xop:
@@ -1549,6 +1552,13 @@ def eqn2_helpers(e):
         elif e.l._is_ptr:
             if e.op.symbol in ('-','+'):
                 return ptr(e.l,disp=e.op(0,e.r.value))
+        elif e.l._is_cmp:
+            if e.op.symbol in ('&','|','^'):
+                cc = comp(e.l.size)
+                for (ij,p) in e.l.parts.items():
+                    i,j = ij
+                    cc[i:j] = e.op(p,e.r[i:j])
+                return cc.simplify()
         elif e.l._is_cst:
             return e.op(e.l,e.r)
     if e.l._is_vec:

@@ -238,6 +238,8 @@ class _target(object):
                     proceed from parent to the basic block at this address
     '''
     def __init__(self,cst,parent,econd=None):
+        if cst is not None:
+            cst.sf=False
         self.cst = cst
         self.parent = parent
         self.econd = econd

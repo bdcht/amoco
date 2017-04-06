@@ -137,8 +137,8 @@ class exp(object):
         return self
 
     def __str__(self):
-        if self._is_def is 0: return 'T%d'%self.size
-        if self._is_def is False: return '⊥%d'%self.size
+        if self._is_def is 0: return u'T%d'%self.size
+        if self._is_def is False: return u'⊥%d'%self.size
         raise ValueError("void expression")
 
     def toks(self,**kargs):
@@ -308,7 +308,7 @@ class cst(exp):
 
     # defaults to signed hex base
     def __str__(self):
-        return '{:#x}'.format(self.value)
+        return u'{:#x}'.format(self.value)
 
     def toks(self,**kargs):
         return [(render.Token.Constant,str(self))]
@@ -468,7 +468,7 @@ class sym(cst):
         cst.__init__(self,v,size)
 
     def __str__(self):
-        return "#%s"%self.ref
+        return u"#%s"%self.ref
 
 #---------------------------------
 # cfp holds float immediate values
@@ -493,7 +493,7 @@ class cfp(exp):
         return NotImplementedError
 
     def __str__(self):
-        return '{:f}'.format(self.value)
+        return u'{:f}'.format(self.value)
 
     def toks(self,**kargs):
         return [(render.Token.Constant,str(self))]
@@ -591,7 +591,7 @@ class reg(exp):
         self.type = regtype.STD
 
     def __str__(self):
-        return self.ref
+        return u"%s"%self.ref
 
     def toks(self,**kargs):
         return [(render.Token.Register,str(self))]
@@ -663,7 +663,7 @@ class ext(reg):
         self.type = regtype.OTHER
 
     def __str__(self):
-        return '@%s'%self.ref
+        return u'@%s'%self.ref
 
     def toks(self,**kargs):
         tk = render.Token.Tainted if '!' in self.ref else render.Token.Name
@@ -736,13 +736,13 @@ class comp(exp):
         # the symp is only obtained after a restruct !
 
     def __str__(self):
-        s = '{ |'
+        s = u'{ |'
         cur = 0
         for nv in self:
             nk = cur,cur+nv.size
-            s += ' %s->%s |'%('[%d:%d]'%nk,str(nv))
+            s += u' %s->%s |'%('[%d:%d]'%nk,str(nv))
             cur += nv.size
-        return s+' }'
+        return s+u' }'
 
     def toks(self,**kargs):
         if 'indent' in kargs:
@@ -751,18 +751,18 @@ class comp(exp):
             kargs['indent'] = p+4
         else:
             pad = ''
-        tl = (render.Token.Literal,', ')
-        s  = [(render.Token.Literal,'{')]
+        tl = (render.Token.Literal,u', ')
+        s  = [(render.Token.Literal,u'{')]
         cur=0
         for nv in self:
-            loc = "%s[%2d:%2d] -> "%(pad,cur,cur+nv.size)
+            loc = u"%s[%2d:%2d] -> "%(pad,cur,cur+nv.size)
             cur += nv.size
             s.append((render.Token.Literal,loc))
             t = nv.toks(**kargs)
             s.extend(t)
             s.append(tl)
         if len(s)>1: s.pop()
-        s.append((render.Token.Literal,'%s}'%pad))
+        s.append((render.Token.Literal,u'%s}'%pad))
         return s
 
     def eval(self,env):
@@ -928,8 +928,8 @@ class mem(exp):
 
     def __str__(self):
         n = len(self.mods)
-        n = '$%d'%n if n>0 else ''
-        return 'M%d%s%s'%(self.size,n,self.a)
+        n = u'$%d'%n if n>0 else u''
+        return u'M%d%s%s'%(self.size,n,self.a)
 
     def toks(self,**kargs):
         return [(render.Token.Memory,str(self))]
@@ -977,7 +977,7 @@ class ptr(exp):
 
     def __str__(self):
         d = self.disp_tostring()
-        return '%s(%s%s)'%(self.seg,self.base,d)
+        return u'%s(%s%s)'%(self.seg,self.base,d)
 
     def disp_tostring(self,base10=True):
         if hasattr(self.disp, '_is_cst'):

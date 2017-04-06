@@ -62,11 +62,6 @@ class PE(CoreExec):
                 return x
         return None
 
-    def codehelper(self,**kargs):
-        if 'seq' in kargs: return self.seqhelper(kargs['seq'])
-        if 'block' in kargs: return self.blockhelper(kargs['block'])
-        if 'func' in kargs: return self.funchelper(kargs['func'])
-
     # seqhelper provides arch-dependent information to amoco.main classes
     def seqhelper(self,seq):
         for i in seq:

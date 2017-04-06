@@ -416,14 +416,35 @@ class CoreExec(object):
             i.address = vaddr
             return i
 
+    # lookup in bin if v is associated with a function or variable name:
+    def check_sym(self,v):
+        if v._is_cst:
+            x = self.symbols.get(v.value,None)
+            if x is not None:
+                if isinstance(x,str):
+                    x=self.cpu.ext(x,size=v.size)
+                else:
+                    x=self.cpu.sym(x[0],v.value,v.size)
+                return x
+        return None
+
     # optional codehelper method allows platform-specific analysis of
     # either a (raw) list of instruction, a block/func object (see amoco.code)
     # the default helper is a no-op:
-    def codehelper(self,seq=None,block=None,func=None):
-        if seq is not None: return seq
-        if block is not None: return block
-        if func is not None: return func
+    def codehelper(self,**kargs):
+        if 'seq' in kargs: return self.seqhelper(kargs['seq'])
+        if 'block' in kargs: return self.blockhelper(kargs['block'])
+        if 'func' in kargs: return self.funchelper(kargs['func'])
 
+    def seqhelper(self,seq):
+        return seq
+    # default blockhelper calls seqhelper, updates block.misc and
+    def blockhelper(self,block):
+        for i in self.seqhelper(block.instr):
+            block.misc.update(i.misc)
+        return block
+    def funchelper(self,func):
+        return func
 
 #------------------------------------------------------------------------------
 from collections import defaultdict

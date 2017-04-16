@@ -71,6 +71,10 @@ with is_reg_other:
 def st(num):
   return is_reg_other(reg('st%d'%num,80))
 
+# fpu state
+fpu_control = reg('fpu_control',16)
+fpu_status  = reg('fpu_status',16)
+
 
 # return R/M register (see ModR/M Byte encoding) :
 def getreg(i,size=32):

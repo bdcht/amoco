@@ -5,14 +5,26 @@
 # published under GPLv2 license
 
 """
-The code module defines classes that represent assembly blocks, functions,
-and *external functions*.
+code.py
+=======
+
+This module defines classes that represent assembly instructions blocks,
+functions, and calls to *external* functions. In amoco, such objects are
+found as :attr:`node.data` in nodes of a :class:`cfg.graph`. As such,they
+all provide a common API with:
+    * ``name`` to get/set a name,
+    * ``map`` to get the associated symbolic execution
+    * ``address`` to identify and locate the object in memory
+    * ``support`` to get the address range of the object
+    * ``misc`` to note discovered properties
+    * ``view`` to display the object
+
 """
 
 import pdb
 import heapq
 from collections import defaultdict
-
+from functools import reduce
 from amoco.cas.mapper import *
 
 from amoco.config import conf
@@ -23,24 +35,43 @@ from amoco.ui.views import blockView, funcView, xfuncView
 
 #-------------------------------------------------------------------------------
 class block(object):
+    """A block instance holds a sequence of instructions and allows to compute
+    the *map* corresponding to the symbolic continous execution of this sequence.
+
+    Args:
+        instr (list[instruction]): the sequence of continuous instructions
+        name (Optional[str]): the name of the block
+                             (defaults to address of the 1st instruction)
+
+    Attributes:
+        _map (:class:`mapper`): works as a cache for the ``map`` property below.
+        instr (list): the list of instructions of the block.
+        name (str): the name of the block (defaults to address string).
+        misc (dict): placeholder for (any) information about the block semantics.
+        view (:class:`blockView`): holds the :mod:`ui.views` object used to display the block.
+        length (int): the byte length of the block instructions sequence.
+        support (tuple): the memory footprint of the block
+        _helper: a *callable* object used for adding `misc` :ref:`tag` items
+                 based on plateform-dependent patterns. This object is usually set by the
+                 system class when a block is instanciated.
     """
-    A block instance is a 'continuous' sequence of instructions.
-    """
+
     __slots__=['_map','instr','_name','misc','_helper','view']
 
     def __init__(self, instrlist, name=None):
-        """
-        the init of a block takes a list of instructions and creates a `map` of it
-        """
         self._map  = None
         self.instr = instrlist
         self._name = name
-        self.misc  = defaultdict(lambda :0)
+        self.misc  = defaultdict(_code_misc_default)
         self._helper = None
         self.view  = blockView(self)
 
     @property
     def map(self):
+        """the propery providing the symbolic map of the block, or if this
+        block is the entry of a :class:`func` object, the map of the
+        function it belongs to.
+        """
         if self._map is None:
             self._map = mapper(self.instr)
             self.helper(self._map)
@@ -56,7 +87,12 @@ class block(object):
 
     @property
     def address(self):
-        return self.instr[0].address if len(self.instr)>0 else None
+        """address (:class:`cst`): the address of the first instruction in the block.
+        """
+        try:
+            return self.instr[0].address
+        except IndexError:
+            return None
 
     @property
     def length(self):
@@ -76,6 +112,16 @@ class block(object):
     name = property(getname,setname)
 
     def __getitem__(self,i):
+        """block objects support slicing from given start/stop addresses
+
+           Args:
+               i (slice): start and stop address *within* the block. The
+                          values must match addresses of instructions otherwise
+                          a :exc:`ValueError` exception is raised.
+
+           Returns:
+               block: a new block with selected instructions.
+        """
         sta,sto,stp = i.indices(self.length)
         assert stp==1
         pos = [0]
@@ -91,15 +137,22 @@ class block(object):
         if len(I)>0:
             return block(self.instr[ista:isto])
 
-    # cut the block at given address will remove instructions after this address,
-    # which needs to be aligned with instructions boundaries. The effect is thus to
-    # reduce the block size. The returned value is the number of instruction removed.
     def cut(self,address):
+        """cutting the block at given address will remove instructions after this address,
+        (which needs to be aligned with instructions boundaries.) The effect is thus to
+        reduce the block size.
+
+        Args:
+            address (cst): the address where the cut occurs.
+
+        Returns:
+            int: the number of instructions removed from the block.
+        """
         I = [i.address for i in self.instr]
         try:
             pos = I.index(address)
         except ValueError:
-            logger.warning("invalid attempt to cut block %s at %s"%(self.name,address))
+            logger.warning(u"invalid attempt to cut block %s at %s"%(self.name,address))
             return 0
         else:
             self.instr = self.instr[:pos]
@@ -112,34 +165,47 @@ class block(object):
 
     def __str__(self):
         T = self.view._vltable(formatter='Null')
-        return '\n'.join([r.show(raw=True,**T.rowparams) for r in T.rows])
+        return u'\n'.join([r.show(raw=True,**T.rowparams) for r in T.rows])
 
     def __repr__(self):
-        return '<%s object (name=%s) at 0x%08x>'%(self.__class__.__name__,self.name,id(self))
+        return u'<%s object (%s) at 0x%08x>'%(self.__class__.__name__,self.name,id(self))
 
     def raw(self):
-        return ''.join([i.bytes for i in self.instr])
+       """returns the *raw* bytestring of the block instructions.
+       """
+       return b''.join([i.bytes for i in self.instr])
 
     def __cmp__(self,b):
         return cmp(self.raw(),b.raw())
 
+    def __eq__(self,b):
+        return self.raw()==b.raw()
+
     def __hash__(self):
-        return hash(self.name)
+        return hash(self.address)
 
     def sig(self):
+        """returns the :meth:`cfg.signature` of the block.
+        """
         misc = defaultdict(lambda :None)
         misc.update(self.misc)
         if len(misc)==0:
             for i in self.instr: misc.update(i.misc)
-        s = [tag.sig(k) for k in misc]
-        return '(%s)'%(''.join(s))
+        s = list(sorted([tag.sig(k) for k in misc]))
+        return u'(%s)'%(u''.join(s))
 
 #------------------------------------------------------------------------------
-# func is a cfg connected component that generally represents a called function
-# It appears in the other graphs whenever the function is called and provides a
-# synthetic map that captures the semantics of the function.
-#------------------------------------------------------------------------------
 class func(block):
+    """A graph of blocks that represents a function's CFG and allows
+    to compute a symbolic execution *map* of the function. Inherits from :class:`block`.
+
+    Args:
+        g (graph_core): the connected graph component of block nodes.
+        name (Optional[str]): the optional name of the function (defaults to the name of its root node.)
+
+    Attributes:
+        cfg (graph_core): the :grandalf:class:`graph_core` CFG of the function (see :mod:`cfg`.)
+    """
     __slots__ = ['cfg']
 
     # the init of a func takes a core_graph and creates a map of it:
@@ -149,16 +215,18 @@ class func(block):
         self.instr = []
         # base/offset need to be defined before code (used in setcode)
         self._name = name
-        self.misc  = defaultdict(lambda :0)
+        self.misc  = defaultdict(_code_misc_default)
         self._helper = None
         self.view  = funcView(self)
 
     @property
     def address(self):
-        return self.blocks[0].address
+        return self.cfg.sV[0].data.address
 
     @property
     def blocks(self):
+        """blocks (list): the list of blocks within the function.
+        """
         return [n.data for n in self.cfg.sV]
 
     @property
@@ -167,8 +235,21 @@ class func(block):
         smax = max((b.address+b.length for b in self.blocks))
         return (smin,smax)
 
+    def __hash__(self):
+        return hash(self.address)
+
     #(re)compute the map of the entire function cfg:
     def makemap(self,withmap=None,widening=True):
+        """compute the mapper of the entire function.
+
+        Args:
+            withmap (Optional[mapper]): an input mapper instance that
+                can be used to represent the calling stack frame.
+            widening (Bool): indicates if loop widening should apply.
+
+        Returns:
+            mapper: an approximated symbolic execution of the function.
+        """
         # spawn a cfg layout to detect loops and allow to
         # walk the cfg by using the nodes rank.
         gr = self.view.layout
@@ -190,7 +271,7 @@ class func(block):
         # lets walk the function's cfg, in rank priority order:
         while len(spool)>0:
             count += 1
-            logger.progress(count,pfx='in %s makemap: '%self.name)
+            logger.progress(count,pfx=u'in %s makemap: '%self.name)
             # take lowest ranked node from spool:
             l,n = heapq.heappop(spool)
             m = heads.pop(n)
@@ -212,14 +293,14 @@ class func(block):
                     # apply edge contraints to the current mapper and
                     # try to execute target:
                     mtn = m.assume(econd)>>tn.data.map
-                except ValueError,err:
-                    logger.verbose("link %s ignored"%e)
+                except ValueError as err:
+                    logger.verbose(u"link %s ignored"%e)
                     continue
                 # and update heads and spool...
                 if tn in heads:
                     # check for widening:
                     if widening and tn.data.misc[tag.LOOP_START]==1:
-                        logger.verbose('widening at %s'%tn.name)
+                        logger.verbose(u'widening at %s'%tn.name)
                         mm = merge(heads[tn],mtn,widening)
                     else:
                         mm = merge(heads[tn],mtn)
@@ -235,13 +316,13 @@ class func(block):
                     if not (r,tn) in spool:
                         heapq.heappush(spool,(r,tn))
                 else:
-                    logger.verbose('fixpoint at %s'%tn.name)
+                    logger.verbose(u'fixpoint at %s'%tn.name)
         out = [heads[x] for x in self.cfg.leaves()]
         _map = reduce(merge,out) if out else None
         return _map
 
     def __str__(self):
-        return "%s{%d}"%(self.name,len(self.blocks))
+        return u"%s{%d}"%(self.name,len(self.blocks))
 
 #------------------------------------------------------------------------------
 # xfunc represents external functions. It is associated with an ext expression.
@@ -249,28 +330,58 @@ class func(block):
 # defined in the ext expression.
 #------------------------------------------------------------------------------
 class xfunc(object):
-    __slots__ = ['map','name','address','length','misc','view']
+    """A class to represent an external symbol in the CFG and compute the *map*
+       associated with the call to this function.
+
+    Args:
+        x (ext): the :class:`~cas.expressions.ext` expression associated with the
+                 external symbol.
+
+    Attributes:
+        map (mapper): the symbolic execution *map* of the external symbol.
+        name (str): the external symbol string.
+        length (int): set to zero.
+        instr (list): empty.
+        address (exp): the :class:`~cas.expressions.ext` expression.
+        misc (dict): placeholder for (any) information about the xfunc.
+        view (:class:`xfuncView`): holds the :mod:`ui.views` object used to
+             display the object.
+
+    """
+    __slots__ = ['map','name','address','instr','length','misc','view']
 
     def __init__(self, x):
         self.map = mapper()
         x(self.map)
         self.name = str(x)
         self.address = x
+        self.instr = []
         self.length = 0
-        self.misc  = defaultdict(lambda :0)
-        doc = x.stub(x.ref).func_doc
+        self.misc = defaultdict(_code_misc_default)
+        doc = x.stub(x.ref).__doc__
         if doc:
             for (k,v) in tag.list():
                 if (k in doc) or (v in doc):
                     self.misc[v] = 1
         self.view  = xfuncView(self)
 
+    def __hash__(self):
+        return hash(self.name)
+
     @property
     def support(self):
         return (self.address,self.address)
 
+    def sig(self):
+        s = [tag.sig(k) for k in self.misc]
+        return u'(x:%s)'%(u''.join(s))
+
 #------------------------------------------------------------------------------
+
 class tag:
+    """defines keys as class attributes, used in :attr:`misc` attributes to
+    indicate various relevant properties of blocks within functions.
+    """
     FUNC_START   = 'func_start'
     FUNC_END     = 'func_end'
     FUNC_STACK   = 'func_stack'
@@ -287,10 +398,14 @@ class tag:
 
     @classmethod
     def list(cls):
+        """get the list of all defined keys
+        """
         return filter(lambda kv: kv[0].startswith('FUNC_'), cls.__dict__.items())
 
     @classmethod
     def sig(cls,name):
+        """symbols for tag keys used to compute the block's signature
+        """
         return {
          'cond'           : '?',
          'func'           : 'F',
@@ -307,3 +422,5 @@ class tag:
          cls.LOOP_START   : 'l' }.get(name,'')
 
 
+def _code_misc_default():
+    return 0

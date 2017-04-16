@@ -3,11 +3,20 @@
 # This code is part of Amoco
 # Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
-
+try:
+    from builtins import object
+except ImportError:
+    pass
+from operator import itemgetter
 from amoco.logger import Log
 logger = Log(__name__)
 
 from amoco.ui import render
+
+try:
+    IntType = (int,long)
+except NameError:
+    IntType = (int,)
 
 # decorators:
 #------------
@@ -23,16 +32,16 @@ def _checkarg1_exp(f):
 
 def _checkarg_sizes(f):
     def checkarg_sizes(self,n):
-        if self.size<>n.size:
+        if self.size!=n.size:
             if self.size>0 and n.size>0:
                 logger.error('size mismatch')
-                raise ValueError,n
+                raise ValueError(n)
         return f(self,n)
     return checkarg_sizes
 
 def _checkarg_numeric(f):
     def checkarg_numeric(self,n):
-        if isinstance(n,(int,long)):
+        if isinstance(n,IntType):
                 n = cst(n,self.size)
         elif isinstance(n,(float)):
                 n = cfp(n,self.size)
@@ -43,16 +52,16 @@ def _checkarg_slice(f):
     def checkarg_slice(self,*args):
         i = args[0]
         if isinstance(i,slice):
-            if i.step<>None: raise ValueError,i
+            if i.step!=None: raise ValueError(i)
             if i.start<0 or i.stop>self.size:
                 logger.error('size mismatch')
-                raise ValueError,i
+                raise ValueError(i)
             if i.stop<=i.start:
                 logger.error('invalid slice')
-                raise ValueError,i
+                raise ValueError(i)
         else:
             logger.error('argument should be a slice')
-            raise TypeError,i
+            raise TypeError(i)
         return f(self,*args)
     return checkarg_slice
 
@@ -93,7 +102,7 @@ class exp(object):
 
     @property
     def length(self): # length value is in bytes
-        return self.size/8
+        return self.size//8
 
     def bytes(self,sta=0,sto=None,endian=0):
         s = slice(sta,sto)
@@ -193,6 +202,8 @@ class exp(object):
     @_checkarg_numeric
     def __div__(self,n): return oper('/',self,n)
     @_checkarg_numeric
+    def __truediv__(self,n): return oper('/',self,n)
+    @_checkarg_numeric
     def __mod__(self,n): return oper('%',self,n)
     @_checkarg_numeric
     def __floordiv__(self,n): return oper('//',self,n)
@@ -226,35 +237,37 @@ class exp(object):
     # WARNING: comparison operators cmp returns a python bool
     # but any other operators always return an expression !
     def __hash__(self): return hash(str(self))+self.size
-    @_checkarg_numeric
-    def __cmp__(self,n): return cmp(hash(self),hash(n))
+    #@_checkarg_numeric
+    #def __cmp__(self,n): return cmp(hash(self),hash(n))
 
     # An expression defaults to False, and only bit1 will return True.
-    def __nonzero__(self): return False
+    # __nonzero__ for python2, __bool__ for python3
+    def __nonzero__(self): return self.__bool__()
+    def __bool__(self): return False
 
     @_checkarg_numeric
     def __eq__(self,n):
-        if exp.__cmp__(self,n)==0: return bit1
+        if hash(self)==hash(n): return bit1
         return oper('==',self,n)
     @_checkarg_numeric
     def __ne__(self,n):
-        if exp.__cmp__(self,n)==0: return bit0
+        if hash(self)==hash(n): return bit0
         return oper('!=',self,n)
     @_checkarg_numeric
     def __lt__(self,n):
-        if exp.__cmp__(self,n)==0: return bit0
+        if hash(self)==hash(n): return bit0
         return oper('<',self,n)
     @_checkarg_numeric
     def __le__(self,n):
-        if exp.__cmp__(self,n)==0: return bit1
+        if hash(self)==hash(n): return bit1
         return oper('<=',self,n)
     @_checkarg_numeric
     def __ge__(self,n):
-        if exp.__cmp__(self,n)==0: return bit1
+        if hash(self)==hash(n): return bit1
         return oper('>=',self,n)
     @_checkarg_numeric
     def __gt__(self,n):
-        if exp.__cmp__(self,n)==0: return bit0
+        if hash(self)==hash(n): return bit0
         return oper('>',self,n)
 
     def to_smtlib(self,solver=None):
@@ -264,7 +277,7 @@ class exp(object):
 
 class top(exp):
     _is_def   = 0
-
+    __hash__ = exp.__hash__
     def depth(self):
         return float('inf')
 
@@ -275,6 +288,7 @@ class cst(exp):
     __slots__ = ['v']
     _is_def   = True
     _is_cst   = True
+    __hash__ = exp.__hash__
 
     def __init__(self,v,size=32):
         if isinstance(v,bool): #only True/False forces size=1 (not 0/1 !)
@@ -358,8 +372,12 @@ class cst(exp):
         else : return exp.__pow__(self,n)
     @_checkarg_numeric
     def __div__(self,n):
-        if n._is_cst: return cst(int(float(self.value)/n.value),self.size)
+        if n._is_cst: return cst(self.value//n.value,self.size)
         else : return exp.__div__(self,n)
+    @_checkarg_numeric
+    def __truediv__(self,n):
+        if n._is_cst: return cst(self.value//n.value,self.size)
+        else : return exp.__truediv__(self,n)
     @_checkarg_numeric
     def __mod__(self,n):
         if n._is_cst: return cst(self.value%n.value,self.size)
@@ -412,7 +430,9 @@ class cst(exp):
     def __rxor__(self,n): return n^self
 
     # the only atom that is considered True is the cst(1,1) (ie bit1 below)
-    def __nonzero__(self):
+    # __nonzero__ for python2, __bool__ for python3
+    def __nonzero__(self): return self.__bool__()
+    def __bool__(self):
         if self.size==1 and self.v==1: return True
         else: return False
 
@@ -451,9 +471,11 @@ class cst(exp):
 
 bit0 = cst(0,1)
 bit1 = cst(1,1)
+assert bool(bit1)
 
 class sym(cst):
     __slots__ = ['ref']
+    __hash__ = cst.__hash__
 
     def __init__(self,ref,v,size=32):
         self.ref = ref
@@ -467,6 +489,7 @@ class sym(cst):
 #---------------------------------
 class cfp(exp):
     __slots__ = ['v']
+    __hash__ = exp.__hash__
     _is_def   = True
     _is_cst   = True
 
@@ -518,6 +541,10 @@ class cfp(exp):
     def __div__(self,n):
         if n._is_cst: return cfp(self.v/n.value,self.size)
         else : return exp.__div__(self,n)
+    @_checkarg_numeric
+    def __truediv__(self,n):
+        if n._is_cst: return cfp(self.v/n.value,self.size)
+        else : return exp.__truediv__(self,n)
 
     @_checkarg_numeric
     def __radd__(self,n): return n+self
@@ -568,6 +595,7 @@ class cfp(exp):
 #------------------------------------------------------------------------------
 class reg(exp):
     __slots__ = ['ref','type','_subrefs', '__protect']
+    __hash__ = exp.__hash__
     _is_def   = True
     _is_reg   = True
 
@@ -594,7 +622,7 @@ class reg(exp):
 
     def __setattr__(self,a,v):
         if a is 'size' and self.__protect is True:
-            raise AttributeError,'protected attribute'
+            raise AttributeError('protected attribute')
         exp.__setattr__(self,a,v)
 
     #howto pickle/unpickle reg objects:
@@ -642,6 +670,7 @@ is_reg_other = regtype(regtype.OTHER)
 #------------------------------------------------------------------------------
 class ext(reg):
     _is_ext = True
+    __hash__ = reg.__hash__
 
     def __init__(self,refname,**kargs):
         self.ref = refname
@@ -665,12 +694,12 @@ class ext(reg):
     def stub(cls,ref):
         try:
             return cls.stubs[ref]
-        except AttributeError,KeyError:
+        except (AttributeError,KeyError):
             logger.info('no stub defined for %s'%ref)
             return (lambda env,**kargs:None)
 
     def call(self,env,**kargs):
-        logger.info('stub %s called'%self.ref)
+        logger.info('stub %s explicit call'%self.ref)
         if not 'size' in kargs: kargs.update(size=self.size)
         res = self.stub(self.ref)(env,**kargs)
         if res is None: return top(self.size)
@@ -678,7 +707,7 @@ class ext(reg):
 
     # used when the expression is a target used to build a block
     def __call__(self,env):
-        logger.info('stub %s called'%self.ref)
+        logger.info('stub %s implicit call'%self.ref)
         self.stub(self.ref)(env,**self._subrefs)
 ##
 
@@ -687,6 +716,7 @@ class ext(reg):
 #------------------------------------------------------------------------------
 class lab(ext):
     _is_lab = True
+    __hash__ = ext.__hash__
 
 #------------------------------------------------------------------------------
 # composer returns a comp object (see below) constructed with parts from low
@@ -712,6 +742,7 @@ def composer(parts):
 #------------------------------------------------------------------------------
 class comp(exp):
     __slots__ = ['smask','parts']
+    __hash__ = exp.__hash__
     _is_def   = True
     _is_cmp   = True
 
@@ -755,26 +786,28 @@ class comp(exp):
     def eval(self,env):
         res = comp(self.size)
         res.smask = self.smask[:]
-        for nk,nv in self.parts.iteritems(): res.parts[nk] = nv.eval(env)
+        for nk,nv in iter(self.parts.items()):
+            res.parts[nk] = nv.eval(env)
         # now there may be raw numeric value in enode dict, so tiddy up:
         res.restruct()
         # once simplified, it may be reduced to 1 part, so:
-        if res.parts.has_key((0,res.size)):
+        if (0,res.size) in res.parts.keys():
             res = res.parts[(0,res.size)]
         return res
 
     def copy(self):
         res = comp(self.size)
         res.smask = self.smask[:]
-        for nk,nv in self.parts.iteritems(): res.parts[nk] = nv
+        for nk,nv in iter(self.parts.items()):
+            res.parts[nk] = nv
         res.sf = self.sf
         return res
 
     def simplify(self):
-        for nk,nv in self.parts.iteritems():
+        for nk,nv in iter(self.parts.items()):
             self.parts[nk] = nv.simplify()
         self.restruct()
-        if self.parts.has_key((0,self.size)):
+        if (0,self.size) in self.parts.keys():
             return self.parts[(0,self.size)]
         else:
             return self
@@ -784,7 +817,8 @@ class comp(exp):
         start = i.start or 0
         stop  = i.stop or self.size
         # see if the slice is exactly in the compound set:
-        if self.parts.has_key((start,stop)): return self.parts[(start,stop)]
+        if (start,stop) in self.parts.keys():
+            return self.parts[(start,stop)]
         if start==0 and stop==self.size: return self.copy()
         l = stop-start
         res = comp(l)
@@ -807,7 +841,7 @@ class comp(exp):
                 start += d
         res.restruct()
         if len(res.parts.keys())==0: return slicer(self,start,stop-start)
-        if len(res.parts.keys())==1: return res.parts.values()[0]
+        if len(res.parts.keys())==1: return list(res.parts.values())[0]
         return res
     ##
 
@@ -816,7 +850,7 @@ class comp(exp):
         sta = i.start or 0
         sto = i.stop or self.size
         l = sto-sta
-        if v.size <> l : raise ValueError,'size mismatch'
+        if v.size != l : raise ValueError('size mismatch')
         # make cmp always flat:
         if v._is_cmp:
             for vp,vv in v.parts.items():
@@ -824,7 +858,7 @@ class comp(exp):
                 self[sta+vsta:sta+vsto] = vv
         else:
             # see if the slice is exactly in the compound set:
-            if self.parts.has_key((sta,sto)):
+            if (sta,sto) in self.parts.keys():
                 self.parts[(sta,sto)] = v
             else:
                 self.parts[(sta,sto)] = v
@@ -851,9 +885,8 @@ class comp(exp):
 
     def __iter__(self):
         # gather cst as possible:
-        rcmp = lambda x,y: cmp(x[0],y[0])
-        part = self.parts.keys()
-        part.sort(rcmp)
+        part = list(self.parts.keys())
+        part.sort(key=itemgetter(0))
         cur = 0
         for p in part:
             assert p[0]==cur
@@ -864,9 +897,8 @@ class comp(exp):
     # to minimize the number of parts.
     def restruct(self):
         # gather cst as possible:
-        rcmp = lambda x,y: cmp(x[0],y[0])
-        part = self.parts.keys()
-        part.sort(rcmp)
+        part = list(self.parts.keys())
+        part.sort(key=itemgetter(0))
         for i in range(len(part)-1):
             ra = part[i]
             rb = part[i+1]
@@ -902,6 +934,7 @@ class comp(exp):
 #------------------------------------------------------------------------------
 class mem(exp):
     __slots__ = ['a', 'mods']
+    __hash__ = exp.__hash__
     _is_def   = True
     _is_mem   = True
 
@@ -929,6 +962,10 @@ class mem(exp):
 
     def simplify(self):
         self.a.simplify()
+        if self.a.base._is_vec:
+            seg,disp = self.a.seg,self.a.disp
+            v = vec([mem(a,self.size,seg,disp,mods=self.mods) for a in self.a.base.l])
+            return v if self.a.base._is_def else vecw(v)
         return self
 
     def addr(self,env):
@@ -941,6 +978,7 @@ class mem(exp):
 #------------------------------------------------------------------------------
 class ptr(exp):
     __slots__ = ['base','disp','seg']
+    __hash__ = exp.__hash__
     _is_def   = True
     _is_ptr   = True
 
@@ -1001,7 +1039,7 @@ class ptr(exp):
 # slicer is slc class wrapper that deals with slicing the entire expression
 #------------------------------------------------------------------------------
 def slicer(x,pos,size):
-    if not isinstance(x,exp): raise TypeError,x
+    if not isinstance(x,exp): raise TypeError(x)
     if not x._is_def: return top(size)
     if pos==0 and size==x.size:
         return x
@@ -1024,7 +1062,7 @@ class slc(exp):
     _is_slc   = True
 
     def __init__(self,x,pos,size,ref=None):
-        if not isinstance(pos,(int,long)): raise TypeError,pos
+        if not isinstance(pos,IntType): raise TypeError(pos)
         if isinstance(x,slc):
             res = x[pos:pos+size]
             x,pos = res.x,res.pos
@@ -1055,7 +1093,7 @@ class slc(exp):
 
     def __setattr__(self,a,v):
         if a is 'size' and self.__protect is True:
-            raise AttributeError,'protected attribute'
+            raise AttributeError('protected attribute')
         exp.__setattr__(self,a,v)
 
     def __str__(self):
@@ -1084,12 +1122,15 @@ class slc(exp):
             if rst==0:
                 a = ptr(self.x.a.base,self.x.a.seg,self.x.a.disp+off)
                 return mem(a,self.size)
-        if self.x._is_eqn and self.x.op.type==2:
+        if self.x._is_eqn and (self.x.op.type==2 or
+                              (self.x.op.symbol in '+-' and self.pos==0)):
             r = self.x.r[self.pos:self.pos+self.size]
             if self.x.op.unary:
                 return self.x.op(r)
             l = self.x.l[self.pos:self.pos+self.size]
             return self.x.op(l,r)
+        if self.x._is_vec:
+            return vec([x[self.pos:self.pos+self.size] for x in self.x.l])
         else:
             return self
 
@@ -1131,13 +1172,14 @@ class slc(exp):
 #------------------------------------------------------------------------------
 class tst(exp):
     __slots__ = ['tst','l','r']
+    __hash__ = exp.__hash__
     _is_def   = True
     _is_tst   = True
 
     def __init__(self,t,l,r):
         if t is True or t is False: t=cst(t,1)
         self.tst = t   # the expression to test, probably a 'op' expressions.
-        if l.size<>r.size: raise ValueError,(l,r)
+        if l.size!=r.size: raise ValueError((l,r))
         self.l  = l    # true (tst evals to val)
         self.r  = r    # false
         self.size = self.l.size
@@ -1205,6 +1247,7 @@ def oper(opsym,l,r=None):
 #------------------------------------------------------------------------------
 class op(exp):
     __slots__ = ['op','l','r','prop']
+    __hash__ = exp.__hash__
     _is_def   = True
     _is_eqn   = True
 
@@ -1212,8 +1255,8 @@ class op(exp):
         self.op = _operator(op)
         self.prop = self.op.type
         if self.prop<4:
-            if l.size <> r.size:
-                raise ValueError("Size mismatch %d <> %d"%(l.size,r.size))
+            if l.size != r.size:
+                raise ValueError("Size mismatch %d != %d"%(l.size,r.size))
         self.l  = l
         self.r  = r
         self.size = self.l.size
@@ -1266,8 +1309,8 @@ class op(exp):
                     l,r = r,l
             # lexical ordering of symbols:
             elif not r._is_cst:
-                lh = ''.join(map(str,symbols_of(l)))
-                rh = ''.join(map(str,symbols_of(r)))
+                lh = ''.join([str(x) for x in symbols_of(l)])
+                rh = ''.join([str(x) for x in symbols_of(r)])
                 if lh>rh:
                     if minus:
                         l,r = (-r),l
@@ -1288,6 +1331,7 @@ class op(exp):
 #------------------------------------------------------------------------------
 class uop(exp):
     __slots__ = ['op','r','prop']
+    __hash__ = exp.__hash__
     _is_def   = True
     _is_eqn   = True
 
@@ -1343,7 +1387,7 @@ OP_ARITH = {'+'  : operator.add,
             '-'  : operator.sub,
             '*'  : operator.mul,
             '**' : operator.pow,
-            '/'  : operator.div,
+            '/'  : operator.truediv,
             '%'  : operator.mod,
            }
 OP_LOGIC = {'&'  : operator.and_,
@@ -1419,10 +1463,10 @@ def symbols_of(e):
     if e._is_mem: return symbols_of(e.a.base)
     if e._is_ptr: return symbols_of(e.base)
     if e._is_eqn: return symbols_of(e.l)+symbols_of(e.r)
-    if e._is_tst: return sum(map(symbols_of,(e.tst,e.l,e.r)),[])
+    if e._is_tst: return sum([symbols_of(x) for x in (e.tst,e.l,e.r)],[])
     if e._is_slc: return symbols_of(e.x)
-    if e._is_cmp: return sum(map(symbols_of,e.parts.itervalues()),[])
-    if e._is_vec: return sum(map(symbols_of,e.l),[])
+    if e._is_cmp: return sum([symbols_of(x) for x in e.parts.values()],[])
+    if e._is_vec: return sum([symbols_of(x) for x in e.l],[])
     if not e._is_def: return []
     raise ValueError(e)
 
@@ -1433,10 +1477,10 @@ def locations_of(e):
     if e._is_mem: return [e]
     if e._is_ptr: return [e]
     if e._is_eqn: return locations_of(e.l)+locations_of(e.r)
-    if e._is_tst: return sum(map(locations_of,(e.tst,e.l,e.r)),[])
+    if e._is_tst: return sum([locations_of(x) for x in (e.tst,e.l,e.r)],[])
     if e._is_slc: return locations_of(e.x)
-    if e._is_cmp: return sum(map(locations_of,e.parts.itervalues()),[])
-    if e._is_vec: return sum(map(locations_of,e.l),[])
+    if e._is_cmp: return sum([locations_of(x) for x in e.parts.values()],[])
+    if e._is_vec: return sum([locations_of(x) for x in e.l],[])
     if not e._is_def: return []
     raise ValueError(e)
 
@@ -1450,7 +1494,7 @@ def eqn1_helpers(e):
     if e.r._is_cst:
         return e.op(e.r)
     if e.r._is_vec:
-        return vec(map(e.op,e.r.l))
+        return vec([e.op(x) for x in e.r.l])
     if e.r._is_eqn:
         if e.r.op.unary:
             ss = e.op*e.r.op
@@ -1552,6 +1596,7 @@ def extract_offset(e):
 # -----------------------------------------------------
 class vec(exp):
     __slots__ = ['l']
+    __hash__ = exp.__hash__
     _is_def = True
     _is_vec = True
 
@@ -1562,12 +1607,12 @@ class vec(exp):
         for e in self.l:
             if e.size>size: size=e.size
         if any([e.size!=size for e in self.l]):
-            raise ValueError,'size mismatch'
+            raise ValueError('size mismatch')
         self.size = size
         self.sf = any([e.sf for e in self.l])
 
     def __str__(self):
-        s = ','.join(map(str,self.l))
+        s = ','.join([str(x) for x in self.l])
         return '[%s]'%(s)
 
     def toks(self,**kargs):
@@ -1597,7 +1642,7 @@ class vec(exp):
             return self.l[0]
         if widening:
             return vecw(self)
-        cl = map(complexity,self.l)
+        cl = [complexity(x) for x in self.l]
         if sum(cl,0.)>op.threshold:
             return top(self.size)
         return self
@@ -1623,11 +1668,14 @@ class vec(exp):
     def __contains__(self,x):
         return (x in self.l)
 
-    def __nonzero__(self):
-        return all([e.__nonzero__() for e in self.l])
+    # __nonzero__ for python2, __bool__ for python3
+    def __nonzero__(self): return self.__bool__()
+    def __bool__(self):
+        return all([e.__bool__() for e in self.l])
 
 class vecw(top):
     __slots__ = ['l']
+    __hash__ = top.__hash__
     _is_def = 0
     _is_vec = True
 
@@ -1637,7 +1685,7 @@ class vecw(top):
         self.sf = False
 
     def __str__(self):
-        s = ','.join(map(str,self.l))
+        s = ','.join([str(x) for x in self.l])
         return '[%s, ...]'%(s)
 
     def toks(self,**kargs):

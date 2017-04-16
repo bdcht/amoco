@@ -107,6 +107,10 @@ def getreg(i,size=32):
 def st(num):
   return is_reg_other(reg('st%d'%num,80))
 
+# fpu state
+fpu_control = reg('fpu_control',16)
+fpu_status  = reg('fpu_status',16)
+
 def cr(num):
   return is_reg_other(reg('cr%d'%num,64))
 def dr(num):

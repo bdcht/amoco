@@ -11,7 +11,7 @@ from amoco.logger import Log
 logger = Log(__name__)
 #logger.level = 10
 
-from amoco.arch.core import instruction
+from amoco.arch.sparc.cpu_v8 import instruction_sparc as instruction
 from amoco.arch.sparc import env
 
 #------------------------------------------------------------------------------
@@ -115,7 +115,7 @@ def test_parser(cls):
         try:
             res = raw_input('%s>'%cls.__name__)
             E = cls.instr.parseString(res,True)
-            print E
+            print(E)
         except pp.ParseException:
             logger.error("ParseException")
             return E

@@ -58,13 +58,13 @@ def oprel(i):
     return [(Token.Constant,'.%+d'%i.operands[0].value)]
 
 # main intel formats:
-format_intel_default = (mnemo,opers)
+format_intel_default = (pfx,mnemo,opers)
 
-format_intel_ptr = (mnemo,opers)
+format_intel_ptr = (pfx,mnemo,opers)
 
 format_intel_str = (pfx,mnemo,opers)
 
-format_intel_rel = (mnemo,oprel)
+format_intel_rel = (pfx,mnemo,oprel)
 
 # intel formats:
 IA32e_Intel_formats = {
@@ -123,7 +123,7 @@ def opers_att(i):
         elif op._is_reg:
             s.append((Token.Register,'%{}'.format(op)))
         else:
-            raise ValueError,op
+            raise(ValueError,op)
         s.append((Token.Literal,', '))
     if len(s)>0: s.pop()
     return s
@@ -139,13 +139,13 @@ def oprel_att(i):
     return [(Token.Constant,'$.%+d'%i.operands[0].value)]
 
 # main at&t formats:
-format_att_default = (mnemo_att,opers_att)
+format_att_default = (pfx,mnemo_att,opers_att)
 
-format_att_ptr = (mnemo_att,opers_att)
+format_att_ptr = (pfx,mnemo_att,opers_att)
 
 format_att_str = (pfx,mnemo_att,opers_att)
 
-format_att_rel = (mnemo_att,oprel_att)
+format_att_rel = (pfx,mnemo_att,oprel_att)
 
 # formats:
 IA32e_ATT_formats = {

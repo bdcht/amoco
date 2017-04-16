@@ -1,7 +1,6 @@
 os:
   - linux
 language: python
-python: 2.7
 branches:
   only:
   - release
@@ -11,9 +10,9 @@ addons:
     - unzip
 before_install:
   - wget -q -O /tmp/z3.zip https://github.com/Z3Prover/bin/raw/master/releases/z3-4.4.0-x64-ubuntu-14.04.zip
-  - mkdir z3
-  - unzip -q -d z3 -j /tmp/z3.zip
-  - export PYTHONPATH=$PYTHONPATH:$(pwd)/z3
+  - mkdir /tmp/z3
+  - unzip -q -d /tmp/z3 -j /tmp/z3.zip
+  - export PYTHONPATH=$PYTHONPATH:/tmp/z3
 install:
   - python setup.py install
   - pip install tox
@@ -22,3 +21,4 @@ script:
 env:
   - TOXENV=py27
   - TOXENV=py27-full
+  - TOXENV=py3

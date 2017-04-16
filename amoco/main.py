@@ -1,5 +1,15 @@
 # -*- coding: utf-8 -*-
 
+"""
+main.py
+=======
+The main module of amoco implements various strategies to perform CFG recovery.
+
+.. inheritance-diagram:: main
+   :parts: 1
+
+"""
+
 # This code is part of Amoco
 # Copyright (C) 2006-2014 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
@@ -14,19 +24,35 @@ from amoco import system
 from amoco.arch.core import INSTRUCTION_TYPES
 
 # -----------------------------------------------------------------------------
-# linear sweep based analysis:
-# fast & dumb way of disassembling prog,
-# but provides iterblocks() for all parent classes.
 class lsweep(object):
+    """linear sweep based analysis: fast & dumb way of disassembling prog,
+    but provides :meth:`iterblocks` for all parent classes.
+
+    Arguments:
+        prog: the :class:`system.core.CoreExec` inherited program's instance
+              to analyze.
+
+    Attributes:
+        prog: the :class:`system.core.CoreExec` inherited program's instance
+              to analyze.
+        G (graph): the placeholder for the recovered :class:`cfg.graph`.
+    """
     __slots__ = ['prog','G']
     def __init__(self,prog):
         self.prog = prog
         self.G = cfg.graph()
 
-    # iterator over linearly sweeped instructions
-    # starting at address loc (defaults to entrypoint).
-    # If not None, loc argument should be a cst object.
     def sequence(self,loc=None):
+        """iterator over linearly sweeped instructions.
+
+        Arguments:
+            loc (Optional[cst]): the address to start disassembling
+                (defaults to the program's entrypoint).
+
+        Yields:
+            instructions from given address, until a non-instruction
+            byte sequence is reached.
+        """
         p = self.prog
         if loc is None:
             try:
@@ -40,10 +66,20 @@ class lsweep(object):
             loc += i.length
             yield i
 
-    # iterator over basic blocks using the instruction.type attribute
-    # to detect the end of block (type_control_flow). The returned block
-    # object is enhanced with plateform-specific infos (see block.misc).
     def iterblocks(self,loc=None):
+        """iterator over basic blocks. The :attr:`instruction.type`
+        attribute is used to detect the end of a block (type_control_flow).
+        The returned :class:`block` object is enhanced with plateform-specific
+        informations (see :attr:`block.misc`).
+
+        Arguments:
+            loc (Optional[cst]): the address of the first block
+                (defaults to the program's entrypoint).
+
+        Yields:
+            linear sweeped blocks of instructions from given address,
+            until :meth:`sequence` stops.
+        """
         inblock = (lambda i: INSTRUCTION_TYPES[i.type]!='control_flow')
         l = []
         seq = self.sequence(loc)
@@ -59,7 +95,7 @@ class lsweep(object):
                     try:
                         l.append(next(seq))
                     except StopIteration:
-                        logger.warning('no instruction in delay slot')
+                        logger.warning(u'no instruction in delay slot')
                 # create block instance:
                 b = code.block(l)
                 b.misc['cfi'] = i
@@ -72,9 +108,10 @@ class lsweep(object):
             b=self.prog.codehelper(block=b)
             yield b
 
-    # getblock is a handy wrapper of iterblocks to
-    # return the block located at address val provided as Python Int.
     def getblock(self,val):
+        """getblock is just a wrapper of iterblocks to
+        return the first block located at a *Python Integer* provided address.
+        """
         p = self.prog
         target = p.cpu.cst(val,p.cpu.PC().size)
         ib = self.iterblocks(target)
@@ -82,10 +119,37 @@ class lsweep(object):
         ib.close()
         return b
 
-    # poorman's cfg builder that assumes calls return to next block.
-    # and link blocks based on direct concrete targets without computing
-    # the block semantics (map). => Fast but possibly wrong...
+    def functions(self):
+        """provides the list of functions recovered so far.
+        """
+        F = []
+        for c in self.G.C:
+            f = c.sV[0].data.misc['func']
+            if f: F.append(f)
+        return F
+
+    def signature(self,func=None):
+        """provides the signature of a given function,
+        or the entire signature string.
+        """
+        if func is not None:
+            return cfg.signature(func.cfg)
+        return self.G.signature()
+
+    def score(self,func=None):
+        """a measure for the *complexity* of the program.
+        For the moment it is associated only with the
+        signature length.
+        """
+        sig = self.signature(func)
+        return len(sig)
+
     def getcfg(self,loc=None):
+        """the most basic cfg recovery method: it assumes that calls always
+        return to the following block, and links blocks based on direct
+        concrete targets without computing any symbolic map.
+        Its *fast* but probably very wrong...
+        """
         from collections import OrderedDict,defaultdict
         D = OrderedDict()
         C = defaultdict(lambda: [])
@@ -158,15 +222,17 @@ class lsweep(object):
         return self.G
 
 # -----------------------------------------------------------------------------
-class _target(object):
-    ''' Candidate for extending a CFG.
 
-    A _target is an internal object used during CFG reconstruction to point
-    to addresses that are candidates for extending the CFG with either new edge
-    or new basic block.
+class _target(object):
+    ''' Candidate for extending a :class:`cfg.graph` under construction.
+
+    A :class:`_target` is an internal object used during cfg recovery to point
+    to addresses that are candidates for extending the cfg with a new link or
+    a new block.
 
     Attributes:
-       cst (exp): the targeted address expression
+       cst (exp): the targeted address expression, usually a constant but can
+                  be an instance of any :mod:`cas.expressions` class.
        parent (node): the basic block that targets this address
        econd (exp): the conditional expression by which the execution would
                     proceed from parent to the basic block at this address
@@ -178,6 +244,9 @@ class _target(object):
         self.dirty = False
 
     def expand(self):
+        """Returns the list of constant (or external) expressions associated
+        with this target.
+        """
         x=self.cst
         if x._is_ext:
             return [self]
@@ -195,6 +264,9 @@ class _target(object):
         return []
 
     def select(self,side):
+        """Returns the target of the selected ``True`` or ``False`` *side* of
+        the current conditional branch target expression.
+        """
         x=self.cst
         assert x._is_tst
         v = x.l if side is True else x.r
@@ -214,10 +286,26 @@ class _target(object):
 
 
 # -----------------------------------------------------------------------------
-# fast forward based analysis:
-# follows PC expression evaluated within a single block only.
-# exploration goes forward until expressions are not cst.
+
 class fforward(lsweep):
+    """The fast forward based analysis follows the :meth:`PC` expression evaluated
+    within a single block only. Exploration goes forward until expressions
+    are not :class:`~cas.expressions.cst`. This class is a base for most of the
+    main analysis classes.
+
+    Attributes:
+        policy (dict): holds various useful parameters for the analysis.
+
+                   * 'depth-first' : walk the graph with *depth-first* policy if True.
+                   * 'branch-lazy' : proceed with linear sweep whenever the target \
+                           expression does not evaluate to a constant address.
+                   * 'frame-aliasing' : assume no pointer aliasing if False.
+                   * 'complexity' : limit expressions complexity.
+
+        spool (list[_target]): the list of current targets to extend the
+            :class:`cfg.graph`.
+
+    """
     policy = {'depth-first': True, 'branch-lazy': True}
 
     def init_spool(self,loc):
@@ -234,8 +322,19 @@ class fforward(lsweep):
         logger.info(err)
         vtx.data.misc['tbc'] = 1
 
-    # compute expression of target address (PC) in node.data.map
     def get_targets(self,node,parent):
+        """Computes expression of target address in the given node, based
+        on its address and the architecture's program counter (PC).
+
+        Arguments:
+            node: the current node, not yet added to the cfg.
+            parent: the parent node in the cfg that has targeted the
+                current node. (Unused by :class:`fforward` but required as
+                a generic API for parent classes).
+
+        Returns:
+            :class:`_target`: the evaluated PC expression.
+        """
         blk = node.data
         m = code.mapper()
         pc = self.prog.cpu.PC()
@@ -244,12 +343,21 @@ class fforward(lsweep):
         return _target(pc,node).expand()
 
     def add_root_node(self,vtx):
+        """The given vertex node (vtx) is added as a root node of a new connected
+        component in the cfg referenced by :attr:`self.G`.
+        """
         vtx.data.misc[code.tag.FUNC_START]=1
         vtx.data.misc['callers'] = []
         self.G.add_vertex(vtx)
         logger.verbose('root node %s added'%vtx.name)
 
     def add_call_node(self,vtx,parent,econd):
+        """When a (parent) block performs a call, the (vtx) targeted block
+        will not be linked with its parent but rather will possibly start a
+        new connected component of the cfg. When the component is declared
+        as a function, the parent block is linked to a new node that embeds
+        the function instead.
+        """
         b = vtx.data
         callers = b.misc['callers']
         if callers:
@@ -273,9 +381,19 @@ class fforward(lsweep):
         return vtx
 
     def check_func(self,vtx):
+        """check if vtx node creates a function. In the fforward method
+        this method does nothing.
+        """
         pass
 
     def check_ext_target(self,t):
+        """check if the target is the address of an external function.
+        If True, the :class:`code.xfunc` node is linked to the parent
+        and the spool is updated with this node.
+
+        Returns:
+            `True` if target is external, `False` otherwise.
+        """
         if t.cst is None: return False
         if t.cst._is_ext:
             b = code.xfunc(t.cst)
@@ -288,6 +406,16 @@ class fforward(lsweep):
         return False
 
     def getcfg(self,loc=None,debug=False):
+        """The getcfg method is the cfg recovery method of any analysis
+        class.
+
+        Arguments:
+            loc (Optional[cst]): the address to start the cfg recovery
+                (defaults to the program's entrypoint).
+            debug (bool): A python debugger :func:`set_trace()` call is
+                emitted at every node added to the cfg.
+                (Default to False.)
+        """
         if debug: import pdb
         try:
             for x in self.itercfg(loc):
@@ -296,10 +424,18 @@ class fforward(lsweep):
             if debug: pdb.set_trace()
         return self.G
 
-    # generic 'forward' analysis explorer.
-    # default explore policy is depth-first search (use policy=0 for breadth-first search.)
-    # return instructions are not followed (see lbackward analysis).
     def itercfg(self,loc=None):
+        """A generic *forward* analysis explorer. The default policy
+        is *depth-first* search (use policy=0 for breadth-first search.)
+        The ret instructions are not followed (see lbackward analysis).
+
+        Arguments:
+            loc (Optional[cst]): the address to start the cfg recovery
+                (defaults to the program's entrypoint).
+
+        Yields:
+            :class:`cfg.node`: every nodes added to the graph.
+        """
         G = self.G
         # spool is the list of (target,parent) addresses to be analysed
         self.init_spool(loc)
@@ -321,13 +457,13 @@ class fforward(lsweep):
                 # otherwise we add the new (parent,vtx) edge.
                 if parent is None:
                     self.add_root_node(vtx)
-                elif parent.data.misc[code.tag.FUNC_CALL]>0:
+                elif parent.data.misc[code.tag.FUNC_CALL]:
                     vtx = self.add_call_node(vtx,parent,econd)
                 else:
                     e_ = cfg.link(parent,vtx,data=econd)
                     e  = G.add_edge(e_)
                     if e is e_:
-                        logger.verbose('edge %s added'%e)
+                        logger.verbose(u'edge %s added'%e)
                 # now we try to populate spool with target addresses of current block:
                 if do_update:
                     self.update_spool(vtx,parent)
@@ -335,18 +471,34 @@ class fforward(lsweep):
                 yield vtx
                 if (not do_update or not lazy or
                    vtx.data.misc[code.tag.FUNC_END]): break
-                logger.verbose("lsweep fallback at %s"%vtx.data.name)
+                logger.verbose(u"lsweep fallback at %s"%vtx.data.name)
                 parent = vtx
                 econd  = None
 
 # -----------------------------------------------------------------------------
-# link forward based analysis:
-# follows PC expression evaluated with parent block mapping.
-# Exploration goes forward until expressions are not cst.
+
 class lforward(fforward):
+    """link forward based analysis:
+    follows PC expression evaluated with parent block mapping.
+    Exploration goes forward until expressions are not cst.
+    """
     policy = {'depth-first': True, 'branch-lazy': False}
 
     def get_targets(self,node,parent):
+        """Computes expression of target address in the given node, based
+        on its parent address and symbolic map, using the architecture's
+        program counter (PC).
+
+        Arguments:
+            node: the current node, not yet added to the cfg.
+            parent: the parent node in the cfg that has targeted the
+                current node.
+
+        Returns:
+            :class:`_target`:
+               the PC expression evaluated from the parent
+               symbolic map and the current node's map.
+        """
         blk = node.data
         pc = self.prog.cpu.PC()
         if parent is None:
@@ -359,19 +511,37 @@ class lforward(fforward):
 
 
 # -----------------------------------------------------------------------------
-# fast backward based analysis:
-# a generalisation of link forward where pc is evaluated backwardly by taking
-# the first-parent-node path until no parent exists (entry of a function)
-# fbackward is the first class to instanciate code.func objects.
-# The 'frame_aliasing' policy indicates wether memory aliasing of pc expression
-# outside of the function frame can occur or if the frame is assumed to be clean.
-# Default frame-aliasing is set to False (assume no aliasing) otherwise any
-# function that writes in memory results in potential aliasing (say for an arch
-# that uses a memory stack for storing return addresses).
 class fbackward(lforward):
+    """fast backward based analysis:
+    a generalisation of *link forward* where pc is evaluated backwardly by taking
+    the *first-parent-node* path until no parent exists (entry of a function).
+    *fbackward* is the first class to instanciate :class:`code.func` objects.
+
+    Note:
+      The 'frame_aliasing' policy indicates wether memory aliasing of pc expression
+      outside of the function frame can occur or if the frame is assumed to be clean.
+      Default frame-aliasing is set to False (assume no aliasing) otherwise any
+      function that writes in memory results in potential aliasing (say for an arch
+      that uses a memory stack for storing return addresses).
+    """
     policy = {'depth-first': True, 'branch-lazy': False, 'frame-aliasing':False}
 
     def get_targets(self,node,parent):
+        """Computes expression of target address in the given node, based
+        on backward evaluation of all *first-parent* symbolic maps, until the
+        program counter (PC) expression is a constant or the function entry block
+        is reached.
+
+        Arguments:
+            node: the current node, not yet added to the cfg.
+            parent: the parent node in the cfg that has targeted the
+                current node.
+
+        Returns:
+            :class:`_target`:
+              the PC expression evaluated from composition of
+              *first-parent-path* symbolic maps.
+        """
         pc = self.prog.cpu.PC()
         n = node
         mpc = pc
@@ -412,14 +582,22 @@ class fbackward(lforward):
 
 
 # -----------------------------------------------------------------------------
-# link backward based analysis:
-# a generalisation of link forward where pc is evaluated by considering all paths
-# that link to the current node.
 class lbackward(fforward):
+    """link backward based analysis:
+    a generalisation of *fast forward* where pc is evaluated by considering
+    **all** paths that link to the current node.
+
+    Note:
+      This is currently the most advanced stategy for performing cfg recovery
+      in amoco.
+    """
     policy = {'depth-first': False, 'branch-lazy': False, 'frame-aliasing':False,
               'complexity': 30}
 
     def check_func(self,node):
+        """check if vtx node creates a function. In the fforward method
+        this method does nothing.
+        """
         if node is None: return
         for t in self.spool:
             if t.parent in node.c:
@@ -438,16 +616,14 @@ class lbackward(fforward):
         if len(T)>0:
             logger.verbose('extending cfg of %s (new target found)'%f)
             for t in T:
-                for k,v in f.misc['heads'].iteritems():
+                for k,v in f.misc['heads'].items():
                     if v(pc)==t.cst: t.parent = k
         else:
             logger.info('lbackward: function %s done'%f)
             f.map = m
-            self.prog.codehelper(func=f)
+            #self.prog.codehelper(func=f)
             mpc = f.map(pc)
             roots = f.view.layout.layers[0]
-            if len(roots)>1:
-                logger.verbose('lbackward: multiple entries into function %s ?!'%f)
             assert len(roots)>0
             nroot = roots[0]
             nroot.data.misc['func'] = f
@@ -456,6 +632,7 @@ class lbackward(fforward):
             except (IndexError,TypeError,AttributeError):
                 fsym = 'f'
             f.name = "%s:%s"%(fsym,nroot.name)
+            self.prog.codehelper(func=f)
             for cn in nroot.data.misc['callers']:
                 cnpc = cn.data.map(mpc)
                 fn = cfg.node(f)
@@ -466,6 +643,19 @@ class lbackward(fforward):
         self.spool.extend(T)
 
     def get_targets(self,node,parent):
+        """Computes expression of target address in the given node, based
+        on fast-forward evaluation taking into account the expressions
+        complexity and frame-aliasing parameters.
+
+        Arguments:
+            node: the current node, not yet added to the cfg.
+            parent: the parent node in the cfg that has targeted the
+                current node.
+
+        Returns:
+            :class:`_target`:
+              the PC expression evaluated from current node map.
+        """
         pc = self.prog.cpu.PC()
         alf = code.mapper.assume_no_aliasing
         cxl = code.op.threshold

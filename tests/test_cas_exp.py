@@ -1,5 +1,5 @@
 import pytest
-
+import pickle
 from amoco.cas.expressions import *
 
 def test_cst():
@@ -83,10 +83,10 @@ def test_op(a,b):
     base,offset = extract_offset(e)
     assert offset == -1
     assert e.r._is_cst
-    assert e.r.v == 0xffffffffL
+    assert e.r.v == 0xffffffff
     assert e.r.sf == True
 
-def test_op_slc(a,b):
+def test_op1_slc(a,b):
     e = a^b
     assert e[8:16] == a[8:16]^b[8:16]
     e = composer([a[0:8],b[0:8]])
@@ -94,6 +94,14 @@ def test_op_slc(a,b):
     assert x._is_slc
     x = x.simplify()
     assert x._is_reg and x==a[0:8]
+
+def test_op2_slc(a,b):
+    x = (a**b)
+    assert x.size == 64
+    y = x[0:32]
+    assert y.size == 32
+    z = y.simplify()
+    assert z._is_slc and z==y
 
 def test_ptr(a):
     p = ptr(a)
@@ -138,8 +146,81 @@ def test_vecw():
     assert v4.depth()==float('inf')
     assert v3[8:16].l == v4[8:16].l
 
+def test_mem_vec():
+    x = [cst(n) for n in range(5)]
+    v1 = vec(x)
+    z = mem(v1,8)[0:4]
+    s = z.simplify()
+    assert s._is_vec
+    assert s.l[0] == mem(x[0],8)[0:4]
+
 def test_top(r):
     t = top(8)
     assert t+3 == t
     assert t^r[0:8] == t
     assert (t==3) == top(1)
+
+def pickler(obj):
+    return pickle.dumps(obj,pickle.HIGHEST_PROTOCOL)
+
+def test_pickle_cst():
+    x = cst(0x1,32)
+    p = pickler(x)
+    y = pickle.loads(p)
+    assert x==y
+
+def test_pickle_sym():
+    x = sym('one',0x1,32)
+    p = pickler(x)
+    y = pickle.loads(p)
+    assert y.ref=='one'
+    assert y.v==1
+
+def test_pickle_reg(a):
+    p = pickler(a)
+    y = pickle.loads(p)
+    assert a==y
+
+def test_pickle_ext():
+    x = ext('a',size=32)
+    p = pickler(x)
+    y = pickle.loads(p)
+    assert x==y
+
+def test_pickle_cmp(a):
+    b = cst(0x1,16)
+    p = pickler(composer([a[0:16],b]))
+    y = pickle.loads(p)
+    assert y[16:32]==b
+
+def test_pickle_mem(a):
+    p = pickler(mem(a,8))
+    y = pickle.loads(p)
+    assert y._is_mem
+    assert y.a.base==a
+
+def test_pickle_slc(a):
+    p = pickler(a[8:16])
+    y = pickle.loads(p)
+    assert a[8:16]==y
+
+def test_pickle_tst(a,b):
+    p = pickler(tst(a==b,a+b,a^b))
+    y = pickle.loads(p)
+    assert y._is_tst
+    assert y.tst == (a==b)
+    assert y.l == a+b
+    assert y.r == a^b
+
+def test_pickle_uop(a):
+    p = pickler(-a)
+    y = pickle.loads(p)
+    assert a==-y
+
+def test_pickle_vec(a,b):
+    p = pickler(vec([a,-b]))
+    y = pickle.loads(p)
+    assert y._is_vec
+    assert y.l[0] == a
+    assert y.l[1] == -b
+

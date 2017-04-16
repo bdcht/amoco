@@ -8,8 +8,8 @@
 from amoco.logger import Log
 logger = Log(__name__)
 
-from bisect import bisect_left
 
+from bisect import bisect_left
 from amoco.cas.expressions import exp,top
 
 #------------------------------------------------------------------------------
@@ -36,10 +36,14 @@ class datadiv(object):
         return len(self.val)
 
     def __repr__(self):
+        try:
+            from builtins import bytes
+        except ImportError:
+            pass
         s = repr(self.val)
         if len(s)>32:
             s=s[:32]+"..."
-            if isinstance(self.val,str): s+="'"
+            if isinstance(self.val,bytes): s+="'"
         return '<datadiv:%s>'%s
 
     def __str__(self):
@@ -162,7 +166,7 @@ class MemoryZone(object):
         self._map = []
         self.__cache = [] # speedup locate method
         if D != None and isinstance(D,dict):
-            for vaddr,data in D.iteritems():
+            for vaddr,data in iter(D.items()):
                 self.addtomap(mo(vaddr,data))
 
     def range(self):
@@ -170,7 +174,6 @@ class MemoryZone(object):
 
     def __str__(self):
         l=['<MemoryZone rel=%s :'%str(self.rel)]
-        #form = "%08x: " if not self.rel else "%+08d: "
         for z in self._map:
             l.append("\t %s"%str(z))
         return '\n'.join(l)+'>'
@@ -195,12 +198,12 @@ class MemoryZone(object):
         res = []
         i = self.locate(vaddr)
         if i is None:
-            if len(self._map)==0: return [void(l*8L)]
+            if len(self._map)==0: return [void(l*8)]
             v0 = self._map[0].vaddr
             # Don't test if (vaddr+l)<=v0 because we need the test to be
             # true if vaddr or v0 contain label/symbols
             if not (v0<(vaddr+l)): return [void(l*8)]
-            res.append(void((v0-vaddr)*8L))
+            res.append(void((v0-vaddr)*8))
             l = (vaddr+l)-v0
             vaddr = v0
             i = 0
@@ -209,14 +212,14 @@ class MemoryZone(object):
             try:
                 data,ll = self._map[i].read(vaddr,ll)
             except IndexError:
-                res.append(void(ll*8L))
-                ll=0L
+                res.append(void(ll*8))
+                ll=0
                 break
             if data is None:
                 vi = self.__cache[i]
                 if vaddr < vi:
                     l = min(vaddr+ll,vi)-vaddr
-                    data = void(l*8L)
+                    data = void(l*8)
                     ll -= l
                     i -=1
             if data is not None:
@@ -239,7 +242,6 @@ class MemoryZone(object):
     def addtomap(self,z):
         i = self.locate(z.vaddr)
         j = self.locate(z.end)
-        assert j>=i
         if j is None:
             assert i is None
             self._map.insert(0,z)
@@ -254,6 +256,7 @@ class MemoryZone(object):
             self.__update_cache()
             return
         # i!=j cases:
+        if i is not None: assert j>=i
         # delete & update every overwritten zones
         # by adjusting [i,j]:
         if z.end in self._map[j]:
@@ -327,7 +330,7 @@ class MemoryMap(object):
         return self._zones[r]._map[idx]
 
     def reference(self,address):
-        if isinstance(address,(int,long)):
+        if isinstance(address,int):
             return (None,address)
         elif isinstance(address,str):
             return (address,0)
@@ -361,11 +364,11 @@ class MemoryMap(object):
         self._zones[r].write(o,expr,deadzone)
 
     def restruct(self):
-        for z in self._zones.itervalues(): z.restruct()
+        for z in iter(self._zones.values()): z.restruct()
 
     def grep(self,pattern):
         res = []
-        for z in self._zones.values():
+        for z in iter(self._zones.values()):
             zres = z.grep(pattern)
             if z.rel is not None: zres = [z.rel+r for r in zres]
             res.extend(zres)
@@ -373,7 +376,7 @@ class MemoryMap(object):
 
 #------------------------------------------------------------------------------
 class CoreExec(object):
-    __slots__ = ['bin','cpu','mmap']
+    __slots__ = ['bin','cpu','mmap','symbols']
 
     def __init__(self,p,cpu=None):
         self.bin = p
@@ -382,6 +385,7 @@ class CoreExec(object):
         self.load_binary()
         if cpu is not None:
             cpu.ext.stubs = stubs
+        self.symbols = {}
 
     def initenv(self):
         return None
@@ -399,11 +403,11 @@ class CoreExec(object):
         maxlen = self.cpu.disassemble.maxlen
         try:
             istr = self.mmap.read(vaddr,maxlen)
-        except MemoryError,e:
+        except MemoryError as e:
             logger.verbose("vaddr %s is not mapped"%vaddr)
             raise MemoryError(e)
         else:
-            if len(istr)<=0 or not isinstance(istr[0],str):
+            if len(istr)<=0 or not isinstance(istr[0],bytes):
                 logger.verbose("failed to read instruction at %s"%vaddr)
                 return None
         i = self.cpu.disassemble(istr[0],**kargs)
@@ -437,8 +441,8 @@ stubs = defaultdict(lambda :default_hook)
 # decorator to define a stub:
 def stub(f):
     name = f.__name__
-    if f.func_doc:
-        fullname = re.findall('^fullname *: *([^ ]*)',f.func_doc)
+    if f.__doc__:
+        fullname = re.findall('^fullname *: *([^ ]*)',f.__doc__)
         if len(fullname)==1: name = fullname[0]
     stubs[name] = f
     return f
@@ -449,17 +453,15 @@ def stub_default(f):
     return f
 
 #------------------------------------------------------------------------------
-from cStringIO import StringIO
+from io import BytesIO
 
 class DataIO(object):
 
     def __init__(self, f):
-        if isinstance(f,file):
-            self.f=f
-        elif isinstance(f,str):
-            self.f=StringIO(f)
+        if isinstance(f,bytes):
+            self.f=BytesIO(f)
         else:
-            raise TypeError
+            self.f=f
 
     def __getitem__(self,i):
         self.f.seek(i.start,0)
@@ -528,7 +530,12 @@ class DataIO(object):
         try:
             return self.f.name
         except AttributeError:
-            return self.f.getvalue()
+            try:
+                from builtins import bytes
+            except ImportError:
+                pass
+            s = bytes(self.f.getvalue())
+            return '(sc-%s...)'%(''.join(["%02x"%x for x in s])[:8])
 
     filename = name
 

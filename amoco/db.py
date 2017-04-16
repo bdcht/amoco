@@ -1,163 +1,186 @@
+# -*- coding: utf-8 -*-
+
 # This code is part of Amoco
-# Copyright (C) 2014 Axel Tillequin (bdcht3@gmail.com)
+# Copyright (C) 2016 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-import importlib
+"""
+db.py
+=====
 
-from amoco.logger import Log
+This module implements all amoco's database facilities using the
+`sqlalchemy`_ package, allowing to store many analysis results and
+pickled objects.
+
+.. _sqlalchemy: http://www.sqlalchemy.org/
+
+"""
+
+from amoco.config import conf
+
+from amoco.logger import Log,logging
 logger = Log(__name__)
 
-from amoco.cas.expressions import exp
-from amoco.arch.core import instruction
-from amoco.system.core import CoreExec
-from amoco.code import mapper,block,func,xfunc
-from amoco.cfg import node,link,graph
-
-class db_core(object):
-    @staticmethod
-    def dump(self):
-        raise NotImplementedError
-    @staticmethod
-    def load(self):
-        raise NotImplementedError
-
-#------------------------------------------------------------------------------
-class db_instruction(db_core):
-
-    def __init__(self,i):
-        self.address = i.address
-        self.misc = dict(i.misc)
-        self.bytes = i.bytes
-        self.view = str(i)
-
-    def build(self,cpu):
-        i = cpu.disassemble(self.bytes)
-        i.misc.update(self.misc)
-        i.address = self.address
-        return i
-
-#------------------------------------------------------------------------------
-class db_mapper(db_core):
-
-    def __init__(self,m):
-        self.map = [(db_exp(l),db_exp(x)) for l,x in m]
-        self.conds = [db_exp(c) for c in m.conds]
-        self.view = str(m)
-
-    def build(self):
-        m = mapper()
-        for k,v in self.map:
-            m[k.build()] = v.build()
-            m.conds = [c.build() for c in self.conds]
-        return m
-
-#------------------------------------------------------------------------------
-class db_block(db_core):
-
-    def __init__(self,b):
-        self.name = b.name
-        self.misc = dict(b.misc)
-        self.instr = [db_instruction(i) for i in b.instr]
-        self.map = db_mapper(b.map)
-        self.view = str(b)
-
-    def build(self,cpu):
-        instr = [i.build(cpu) for i in self.instr]
-        b = block(instr)
-        b.map = self.map.build()
-        b.misc.update(self.misc)
-        return b
-
-#------------------------------------------------------------------------------
-class db_exp(db_core):
-
-    def __init__(self,x):
-        self.view = x.dumps()
-
-    def build(self):
-        return exp().loads(self.view)
-
-#------------------------------------------------------------------------------
-class db_graph(db_core):
-
-    def __init__(self,g):
-        self.nodes = [db_block(n.data) for n in g.V()]
-        self.links = [(e.v[0].name,e.v[1].name) for e in g.E()]
-
-    def build(self,cpu):
-        g = graph()
-        nodes = dict([(b.name,node(b.build(cpu))) for b in self.nodes])
-        for l in [link(nodes[n1],nodes[n2]) for (n1,n2) in self.links]:
-            g.add_edge(l)
-        return g
-
-#------------------------------------------------------------------------------
-class db_exec(db_core):
-
-    def __init__(self,p):
-        self.filename = p.bin.filename
-        self.format = p.bin.__class__
-        self.cls = p.__class__
-        self.cpu = p.cpu.__name__
-
-    def build(self):
-        f = self.format(self.filename)
-        p = self.cls(f)
-        p.cpu = importlib.import_module(self.cpu)
-        return p
-
-
-#------------------------------------------------------------------------------
 try:
-    import transaction
-    from ZODB import DB, FileStorage
-    from persistent import Persistent
-except ImportError,e:
-    logger.warning(e.message)
-    from StringIO import StringIO
+    import sqlalchemy as sql
+    from sqlalchemy import orm
+    from sqlalchemy.ext.declarative import declarative_base
+    has_sql = True
+    Session = orm.scoped_session(orm.sessionmaker())
+    Base = declarative_base()
+    logflag = conf.getboolean('db','log')
+    if logflag:
+        for l in ('sqlalchemy.engine','sqlalchemy.orm'):
+            alog = logging.getLogger(l)
+            for h in logger.handlers: alog.addHandler(h)
+            alog.setLevel(logger.level)
+except ImportError:
+    logger.warning(u"package sqlalchemy not found.")
+    has_sql = False
 
-    # declare void Session class:
-    class Session(object):
-        _is_active = False
-        def __init__(self,filename=None):
-            logger.info('this session is not active')
-            self.db = StringIO()
-            self.conn = None
-            self.root = None
-        def add(self,key,obj):
-            pass
-        def commit(self):
-            pass
-        def restore(self):
-            pass
-else:
-
-    # Session database class:
-    class Session(object):
-        _is_active = True
-
-        def __init__(self,filename):
-            storage = FileStorage.FileStorage(filename)
-            self.db = DB(storage)
-            self.conn = self.db.open()
-            self.root = self.conn.root()
-
-        def add(self,key,obj):
-            self.root[key] = db_interface(obj)
-
-        def commit(self):
-            transaction.commit()
-
-        def restore(self):
-            pass
-
-def db_interface(obj):
-    if isinstance(obj,block): return db_block(obj)
-    if isinstance(obj,mapper): return db_mapper(obj)
-    if isinstance(obj,exp): return db_exp(obj)
-    elif isinstance(obj,graph): return db_graph(obj)
-    elif isinstance(obj,CoreExec): return db_exec(obj)
+def create(filename=None):
+    """creates the database engine and bind it to the scoped Session class.
+    The database URL (see :mod:`config.py`) is opened and the
+    schema is created if necessary. The default URL uses *sqlite* dialect and
+    opens a temporary file for storage.
+    """
+    import tempfile
+    url = conf.get('db','url')
+    if not url.endswith('.db'):
+        if conf.has_option('log','file'):
+            case = conf.get('log','file').rpartition('.')[0]
+        else:
+            case = tempfile.mktemp(prefix='amoco-')
+        url += case+'.db'
+    logflag = conf.getboolean('db','log')
+    if has_sql:
+        engine = sql.create_engine(url,echo=False,logging_name=__name__)
+        Session.configure(bind=engine)
+        Case.metadata.create_all(bind=engine,checkfirst=True)
     else:
-        logger.warning("no db interface defined for %s, using str..."%obj.__class__)
-        return str(obj)
+        logger.error(u'No Session defined')
+        engine = None
+    return engine
+
+if has_sql:
+    class Case(Base):
+        """A Case instance describes the analysis of some binary program.
+        It allows to query stored results by date, source, format or
+        architecture for example, and provides relations to associated
+        functions that have been discovered or saved traces. 
+        """
+        __tablename__ = 'cases_info'
+        id     = sql.Column(sql.Integer, primary_key=True)
+        date   = sql.Column(sql.DateTime)
+        name   = sql.Column(sql.String)
+        source = sql.Column(sql.String)
+        binfmt = sql.Column(sql.String)
+        arch   = sql.Column(sql.String)
+        msize  = sql.Column(sql.Integer)
+        score  = sql.Column(sql.Integer,default=0)
+        method = sql.Column(sql.String)
+        funcs  = orm.relationship('FuncData',back_populates='case')
+        other  = orm.relationship('CfgData',back_populates='case')
+        traces = orm.relationship('Trace',back_populates='case')
+
+        def __init__(self,z,name=None):
+            from datetime import datetime
+            from os.path import basename,splitext
+            self.date = datetime.now()
+            self.source = z.prog.bin.filename
+            self.name = name or splitext(basename(self.source))[0]
+            self.binfmt = z.prog.bin.__class__.__name__
+            self.arch = z.prog.cpu.__name__
+            self.msize = z.prog.bin.getsize()
+            self.method = z.__class__.__name__
+            if z.G.order()>0:
+                self.score = z.score()
+                F = z.functions()
+                for f in F: self.funcs.append(FuncData(f))
+                F = [f.cfg for f in F]
+                for g in z.G.C:
+                    if g not in F:
+                        self.other.append(CfgData(obj=g))
+
+        def __repr__(self):
+            s = (self.id, self.name, self.binfmt, self.arch, self.method)
+            return u"<Case #{}: {:<.016} ({},{}) using {}>".format(*s)
+
+    class FuncData(Base):
+        """This class holds pickled :class:`~cas.mapper.mapper` and
+        :class:`code.func` instances related to a Case, and provides
+        relationship with gathered infos about the discovered function.
+        """
+        __tablename__ = 'funcs_data'
+        id     = sql.Column(sql.Integer, primary_key=True)
+        fmap   = orm.deferred(sql.Column(sql.PickleType))
+        obj    = orm.deferred(sql.Column(sql.PickleType))
+        case_id= sql.Column(sql.Integer, sql.ForeignKey('cases_info.id'))
+        case   = orm.relationship('Case',back_populates='funcs')
+        info   = orm.relationship('FuncInfo',uselist=False,back_populates='data')
+
+        def __init__(self,f):
+            self.fmap = f.map
+            self.obj  = f
+            self.info = FuncInfo(f,self)
+
+    class FuncInfo(Base):
+        """This class gathers useful informations about a function, allowing
+        to query by signature or various characteristics like number of blocks,
+        number of args, stack size, byte size, number of instructions, calls,
+        or cross-references.
+        """
+        __tablename__ = 'funcs_info'
+        id     = sql.Column(sql.Integer, sql.ForeignKey('funcs_data.id'),primary_key=True)
+        name   = sql.Column(sql.String, nullable=False)
+        sig    = sql.Column(sql.String)
+        blocks = sql.Column(sql.Integer)
+        argsin = sql.Column(sql.Integer)
+        argsout= sql.Column(sql.Integer)
+        stksz  = sql.Column(sql.Integer)
+        vaddr  = sql.Column(sql.Integer)
+        bsize  = sql.Column(sql.Integer)
+        nbinst = sql.Column(sql.Integer)
+        calls  = sql.Column(sql.String)
+        xrefs  = sql.Column(sql.String)
+        data   = orm.relationship('FuncData',uselist=False,back_populates='info')
+        notes  = orm.deferred(sql.Column(sql.Text,default=''))
+
+        def __init__(self,f,data):
+            from amoco.cfg import signature
+            self.name = f.name
+            self.sig  = signature(f.cfg)
+            self.blocks = f.cfg.order()
+            self.argsin = f.misc['func_in']
+            self.argsout = f.misc['func_out']
+            self.stksz = min([x.a.disp for x in f.misc['func_var']],0)
+            self.vaddr = str(f.address)
+            self.bsize = sum([b.length for b in f.blocks],0)
+            self.nbinst = sum([len(b.instr) for b in f.blocks],0)
+            self.calls = ' '.join(filter(None,[x.name if hasattr(x,'cfg') else None for x in f.blocks]))
+            self.xrefs = ' '.join([str(x.data.support[1]) for x in f.cfg.sV[0].data.misc['callers']])
+
+    class CfgData(Base):
+        """The CfgData class is intented to pickle data that has not yet been
+        identified as a function but is part of the recovered :class:graph.
+        """
+        __tablename__ = 'cfgs_data'
+        id     = sql.Column(sql.Integer, primary_key=True)
+        obj    = orm.deferred(sql.Column(sql.PickleType))
+        case_id= sql.Column(sql.Integer, sql.ForeignKey('cases_info.id'))
+        case   = orm.relationship('Case', back_populates='other')
+
+    class Trace(Base):
+        """The Trace class allows to pickle abstract memory states (:class:`mapper` objects)
+        obtained from a given input map after executing the binary program from *start* address
+        to *stop* address.
+        """
+        __tablename__ = 'traces_data'
+        id     = sql.Column(sql.Integer, primary_key=True)
+        start  = sql.Column(sql.Integer)
+        stop   = sql.Column(sql.Integer)
+        mapin  = orm.deferred(sql.Column(sql.PickleType))
+        mapout = orm.deferred(sql.Column(sql.PickleType))
+        case_id= sql.Column(sql.Integer, sql.ForeignKey('cases_info.id'))
+        case   = orm.relationship('Case', back_populates='traces')
 

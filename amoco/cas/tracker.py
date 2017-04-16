@@ -7,16 +7,25 @@
 from collections import OrderedDict
 
 class generation(OrderedDict):
+    def lastdict(self):
+        return self
+    def __getitem__(self,k):
+        return self.get(k,None)
+
+class nextgeneration(OrderedDict):
+
+    def __init__(self,*args,**kargs):
+        self.od = OrderedDict(*args,**kargs)
 
     def __getall(self,k):
-        return OrderedDict.get(self,k,[])
+        return self.od.get(k,[])
 
     def __setitem__(self,k,v):
         oldv = self.__getall(k)
-        if k in self:
-            del self[k]
+        if k in self.od:
+            del self.od[k]
         oldv.append(v)
-        OrderedDict.__setitem__(self,k,oldv)
+        self.od[k] = oldv
 
     def __getitem__(self,k):
         v = self.__getall(k)
@@ -40,14 +49,14 @@ class generation(OrderedDict):
 
     # order at generation g is conserved;
     def getgen(self,g):
-        d = generation()
-        for k in self.iterkeys():
+        d = nextgeneration()
+        for k in self.od:
             d[k] = self.keygen(k,g)
         return d
 
     def lastdict(self):
         d = dict()
-        for k in self:
+        for k in self.od:
             d[k] = self[k]
         return d
 

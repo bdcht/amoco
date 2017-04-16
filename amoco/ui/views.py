@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+try:
+    from builtins import bytes
+except ImportError:
+    pass
 
 from amoco.config import conf
 from amoco.logger import Log
@@ -54,9 +58,9 @@ class blockView(View):
         for i in self.of.instr:
             ins2 = i.toks()
             if isinstance(ins2,str): ins2 = [(Token.Literal,ins2)]
-            ins = [ (Token.Address,'{:<10}'.format(i.address)),
+            ins = [ (Token.Address,'{:<10}'.format(str(i.address))),
                     (Token.Column,''),
-                    (Token.Literal,"'%s'"%(i.bytes.encode('hex'))),
+                    (Token.Literal,"'%s'"%(''.join(["%02x"%x for x in bytes(i.bytes)]))),
                     (Token.Column,'') ]
             T.addrow(ins+ins2)
         if conf.getboolean('block','bytecode'):

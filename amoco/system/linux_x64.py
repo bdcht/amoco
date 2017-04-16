@@ -5,7 +5,7 @@
 # published under GPLv2 license
 
 from amoco.system.core import *
-from amoco.code import tag
+from amoco.code import tag,xfunc
 
 import amoco.arch.x64.cpu_x64 as cpu
 
@@ -15,6 +15,8 @@ class ELF(CoreExec):
 
     def __init__(self,p):
         CoreExec.__init__(self,p,cpu)
+        self.symbols.update(self.bin.functions)
+        self.symbols.update(self.bin.variables)
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):
@@ -34,16 +36,18 @@ class ELF(CoreExec):
     # call dynamic linker to populate mmap with shared libs:
     # for now, the external libs are seen through the elf dynamic section:
     def load_shlib(self):
-        for k,f in self.bin._Elf64__dynamic(None).iteritems():
+        for k,f in self.bin._Elf64__dynamic(None).items():
             self.mmap.write(k,cpu.ext(f,size=64))
 
     # lookup in bin if v is associated with a function or variable name:
     def check_sym(self,v):
         if v._is_cst:
-            x = self.bin.functions.get(v.value,None) or self.bin.variables.get(v.value,None)
+            x = self.symbols.get(v.value,None)
             if x is not None:
-                if isinstance(x,str): x=cpu.ext(x,size=64)
-                else: x=cpu.sym(x[0],v.value,v.size)
+                if isinstance(x,str):
+                    x=cpu.ext(x,size=64)
+                else:
+                    x=cpu.sym(x[0],v.value,v.size)
                 return x
         return None
 
@@ -106,8 +110,8 @@ class ELF(CoreExec):
             for op in i.operands:
                 if op._is_mem:
                     if op.a.base is cpu.rbp:
-                        if   op.a.disp<0: i.misc[tag.FUNC_ARG]=1
-                        elif op.a.disp>4: i.misc[tag.FUNC_VAR]=1
+                        if   op.a.disp<0: i.misc[tag.FUNC_VAR]=True
+                        elif op.a.disp>=16: i.misc[tag.FUNC_ARG]=True
                     elif op.a.base._is_cst or (op.a.base is cpu.rip):
                         b = op.a.base
                         if b is cpu.rip: b=i.address+i.length
@@ -116,7 +120,6 @@ class ELF(CoreExec):
                             op.a.base=x
                             op.a.disp=0
                             if i.mnemonic == 'JMP': # PLT jumps:
-                                #i.address = i.address.to_sym('PLT%s'%x)
                                 i.misc[tag.FUNC_START]=1
                                 i.misc[tag.FUNC_END]=1
                 elif op._is_cst:
@@ -127,19 +130,11 @@ class ELF(CoreExec):
     def blockhelper(self,block):
         for i in self.seqhelper(block.instr):
             block.misc.update(i.misc)
-        def _helper(block,m):
-            # annotations based on block semantics:
-            sta,sto = block.support
-            if m[cpu.mem(cpu.rbp-4,64)] == cpu.rbp:
-                block.misc[tag.FUNC_START]=1
-            if m[cpu.rip]==cpu.mem(cpu.rsp-4,64):
-                block.misc[tag.FUNC_END]=1
-            if m[cpu.mem(cpu.rsp,64)]==sto:
-                block.misc[tag.FUNC_CALL]=1
-        block._helper = _helper
+        block._helper = block_helper_
         return block
 
     def funchelper(self,f):
+        # check single root node:
         roots = f.cfg.roots()
         if len(roots)==0:
             roots = filter(lambda n:n.data.misc[tag.FUNC_START],f.cfg.sV)
@@ -147,14 +142,48 @@ class ELF(CoreExec):
                 logger.warning("no entry to function %s found"%f)
         if len(roots)>1:
             logger.verbose('multiple entries into function %s ?!'%f)
+        # check start symbol:
+        elif roots[0].data.address == self.bin.entrypoints[0]:
+            f.name = '_start'
+        # get section symbol if any:
+        f.misc['section'] = section = self.bin.getinfo(f.address.value)[0]
         rets = f.cfg.leaves()
         if len(rets)==0:
             logger.warning("no exit to function %s found"%f)
         if len(rets)>1:
             logger.verbose('multiple exits in function %s'%f)
         for r in rets:
-            if r.data.misc[tag.FUNC_CALL]: f.misc[tag.FUNC_CALL] += 1
+           # export PLT external symbol name:
+            if section and section.name=='.plt':
+                if isinstance(r.data,xfunc): f.name = section.name+r.name
+            if r.data.misc[tag.FUNC_CALL]:
+                f.misc[tag.FUNC_CALL] += 1
+        if f.map:
+        # check vars & args: should reflect x64 register calling convention
+            f.misc[tag.FUNC_VAR] = []
+            f.misc[tag.FUNC_ARG] = []
+            for x in set(f.map.inputs()):
+                f.misc[tag.FUNC_IN] += 1
+                if x._is_mem and x.a.base==cpu.rsp:
+                    if x.a.disp>=8:
+                        f.misc[tag.FUNC_ARG].append(x)
+            for x in set(f.map.outputs()):
+                if x in (cpu.rsp, cpu.rbp): continue
+                f.misc[tag.FUNC_OUT] += 1
+                if x._is_mem and x.a.base==cpu.rsp:
+                    if x.a.disp<0:
+                        f.misc[tag.FUNC_VAR].append(x)
 
+
+def block_helper_(block,m):
+    # annotations based on block semantics:
+    sta,sto = block.support
+    if m[cpu.mem(cpu.rbp-8,64)] == cpu.rbp:
+        block.misc[tag.FUNC_START]=1
+    if m[cpu.rip]==cpu.mem(cpu.rsp-8,64):
+        block.misc[tag.FUNC_END]=1
+    if m[cpu.mem(cpu.rsp,64)]==sto:
+        block.misc[tag.FUNC_CALL]=1
 
 # HOOKS DEFINED HERE :
 #----------------------------------------------------------------------------

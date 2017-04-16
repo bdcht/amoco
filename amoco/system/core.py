@@ -54,10 +54,11 @@ class datadiv(object):
             correspond to overwriting self with data at offset o (possibly
             extending the current datadiv length).
     """
-    __slots__ = ['val']
+    __slots__ = ['val','endian']
 
-    def __init__(self,data):
+    def __init__(self,data,endian):
         self.val = data
+        self.endian = endian
 
     @property
     def _is_raw(self):
@@ -82,7 +83,7 @@ class datadiv(object):
         if self._is_raw:
             self.val = self.val[l:]
         else:
-            self.val = self.val.bytes(l)
+            self.val = self.val.bytes(l,endian=self.endian)
 
     def getpart(self,o,l):
         try:
@@ -99,18 +100,18 @@ class datadiv(object):
             res = self.val[o:o+l]
             return (res,l-len(res))
         if o>=lv: return (None,l)
-        res = self.val.bytes(o,o+l)
+        res = self.val.bytes(o,o+l,self.endian)
         return (res,l-res.length)
 
-    def setpart(self,o,data):
+    def setpart(self,o,data,endian):
         assert 0<=o<=len(self)
-        P = [datadiv(data)]
+        P = [datadiv(data,endian)]
         olv = o+len(data)
         endl = len(self)-olv
         if endl>0:
-            P.append(datadiv(self.getpart(olv,endl)[0]))
+            P.append(datadiv(self.getpart(olv,endl)[0],self.endian))
         if o>0:
-            P.insert(0,datadiv(self.getpart(0,o)[0]))
+            P.insert(0,datadiv(self.getpart(0,o)[0],self.endian))
         # now merge contiguous parts if they have same type:
         return mergeparts(P)
 
@@ -165,9 +166,9 @@ class mo(object):
     """
     __slots__ = ['vaddr','data']
 
-    def __init__(self,vaddr,data):
+    def __init__(self,vaddr,data,endian=1):
         self.vaddr=vaddr
-        self.data=datadiv(data)
+        self.data=datadiv(data,endian)
 
     @property
     def end(self):
@@ -195,18 +196,18 @@ class mo(object):
         else:
             return (None,l)
 
-    def write(self,vaddr,data):
+    def write(self,vaddr,data,endian):
         if vaddr in self or vaddr==self.end:
-            parts = self.data.setpart(vaddr-self.vaddr,data)
+            parts = self.data.setpart(vaddr-self.vaddr,data,endian)
             self.data = parts[0]
             O = []
             vaddr = self.end
             for p in parts[1:]:
-                O.append(mo(vaddr,p.val))
+                O.append(mo(vaddr,p.val,p.endian))
                 vaddr += len(p)
             return O
         else:
-            return [mo(vaddr,data)]
+            return [mo(vaddr,data,endian)]
 
 #------------------------------------------------------------------------------
 class MemoryZone(object):
@@ -215,15 +216,14 @@ class MemoryZone(object):
     to ``None`` holds values at concrete addresses in every MemoryMap.
 
     Args:
-        D (dict): a way to initialize the zone by providing concrete addresses
-            as keys and data as values.
+        rel (exp): the relative symbolic expression, defaults to None.
 
     Attributes:
         rel : the relative symbolic expression, or None.
         _map : the ordered list of mo objects of this zone.
         __dead : this internal flag indicates that unmapped `void` data is
             set to ``top`` if set.
-    
+
     Methods:
         range(): returns the lowest and highest addresses currently used by
             mo objects of this zone.
@@ -238,7 +238,7 @@ class MemoryZone(object):
 
         write(vaddr,data,res=False,dead=False): writes data expression or
             bytes at given (concrete) address. Calls a restruct operation
-            if res is True, and optionally sets the zone dead flag. 
+            if res is True, and optionally sets the zone dead flag.
 
         addtomap(z): add (possibly overlapping) mo object z to the _map,
             eventually adjusting other mo objects.
@@ -253,14 +253,11 @@ class MemoryZone(object):
     """
     __slots__ = ['rel','_map','__cache','__dead']
 
-    def __init__(self,rel=None,D=None):
+    def __init__(self,rel=None):
         self.rel = rel
-        self.__dead = False
         self._map = []
         self.__cache = [] # speedup locate method
-        if D != None and isinstance(D,dict):
-            for vaddr,data in iter(D.items()):
-                self.addtomap(mo(vaddr,data))
+        self.__dead = False
 
     def range(self):
         return (self._map[0].vaddr,self._map[-1].end)
@@ -319,12 +316,12 @@ class MemoryZone(object):
         return res
 
     # write data at address vaddr in map
-    def write(self,vaddr,data,res=False,dead=False):
+    def write(self,vaddr,data,endian=1,res=False,dead=False):
         if dead:
             self._map = []
-            self._cache = []
+            self.__cache = []
             self.__dead = dead
-        self.addtomap(mo(vaddr,data))
+        self.addtomap(mo(vaddr,data,endian))
         if res is True: self.restruct()
 
     # add (possibly overlapping) object z (mo) to the map
@@ -337,7 +334,7 @@ class MemoryZone(object):
             self.__update_cache()
             return
         if j==i:
-            Z = self._map[i].write(z.vaddr,z.data.val)
+            Z = self._map[i].write(z.vaddr,z.data.val,z.data.endian)
             i += 1
             for newz in Z:
                 self._map.insert(i,newz)
@@ -357,7 +354,7 @@ class MemoryZone(object):
             i=-1
         elif z.vaddr <= self._map[i].end:
             # overright data:
-            Z = self._map[i].write(z.vaddr,z.data.val)
+            Z = self._map[i].write(z.vaddr,z.data.val,z.data.endian)
         i += 1
         del self._map[i:j]
         # insert new zones:
@@ -424,7 +421,7 @@ class MemoryMap(object):
 
         write(address,expr,deadzone=False): writes given expression
             at given (possibly symbolic) address.
-            Optionally sets the associated zone dead flag. 
+            Optionally sets the associated zone dead flag.
 
         restruct(): optimize all zones to merge contiguous raw bytes into single
             mo objects.
@@ -479,11 +476,11 @@ class MemoryMap(object):
         else:
             raise MemoryError(address)
 
-    def write(self,address,expr,deadzone=False):
+    def write(self,address,expr,endian=1,deadzone=False):
         r,o = self.reference(address)
         if not r in self._zones:
             self.newzone(r)
-        self._zones[r].write(o,expr,deadzone)
+        self._zones[r].write(o,expr,endian,dead=deadzone)
 
     def restruct(self):
         for z in iter(self._zones.values()): z.restruct()

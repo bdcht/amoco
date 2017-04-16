@@ -151,6 +151,7 @@ CONDITION_UNDEFINED : ('??',top(1)),
 #-----------------------------------------------------
 internals = {         # states MUST be in a mutable object !
     'endianstate': 0, # 0: little-endian, 1: big-endian
+    'ibigend'    : 0  # instruction endianess: 0:LE, 1:BE
 }
 
 # SIMD and VFP (floating point) extensions:

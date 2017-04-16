@@ -10,7 +10,7 @@ logger = Log(__name__)
 from .expressions import *
 from amoco.cas.tracker import generation
 from amoco.system.core import MemoryMap
-from amoco.arch.core   import Bits
+from amoco.arch.core   import Bits,unpack
 from amoco.ui.render   import vltable
 
 # a mapper is a symbolic functional representation of the execution
@@ -142,9 +142,9 @@ class mapper(object):
         if n>0:
             f = lambda e:e[0]._is_ptr
             items = filter(f,list(self.__map.items())[0:n])
-            res = mem(k.a,k.size,mods=list(items))
+            res = mem(k.a,k.size,mods=list(items),endian=k.endian)
         else:
-            res = self._Mem_read(k.a,k.length)
+            res = self._Mem_read(k.a,k.length,k.endian)
             res.sf = k.sf
         return res
 
@@ -165,35 +165,35 @@ class mapper(object):
         return 0
 
     # read MemoryMap and return the result as an expression:
-    def _Mem_read(self,a,l):
+    def _Mem_read(self,a,l,endian=1):
         try:
             res = self.__Mem.read(a,l)
         except MemoryError: # no zone for location a;
             res = [exp(l*8)]
-        if exp._endian==-1: res.reverse()
+        if endian==-1: res.reverse()
         P = []
         cur = 0
         for p in res:
             plen = len(p)
             if isinstance(p,exp) and (p._is_def is False):
                 if self.csi:
-                    p = self.csi(mem(a,p.size,disp=cur))
+                    p = self.csi(mem(a,p.size,disp=cur,endian=endian))
                 else:
                     p = mem(a,p.size,disp=cur)
-            if isinstance(p,str):
-                p = cst(Bits(p[::exp._endian],bitorder=1).int(),plen*8)
+            if isinstance(p,bytes):
+                p = cst(Bits(p[::endian],bitorder=1).int(),plen*8)
             P.append(p)
             cur += plen
         return composer(P)
 
-    def _Mem_write(self,a,v):
+    def _Mem_write(self,a,v,endian=1):
         if a.base._is_vec:
             locs = (ptr(l,a.seg,a.disp) for l in a.base.l)
         else:
             locs = (a,)
         iswide = not a.base._is_def
         for l in locs:
-            self.__Mem.write(l,v,deadzone=iswide)
+            self.__Mem.write(l,v,endian,deadzone=iswide)
             if (l in self.__map): del self.__map[l]
 
     # just a convenient wrapper around M/R:
@@ -221,7 +221,11 @@ class mapper(object):
             oldr = self.__map.get(loc,None)
             if oldr is not None and oldr.size>r.size:
                 r = composer([r,oldr[r.size:oldr.size]])
-            self._Mem_write(loc,r)
+            if k._is_mem:
+                endian = k.endian
+            else:
+                endian = 1
+            self._Mem_write(loc,r,endian)
             self.__map.lastw = len(self.__map)+1
         else:
             r = self.R(loc)
@@ -321,6 +325,22 @@ class mapper(object):
             argsz = kargs.get('size',32)
             for k,v in iter(kargs.items()):
                 m[reg(k,argsz)] = cst(v,argsz)
+        return self.eval(m)
+
+    def usemmap(self,mmap):
+        m = mapper()
+        for xx in set(self.inputs()):
+            if xx._is_mem:
+                try:
+                    l = mmap.read(xx.a,xx.length)
+                    data = []
+                    for x in l:
+                        if isinstance(x,bytes):
+                            TODO
+                    c = composer(data)
+                    m[xx] = c
+                except MemoryError:
+                    logger.verbose('mmap read error')
         return self.eval(m)
 
     # attach/apply conditions to the output mapper

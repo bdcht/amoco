@@ -72,7 +72,6 @@ def _checkarg_slice(f):
 #------------------------------------------------------------------------------
 class exp(object):
     __slots__ = ['size','sf']
-    _endian   = 1      # defaults to little-endian
     _is_def   = False
     _is_cst   = False
     _is_reg   = False
@@ -92,23 +91,9 @@ class exp(object):
 
     def __len__(self): return self.length
 
-    @classmethod
-    def setendian(cls,e):
-        assert e in (-1,+1)
-        cls._endian = e
-
     @property
     def length(self): # length value is in bytes
         return self.size//8
-
-    def bytes(self,sta=0,sto=None,endian=0):
-        s = slice(sta,sto)
-        l = self.length
-        sta,sto,stp = s.indices(l)
-        endian |= self._endian
-        if endian==-1:
-            sta,sto = l-sto,l-sta
-        return self[sta*8:sto*8]
 
     @property
     def mask(self):
@@ -150,6 +135,16 @@ class exp(object):
     def bit(self,i):
         i = i%self.size
         return self[i:i+1]
+
+    # return the expression slice located at bytes
+    # (sta,sto) depending on provided endianess.
+    def bytes(self,sta=0,sto=None,endian=1):
+        s = slice(sta,sto)
+        l = self.length
+        sta,sto,stp = s.indices(l)
+        if endian==-1:
+            sta,sto = l-sto,l-sta
+        return self[sta*8:sto*8]
 
     # get item allows to extract the expression of a slice of the exp
     @_checkarg_slice
@@ -921,16 +916,17 @@ class comp(exp):
 # and adjust the eval result accordingly.
 #------------------------------------------------------------------------------
 class mem(exp):
-    __slots__ = ['a', 'mods']
+    __slots__ = ['a', 'mods', 'endian']
     __hash__ = exp.__hash__
     _is_def   = True
     _is_mem   = True
 
-    def __init__(self,a,size=32,seg='',disp=0,mods=None):
+    def __init__(self,a,size=32,seg='',disp=0,mods=None,endian=1):
         self.size  = size
         self.sf    = False
         self.a  = ptr(a,seg,disp)
         self.mods = mods or []
+        self.endian = endian
 
     def __str__(self):
         n = len(self.mods)
@@ -946,19 +942,45 @@ class mem(exp):
         for loc,v in self.mods:
             if loc._is_ptr: loc = env(loc)
             m[loc] = env(v)
-        return m[mem(a,self.size)]
+        return m[mem(a,self.size,endian=self.endian)]
 
     def simplify(self):
         self.a.simplify()
         if self.a.base._is_vec:
             seg,disp = self.a.seg,self.a.disp
-            v = vec([mem(a,self.size,seg,disp,mods=self.mods) for a in self.a.base.l])
+            l = []
+            for a in self.a.base.l:
+                x = mem(a,self.size,seg,disp,mods=self.mods,endian=self.endian)
+                l.append(x)
+            v = vec(l)
             return v if self.a.base._is_def else vecw(v)
         return self
 
     def addr(self,env):
         return self.a.eval(env)
 
+    def bytes(self,b1=0,b2=None,endian=0):
+        s = slice(b1,b2)
+        l = self.length
+        sta,sto,stp = s.indices(l)
+        size = (sto-sta)*8
+        a = self.a
+        return mem(a,size,disp=sta,mods=self.mods,endian=self.endian)
+
+    @_checkarg_slice
+    def __getitem__(self,i):
+        sta,sto,stp = i.indices(self.size)
+        b1,r1 = divmod(sta,8)
+        b2,r2 = divmod(sto,8)
+        if r2>0: b2 += 1
+        l = self.length
+        if self.endian==-1: b1,b2 = l-b2,l-b1
+        a = self.a
+        size = (b2-b1)*8
+        x = mem(a,size,disp=b1,mods=self.mods,endian=self.endian)
+        if r1>0 or r2>0:
+            x = slc(x,r1,(sto-sta))
+        return x
 
 #------------------------------------------------------------------------------
 # ptr holds memory addresses with segment, base expressions and
@@ -1032,12 +1054,7 @@ def slicer(x,pos,size):
     if pos==0 and size==x.size:
         return x
     else:
-        if x._is_mem and size%8==0:
-            off,rst = divmod(pos,8)
-            if rst==0:
-                a = ptr(x.a.base,x.a.seg,x.a.disp+off)
-                return mem(a,size)
-        elif x._is_cmp:
+        if x._is_mem or x._is_cmp:
             return x[pos:pos+size]
         return slc(x,pos,size)
 
@@ -1282,10 +1299,10 @@ class op(exp):
     def simplify(self):
         l = self.l.simplify()
         r = self.r.simplify()
-        minus = (self.op.symbol=='-')
-        if self.prop<4:
-            if l._is_def==0: return top(self.size)
-            if r._is_def==0: return top(self.size)
+        if self.prop<4 and self.op.symbol not in ('/','%'):
+            if l._is_def==0: return l
+            if r._is_def==0: return r
+            minus = (self.op.symbol=='-')
             # arithm/logic normalisation:
             # push cst to the right
             if l._is_cst:

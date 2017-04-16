@@ -101,7 +101,7 @@ def mem_to_z3(e,slv=None):
     b = []
     for i in range(0,e.length):
         b.insert(0,M[p+i])
-    if e._endian==-1: b.reverse() # big-endian case
+    if e.endian==-1: b.reverse() # big-endian case
     if len(b) > 1: return z3.Concat(*b)
     return b[0]
 

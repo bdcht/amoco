@@ -700,7 +700,7 @@ def sse_pd(obj,Mod,REG,RM,data):
 @ispec_ia32("*>[ {0f}{38}{34} /r ]", mnemonic="PMOVZXWQ", _op2sz=32)
 @ispec_ia32("*>[ {0f}{38}{35} /r ]", mnemonic="PMOVZXDQ", _op2sz=64)
 def sse_pd(obj,Mod,REG,RM,data, _op2sz):
-    if not check_66(obj,set_opdz_128): raise InstructionError(obj)
+    if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = _op2sz
     op1 = env.getreg(REG,128)

@@ -172,8 +172,6 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
         else:
             addr=toks[0]
             disp=0
-        if addr._is_cst and seg is '':
-            seg = env.ds
         return expressions.mem(addr,cpu_addrsize,disp=disp,seg=seg)
     mem.setParseAction(action_mem)
 

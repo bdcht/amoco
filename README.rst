@@ -2,8 +2,12 @@
 Amoco
 =====
 
-.. image:: https://travis-ci.org/bdcht/amoco.svg?branch=release
+|bdcht travis| (bdcht main repo) |LRGH travis| (LRGH fork)
+
+.. |bdcht travis| image:: https://travis-ci.org/bdcht/amoco.svg?branch=release
     :target: https://travis-ci.org/bdcht/amoco
+.. |LRGH travis| image:: https://travis-ci.org/LRGH/amoco.svg?branch=release
+    :target: https://travis-ci.org/LRGH/amoco
 
 +-----------+-----------------------------------+
 | Status:   | Under Development                 |

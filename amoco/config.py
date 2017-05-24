@@ -41,7 +41,10 @@ Attributes:
 
 """
 
-from configparser import SafeConfigParser
+try:
+    from configparser import SafeConfigParser
+except ImportError:
+    from ConfigParser import SafeConfigParser
 from collections import defaultdict
 
 conf = SafeConfigParser()

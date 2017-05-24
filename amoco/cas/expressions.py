@@ -3,7 +3,10 @@
 # This code is part of Amoco
 # Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
-from builtins import object
+try:
+    from builtins import object
+except ImportError:
+    pass
 from operator import itemgetter
 from amoco.logger import Log
 logger = Log(__name__)
@@ -197,6 +200,8 @@ class exp(object):
     @_checkarg_numeric
     def __pow__(self,n): return oper('**',self,n)
     @_checkarg_numeric
+    def __div__(self,n): return oper('/',self,n)
+    @_checkarg_numeric
     def __truediv__(self,n): return oper('/',self,n)
     @_checkarg_numeric
     def __mod__(self,n): return oper('%',self,n)
@@ -236,6 +241,8 @@ class exp(object):
     #def __cmp__(self,n): return cmp(hash(self),hash(n))
 
     # An expression defaults to False, and only bit1 will return True.
+    # __nonzero__ for python2, __bool__ for python3
+    def __nonzero__(self): return self.__bool__()
     def __bool__(self): return False
 
     @_checkarg_numeric
@@ -364,6 +371,10 @@ class cst(exp):
         if n._is_cst: return cst(self.value*n.value,2*self.size)
         else : return exp.__pow__(self,n)
     @_checkarg_numeric
+    def __div__(self,n):
+        if n._is_cst: return cst(self.value//n.value,self.size)
+        else : return exp.__div__(self,n)
+    @_checkarg_numeric
     def __truediv__(self,n):
         if n._is_cst: return cst(self.value//n.value,self.size)
         else : return exp.__truediv__(self,n)
@@ -419,6 +430,8 @@ class cst(exp):
     def __rxor__(self,n): return n^self
 
     # the only atom that is considered True is the cst(1,1) (ie bit1 below)
+    # __nonzero__ for python2, __bool__ for python3
+    def __nonzero__(self): return self.__bool__()
     def __bool__(self):
         if self.size==1 and self.v==1: return True
         else: return False
@@ -458,6 +471,7 @@ class cst(exp):
 
 bit0 = cst(0,1)
 bit1 = cst(1,1)
+assert bool(bit1)
 
 class sym(cst):
     __slots__ = ['ref']
@@ -523,6 +537,10 @@ class cfp(exp):
     def __pow__(self,n):
         if n._is_cst: return cfp(self.v**n.value,self.size)
         else : return exp.__pow__(self,n)
+    @_checkarg_numeric
+    def __div__(self,n):
+        if n._is_cst: return cfp(self.v/n.value,self.size)
+        else : return exp.__div__(self,n)
     @_checkarg_numeric
     def __truediv__(self,n):
         if n._is_cst: return cfp(self.v/n.value,self.size)
@@ -1650,6 +1668,8 @@ class vec(exp):
     def __contains__(self,x):
         return (x in self.l)
 
+    # __nonzero__ for python2, __bool__ for python3
+    def __nonzero__(self): return self.__bool__()
     def __bool__(self):
         return all([e.__bool__() for e in self.l])
 

@@ -11,7 +11,7 @@ from amoco.logger import Log
 logger = Log(__name__)
 #logger.level = 10
 
-from amoco.arch.core import instruction
+from amoco.arch.msp430.cpu import instruction_msp430 as instruction
 from amoco.arch.msp430 import env
 
 #------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ class msp430_syntax:
             return tok
 
     def action_instr(toks):
-        i = instruction('')
+        i = instruction(b'')
         i.mnemonic = toks[0]
         if len(toks)>1: i.operands = toks[1][0:]
         return asmhelper(i)

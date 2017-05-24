@@ -11,7 +11,7 @@ from amoco.logger import Log
 logger = Log(__name__)
 #logger.level = 10
 
-from amoco.arch.core import instruction
+from amoco.arch.sparc.cpu_v8 import instruction_sparc as instruction
 from amoco.arch.sparc import env
 
 #------------------------------------------------------------------------------
@@ -90,7 +90,7 @@ class sparc_syntax:
             return tok
 
     def action_instr(toks):
-        i = instruction('')
+        i = instruction(b'')
         i.mnemonic = toks[0]
         if len(toks)>1: i.operands = toks[1][0:]
         return asmhelper(i)

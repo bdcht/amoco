@@ -10,7 +10,7 @@ logger = Log(__name__)
 from .expressions import *
 from amoco.cas.tracker import generation
 from amoco.system.core import MemoryMap
-from amoco.arch.core   import Bits,unpack
+from amoco.arch.core   import Bits
 from amoco.ui.render   import vltable
 
 # a mapper is a symbolic functional representation of the execution
@@ -50,7 +50,7 @@ class mapper(object):
         return len(self.__map)
 
     def __str__(self):
-        return '\n'.join(["%s <- %s"%x for x in self])
+        return u'\n'.join([u"%s <- %s"%x for x in self])
 
     def pp(self,**kargs):
         t = vltable()
@@ -58,12 +58,12 @@ class mapper(object):
         for (l,v) in self:
             if l._is_reg: v = v[0:v.size]
             lv = (l.toks(**kargs)+
-                  [(render.Token.Column,'')]+
+                  [(render.Token.Column,u'')]+
                   v.toks(**kargs))
             t.addrow(lv)
         if t.colsize[0]>18: t.colsize[0]=18
         if t.colsize[1]>58: t.colsize[1]=58
-        return str(t)
+        return t.__str__()
 
     # list antecedent locations (used in the mapping)
     def inputs(self):
@@ -108,6 +108,8 @@ class mapper(object):
 
     def memory(self):
         return self.__Mem
+    def setmemory(self,mmap):
+        self.__Mem = mmap
 
     def generation(self):
         return self.__map
@@ -329,18 +331,11 @@ class mapper(object):
 
     def usemmap(self,mmap):
         m = mapper()
+        m.setmemory(mmap)
         for xx in set(self.inputs()):
             if xx._is_mem:
-                try:
-                    l = mmap.read(xx.a,xx.length)
-                    data = []
-                    for x in l:
-                        if isinstance(x,bytes):
-                            TODO
-                    c = composer(data)
-                    m[xx] = c
-                except MemoryError:
-                    logger.verbose('mmap read error')
+                v = m.M(xx)
+                m[xx] = v
         return self.eval(m)
 
     # attach/apply conditions to the output mapper
@@ -349,7 +344,7 @@ class mapper(object):
         if conds is None: conds=[]
         for c in conds:
             if not c._is_eqn: continue
-            if c.op.symbol == '==' and c.r._is_cst:
+            if c.op.symbol == OP_EQ and c.r._is_cst:
                 if c.l._is_reg:
                     m[c.l] = c.r
         m.conds = conds

@@ -11,7 +11,7 @@ from amoco.logger import Log
 logger = Log(__name__)
 #logger.level = 10
 
-from amoco.arch.core import instruction
+from amoco.arch.msp430.cpu import instruction_msp430 as instruction
 from amoco.arch.msp430 import env
 
 #------------------------------------------------------------------------------

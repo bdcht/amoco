@@ -132,6 +132,9 @@ def i_NOP(i,fmap):
 def i_WAIT(i,fmap):
   fmap[eip] = fmap[eip]+i.length
 
+def i_MWAIT(i,fmap):
+  fmap[eip] = fmap[eip]+i.length
+
 # LEAVE instruction is a shortcut for 'mov esp,ebp ; pop ebp ;'
 def i_LEAVE(i,fmap):
   fmap[eip] = fmap[eip]+i.length
@@ -460,6 +463,10 @@ def i_JMP(i,fmap):
   fmap[eip] = target
 
 def i_JMPF(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  pc = fmap[eip]+i.length
+
+def i_RETF(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
   pc = fmap[eip]+i.length
 
@@ -1020,6 +1027,15 @@ def i_RDRAND(i,fmap):
    fmap[cf] = top(1)
    for f in (of,sf,zf,af,pf): fmap[f] = bit0
 
+def i_MOVNTI(i,fmap):
+   fmap[eip] = fmap[eip]+i.length
+   dst,src = i.operands
+   fmap[dst] = fmap(src)
+
+def i_CRC32(i,fmap):
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   fmap[eip] = fmap[eip]+i.length
+
 def i_RDTSC(i,fmap):
    logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
@@ -1032,6 +1048,16 @@ def i_RDTSCP(i,fmap):
    fmap[edx] = top(32)
    fmap[eax] = top(32)
    fmap[ecx] = top(32)
+
+def i_CLTS(i,fmap):
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   fmap[eip] = fmap[eip]+i.length
+   # #UD #BR exceptions not implemented
+
+def i_CPUID(i,fmap):
+   logger.verbose('%s semantic is not defined'%i.mnemonic)
+   fmap[eip] = fmap[eip]+i.length
+   # #UD #BR exceptions not implemented
 
 def i_BOUND(i,fmap):
    logger.verbose('%s semantic is not defined'%i.mnemonic)
@@ -1167,6 +1193,11 @@ def i_INVD(i,fmap):
   fmap[eip] = fmap[eip]+i.length
   # cache not supported
 
+def i_WBINVD(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+  # cache not supported
+
 def i_INVLPG(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
@@ -1214,12 +1245,50 @@ def i_STR(i,fmap):
 def i_RDMSR(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
+def i_WRMSR(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
 
 def i_RDPMC(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
 
 def i_RSM(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+
+def i_MONITOR(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+
+def i_XGETBV(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+def i_XSETBV(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+def i_XSETBV(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+def i_FXSAVE(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+def i_FXRSTOR(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+def i_LDMXCSR(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+def i_STMXCSR(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+def i_XSAVE(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+def i_XRSTOR(i,fmap):
+  logger.verbose('%s semantic is not defined'%i.mnemonic)
+  fmap[eip] = fmap[eip]+i.length
+def i_XSAVEOPT(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
 
@@ -1264,6 +1333,11 @@ def i_PXOR(i,fmap):
   op2 = fmap(i.operands[1])
   x=fmap(op1)^op2
   fmap[op1] = x
+
+i_ANDPS  = i_PAND
+i_ANDNPS = i_PANDN
+i_ORPS   = i_POR
+i_XORPS  = i_PXOR
 
 def i_MOVD(i,fmap):
   fmap[eip] = fmap[eip]+i.length

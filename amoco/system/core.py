@@ -5,8 +5,8 @@
 # published under GPLv2 license
 
 """
-core.py
-=======
+system/core.py
+==============
 
 This module defines all Memory related classes as well as the task/process
 execution core class inherited by all system specific execution classes of

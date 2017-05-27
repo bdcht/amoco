@@ -229,11 +229,19 @@ def to_smtlib(e,slv=None):
 def model_to_mapper(r,locs):
     m = mapper()
     mlocs = []
-    for l in locs:
+    for l in set(locs):
         if l._is_mem:
             mlocs.append(l)
         else:
-            m[l] = cst(r.eval(l.to_smtlib()).as_long(),l.size)
+            x = r.eval(l.to_smtlib())
+            try:
+                m[l] = cst(x.as_long(),l.size)
+            except AttributeError:
+                pass
     for l in mlocs:
-        m[l] = cst(r.eval(l.to_smtlib()).as_long(),l.size)
+        x = r.eval(l.to_smtlib())
+        try:
+            m[l] = cst(x.as_long(),l.size)
+        except AttributeError:
+            pass
     return m

@@ -72,6 +72,23 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.5.1`_
+
+  * add RISC-V architecture
+  * add eBPF architecture
+  * use unicode outputs with unicode symbols for most operators if supported
+  * add less-than-unsigned (ltu) and greater-or-equal-unsigned (geu) operators needed by riscv architecture
+  * fix simplify method for comp expressions
+  * improve simplify methods with a 'bitslice' optional parameter
+  * improve mapper memory interface
+  * fix smt model_to_mapper method
+  * add cfg 'dot' format (elementary) output
+  * add 'getfileoffset' method in ELF and PE classes
+  * remove global endianness flag
+  * update x86/x64 formats to be compatible with gnu as and clang
+  * add some x86/x64 instructions semantics (movnti, wbinvd, div, ...)
+  * fix some x86/x64 rare instructions specs (pmovmskb, ...)
+
 - `v2.5.0`_
 
   * support python3 (>=3.5)
@@ -219,6 +236,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.5.1: https://github.com/bdcht/amoco/releases/tag/v2.5.1
 .. _v2.5.0: https://github.com/bdcht/amoco/releases/tag/v2.5.0
 .. _v2.4.6: https://github.com/bdcht/amoco/releases/tag/v2.4.6
 .. _v2.4.5: https://github.com/bdcht/amoco/releases/tag/v2.4.5

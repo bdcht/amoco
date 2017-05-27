@@ -47,9 +47,9 @@ try:
     def get_log_level():
         try:
             level = conf.getint('log','level')
-            if level is None: level = 0
+            if level is None: level = 30
         except ValueError:
-            level = logging.__dict__.get(conf.get('log','level'),0)
+            level = logging.__dict__.get(conf.get('log','level'),30)
         return level
     default_level = get_log_level()
     if conf.has_option('log','file'):
@@ -60,7 +60,7 @@ try:
     else:
         logfilename  = None
 except ImportError:
-    default_level  = logging.ERROR
+    default_level  = logging.WARNING
     logfilename = None
 
 if logfilename:
@@ -98,8 +98,9 @@ class Log(logging.Logger):
         return self.log(VERBOSE,msg,*args,**kargs)
 
     def progress(self,count,total=0,pfx=''):
-        if self.level<VERBOSE: return
-        term = self.handlers[0].stream
+        h = self.handlers[0]
+        if h.level>VERBOSE: return
+        term = h.stream
         if not term.isatty(): return
         if total>0:
             barlen = 40

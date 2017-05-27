@@ -243,7 +243,6 @@ def ia32_push_pop(obj,_seg):
 @ispec_ia32("*>[ {f6} /5     ]", mnemonic = "IMUL",        type=type_data_processing)
 @ispec_ia32("*>[ {f6} /3     ]", mnemonic = "NEG",         type=type_data_processing)
 @ispec_ia32("*>[ {f6} /2     ]", mnemonic = "NOT",         type=type_data_processing)
-@ispec_ia32("*>[ {0f}{ae} /7 ]", mnemonic = "CLFLUSH",     type=type_other)
 @ispec_ia32("*>[ {0f}{18} /0 ]", mnemonic = "PREFETCHNTA", type=type_other)
 @ispec_ia32("*>[ {0f}{18} /1 ]", mnemonic = "PREFETCHT0" , type=type_other)
 @ispec_ia32("*>[ {0f}{18} /2 ]", mnemonic = "PREFETCHT1" , type=type_other)
@@ -777,25 +776,33 @@ def ia32_cmpxchg(obj,Mod,RM,data):
     obj.type = type_data_processing
 
 @ispec_ia32("*>[ {0f}{1f} /0  ]", mnemonic = "NOP",     type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /4  ]", mnemonic = "XSAVE",   type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /5  ]", mnemonic = "LFENCE",  type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /6  ]", mnemonic = "MFENCE",  type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /7  ]", mnemonic = "SFENCE",  type=type_cpu_state)
-def ia32_xfence(obj,Mod,RM,data):
-    if obj.mnemonic=="LFENCE" and Mod != 0b11:
-        obj.mnemonic = "XRSTOR"
-        op1, data = getModRM(obj,Mod,RM,data)
-        obj.operands = [op1]
-    elif obj.mnemonic=="MFENCE" and Mod != 0b11:
-        obj.mnemonic = "XSAVEOPT"
-        op1, data = getModRM(obj,Mod,RM,data)
-        obj.operands = [op1]
-    elif obj.mnemonic=="XSAVE" and Mod != 0b11:
-        op1, data = getModRM(obj,Mod,RM,data)
-        obj.operands = [op1]
-    else:
-        op1, data = getModRM(obj,Mod,RM,data)
+def ia32_longnop(obj,Mod,RM,data):
+    op1, data = getModRM(obj,Mod,RM,data)
 
+@ispec_ia32("*>[ {0f}{ae} /0  ]", mnemonic = "FXSAVE",   type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /1  ]", mnemonic = "FXRSTOR",  type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /2  ]", mnemonic = "LDMXCSR",  type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /3  ]", mnemonic = "STMXCSR",  type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /4  ]", mnemonic = "XSAVE",    type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /5  ]", mnemonic = "XRSTOR",   type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /6  ]", mnemonic = "XSAVEOPT", type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /7  ]", mnemonic = "CLFLUSH",  type=type_cpu_state)
+def ia32_xfence(obj,Mod,RM,data):
+    op1, data = getModRM(obj,Mod,RM,data)
+    if Mod == 0b11:
+        table = {
+            "XRSTOR":   "LFENCE",
+            "XSAVEOPT": "MFENCE",
+            "CLFLUSH":  "SFENCE",
+            }
+        if obj.mnemonic in table:
+            obj.mnemonic = table[obj.mnemonic]
+        else:
+            raise InstructionError(obj)
+    else:
+        obj.operands = [op1]
+        if obj.mnemonic == "CLFLUSH":
+            obj.misc['opdsz']=8
 
 @ispec_ia32("*>[ {0f}{20} /r ]", mnemonic = "MOV", _inv=False)
 @ispec_ia32("*>[ {0f}{22} /r ]", mnemonic = "MOV", _inv=True)

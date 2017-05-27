@@ -105,13 +105,13 @@ class instruction(icore):
 
     def __repr__(self):
         s = inspect.getmodule(self.spec.hook).__name__ if self.spec else ''
-        if self.address is not None: s += ' [%s] '%str(self.address)
-        s += " %s ( "%self.mnemonic
+        if self.address is not None: s += u' [%s] '%self.address
+        s += u" %s ( "%self.mnemonic
         for k,v in inspect.getmembers(self):
             if k in ('address','mnemonic','bytes','spec','operands','misc','formatter'): continue
             if k.startswith('_') or inspect.ismethod(v): continue
-            s += '%s=%s '%(k,str(v))
-        return '<%s)>'%s
+            s += u'%s=%s '%(k,v)
+        return u'<%s)>'%s
 
     @classmethod
     def set_formatter(cls,f):

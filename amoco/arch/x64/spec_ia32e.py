@@ -213,7 +213,12 @@ def ia32_rm32(obj,reg):
 
 @ispec_ia32("16>[ {0f} reg(3) 1 0011 ]", mnemonic = "BSWAP") # 0f c4 +rd
 def ia32_bswap(obj,reg):
-    obj.operands = [getregRW(obj,reg,32)]
+    # Intel's manual suggests to use getregRW "Using a REX prefix in the form
+    # of REX.R permits access to additional registers (R8-R15)", but in reality
+    # it is encoded by REX.B, e.g. GNU as converts "bswap %r13d" to "41 0F CD".
+    # This bug of Intel's manual was already detected in 2009.
+    # Cf. https://blogs.oracle.com/sheldon/entry/intel_doc_bug
+    obj.operands = [getregRB(obj,reg,32)]
     obj.type = type_data_processing
 
 # implicit register:
@@ -237,7 +242,6 @@ def ia32_push_pop(obj,_seg):
 @ispec_ia32("*>[ {f6} /5     ]", mnemonic = "IMUL",        type=type_data_processing)
 @ispec_ia32("*>[ {f6} /3     ]", mnemonic = "NEG",         type=type_data_processing)
 @ispec_ia32("*>[ {f6} /2     ]", mnemonic = "NOT",         type=type_data_processing)
-@ispec_ia32("*>[ {0f}{ae} /7 ]", mnemonic = "CLFLUSH",     type=type_other)
 @ispec_ia32("*>[ {0f}{18} /0 ]", mnemonic = "PREFETCHNTA", type=type_other)
 @ispec_ia32("*>[ {0f}{18} /1 ]", mnemonic = "PREFETCHT0" , type=type_other)
 @ispec_ia32("*>[ {0f}{18} /2 ]", mnemonic = "PREFETCHT1" , type=type_other)
@@ -782,6 +786,17 @@ def ia32_rdrand(obj,Mod,RM,data):
     obj.operands = [op1]
     obj.type = type_other
 
+@ispec_ia32("*>[ {0f}{c3} /r ]", mnemonic = "MOVNTI")
+def ia32_rdrand(obj,Mod,RM,REG,data):
+    op2,data = getModRM(obj,Mod,RM,data)
+    if not op2._is_mem: raise InstructionError(obj)
+    W,R,X,B = getREX(obj)
+    if W==1:
+        op2.size = 64
+    op1 = env.getregR(REG,op2.size)
+    obj.operands = [op2,op1]
+    obj.type = type_data_processing
+
 @ispec_ia32("*>[ {0f}{c7} /1 ]", mnemonic = "CMPXCHG8B")
 def ia32_cmpxchg(obj,Mod,RM,data):
     op2,data = getModRM(obj,Mod,RM,data)
@@ -795,25 +810,33 @@ def ia32_cmpxchg(obj,Mod,RM,data):
     obj.type = type_data_processing
 
 @ispec_ia32("*>[ {0f}{1f} /0  ]", mnemonic = "NOP",     type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /4  ]", mnemonic = "XSAVE",   type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /5  ]", mnemonic = "LFENCE",  type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /6  ]", mnemonic = "MFENCE",  type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /7  ]", mnemonic = "SFENCE",  type=type_cpu_state)
-def ia32_xfence(obj,Mod,RM,data):
-    if obj.mnemonic=="LFENCE" and Mod != 0b11:
-        obj.mnemonic = "XRSTOR"
-        op1, data = getModRM(obj,Mod,RM,data)
-        obj.operands = [op1]
-    elif obj.mnemonic=="MFENCE" and Mod != 0b11:
-        obj.mnemonic = "XSAVEOPT"
-        op1, data = getModRM(obj,Mod,RM,data)
-        obj.operands = [op1]
-    elif obj.mnemonic=="XSAVE" and Mod != 0b11:
-        op1, data = getModRM(obj,Mod,RM,data)
-        obj.operands = [op1]
-    else:
-        op1, data = getModRM(obj,Mod,RM,data)
+def ia32_longnop(obj,Mod,RM,data):
+    op1, data = getModRM(obj,Mod,RM,data)
 
+@ispec_ia32("*>[ {0f}{ae} /0  ]", mnemonic = "FXSAVE",   type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /1  ]", mnemonic = "FXRSTOR",  type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /2  ]", mnemonic = "LDMXCSR",  type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /3  ]", mnemonic = "STMXCSR",  type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /4  ]", mnemonic = "XSAVE",    type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /5  ]", mnemonic = "XRSTOR",   type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /6  ]", mnemonic = "XSAVEOPT", type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /7  ]", mnemonic = "CLFLUSH",  type=type_cpu_state)
+def ia32_xfence(obj,Mod,RM,data):
+    op1, data = getModRM(obj,Mod,RM,data)
+    if Mod == 0b11:
+        table = {
+            "XRSTOR":   "LFENCE",
+            "XSAVEOPT": "MFENCE",
+            "CLFLUSH":  "SFENCE",
+            }
+        if obj.mnemonic in table:
+            obj.mnemonic = table[obj.mnemonic]
+        else:
+            raise InstructionError(obj)
+    else:
+        obj.operands = [op1]
+        if obj.mnemonic == "CLFLUSH":
+            obj.misc['opdsz']=8
 
 @ispec_ia32("*>[ {0f}{20} /r ]", mnemonic = "MOV", _inv=False)
 @ispec_ia32("*>[ {0f}{22} /r ]", mnemonic = "MOV", _inv=True)

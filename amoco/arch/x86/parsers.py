@@ -26,8 +26,6 @@ logger = Log(__name__)
 # I will try to provide a way to determine the right i.spec, and also
 # it should allow to assemble an instruction... stay tuned!
 
-from amoco.arch.core import instruction
-from amoco.arch.x86.utils import CONDITION_CODES
 from amoco.arch.x86.formats import \
     mnemo_string_rep, \
     mnemo_sse_cmp_predicate, \
@@ -36,13 +34,7 @@ from amoco.arch.x86.formats import \
     att_mnemo_float_optional_suffix, \
     att_mnemo_correspondance
 from amoco.cas import expressions
-from amoco.arch.x86 import env
-class att_syntax(object): # Used as a namespace
-    # The following three lines need to be redefined for x64
-    env = env
-    CONDITION_CODES = CONDITION_CODES
-    cpu_addrsize = env.internals['mode']
-
+def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
     pfx = pp.oneOf([ 'data16', 'addr16', 'data32', 'addr32', 'lock', 'wait',
                      'rep', 'repz', 'repe', 'repne', 'repnz'])
 
@@ -61,7 +53,7 @@ class att_syntax(object): # Used as a namespace
     term    = symbol|number|char
     def action_term(toks):
         if isinstance(toks[0], str):
-            return expressions.lab(toks[0],size=att_syntax.cpu_addrsize)
+            return expressions.lab(toks[0],size=cpu_addrsize)
     term.setParseAction(action_term)
 
     exp     = pp.Forward()
@@ -86,7 +78,7 @@ class att_syntax(object): # Used as a namespace
             return
         for idx in range(len(toks)):
             if isinstance(toks[idx], pp.ParseResults):
-                toks[idx] = att_syntax.action_exp([toks[idx]])
+                toks[idx] = action_exp([toks[idx]])
         if len(toks) == 2 and toks[0] == '-' and toks[1]._is_cst:
             return expressions.cst(-toks[1].value,size=toks[1].size)
         # We need to uniformize the sizes, else amoco will complain
@@ -118,7 +110,6 @@ class att_syntax(object): # Used as a namespace
             print("EXP %s"%toks)
             FAIL
     exp.setParseAction(action_exp)
-    action_exp = staticmethod(action_exp)
 
     imm = '$'+exp
     imm.setParseAction(lambda toks:toks[1])
@@ -127,14 +118,14 @@ class att_syntax(object): # Used as a namespace
     reg = '%'+fpreg|'%'+symbol
     def action_reg(toks):
         r = toks[1]
-        if r == 'st':  return att_syntax.env.st(0)
-        if r == 'st(': return att_syntax.env.st(int(toks[2]))
-        if r.startswith('mm'): return att_syntax.env.mmregs[int(r[2:])]
-        if r.startswith('xmm'): return att_syntax.env.xmmregs[int(r[3:])]
+        if r == 'st':  return env.st(0)
+        if r == 'st(': return env.st(int(toks[2]))
+        if r.startswith('mm'): return env.mmregs[int(r[2:])]
+        if r.startswith('xmm'): return env.xmmregs[int(r[3:])]
         if r[0] == 'r' and r[-1] == 'b':
             # gcc or clang use 'r8b' instead of 'R8L' from Intel specs
             r = r[:-1]+'l'
-        return att_syntax.env.__dict__[r]
+        return env.__dict__[r]
     reg.setParseAction(action_reg)
 
     bis = '('+pp.Optional(reg)+pp.Optional(','+reg+pp.Optional(','+exp))+')'
@@ -143,14 +134,14 @@ class att_syntax(object): # Used as a namespace
             addr = toks[1]
         elif len(toks) == 5 and toks[2] == ',':
             addr = expressions.op('+', toks[1], toks[3])
-            if att_syntax.env.internals.get('keep_order'): addr.prop |= 16
+            if env.internals.get('keep_order'): addr.prop |= 16
         elif len(toks) == 6 and toks[1] == ',' and toks[3] == ',':
             toks[4].size = toks[2].size # cst size set to register size
             addr = expressions.oper('*', toks[2], toks[4])
         elif len(toks) == 7 and toks[2] == ',' and toks[4] == ',':
             toks[5].size = toks[3].size # cst size set to register size
             addr = expressions.op('+', toks[1], expressions.oper('*', toks[3], toks[5]))
-            if att_syntax.env.internals.get('keep_order'): addr.prop |= 16
+            if env.internals.get('keep_order'): addr.prop |= 16
         else:
             NEVER
         return addr
@@ -179,8 +170,8 @@ class att_syntax(object): # Used as a namespace
             addr=toks[0]
             disp=0
         if addr._is_cst and seg is '':
-            seg = att_syntax.env.ds
-        return expressions.mem(addr,att_syntax.cpu_addrsize,disp=disp,seg=seg)
+            seg = env.ds
+        return expressions.mem(addr,cpu_addrsize,disp=disp,seg=seg)
     mem.setParseAction(action_mem)
 
     opd = mem|reg|imm
@@ -203,22 +194,25 @@ class att_syntax(object): # Used as a namespace
         'COMI','UCOMI', 'CMP', 'SHUF',
         ) for s in ('PS','PD','SD','SS') ]
     def action_instr(toks):
-        i = instruction('')
+        i = instruction(b'')
         i.mnemonic = toks[0].upper()
         # Remove prefixes
-        if i.mnemonic in ('REP','REPZ','REPNZ','REPE','REPNE'):
+        if i.mnemonic in ('REP','REPZ','REPNZ','REPE','REPNE','LOCK'):
             if i.mnemonic in ('REP','REPZ','REPE'):
                 i.misc.update({'pfx':['rep',   None,None,None], 'rep':True})
             if i.mnemonic in ('REPNZ','REPNE'):
                 i.misc.update({'pfx':['repne',None,None, None], 'repne':True})
-            toks.pop(0)
+            if i.mnemonic in ('LOCK',):
+                i.misc.update({'pfx':['lock',None,None, None], 'lock':True})
+            del toks[0] # toks.pop(0) is broken for pyparsing 2.0.2
+            # https://bugs.launchpad.net/ubuntu/+source/pyparsing/+bug/1381564
             i.mnemonic = toks[0].upper()
         # Get operands
         if len(toks) > 1:
             i.operands = list(reversed(toks[1][0:]))
         # Convert mnemonics, set operand sizes
         if i.mnemonic in ('CALLL','CALLQ','JMPL','JMPQ','RETL','RETQ',
-                          'BSWAPL','FUCOMPI'):
+                          'BSWAPL','BSWAPQ','FUCOMPI'):
             # clang on MacOS X
             if i.mnemonic[-1] in ('L','Q'):
                 i.mnemonic = i.mnemonic[:-1]
@@ -230,26 +224,26 @@ class att_syntax(object): # Used as a namespace
                 i.operands.pop()
                 if not i.operands[0]._is_mem and \
                    not i.operands[0]._is_reg:
-                    i.operands[0] = expressions.mem(i.operands[0],att_syntax.cpu_addrsize)
+                    i.operands[0] = expressions.mem(i.operands[0],cpu_addrsize)
             else:
                 if i.operands[0]._is_mem:
                     i.operands[0] = i.operands[0].a.base + i.operands[0].a.disp
         elif i.mnemonic.startswith(('J','SET','CMOV')):
             for pfx in ('J','SET','CMOV'):
                 if i.mnemonic.startswith(pfx): break
-            for i.cond in att_syntax.CONDITION_CODES.values():
+            for i.cond in CONDITION_CODES.values():
                 if i.mnemonic[len(pfx):] in i.cond[0].split('/'): break
             else:
                 if pfx == 'CMOV' and i.mnemonic[-1] in ('W','L','Q'):
                     # clang on MacOS X
-                    for i.cond in att_syntax.CONDITION_CODES.values():
+                    for i.cond in CONDITION_CODES.values():
                         if i.mnemonic[len(pfx):-1] in i.cond[0].split('/'):
                             break
                     else:
                         NEVER
                 elif pfx == 'SET' and i.mnemonic[-1] == 'B':
                     # gcc 3.2.3
-                    for i.cond in att_syntax.CONDITION_CODES.values():
+                    for i.cond in CONDITION_CODES.values():
                         if i.mnemonic[len(pfx):-1] in i.cond[0].split('/'):
                             break
                     else:
@@ -296,7 +290,9 @@ class att_syntax(object): # Used as a namespace
             ):
             assert i.operands[0]._is_mem
             i.operands[0].size = 16
-        elif i.mnemonic in att_syntax.mmx_with_suffix2 and len(i.operands):
+        elif i.mnemonic == 'CMPXCHG':
+            if i.operands[0]._is_mem: i.operands[0].size = i.operands[1].size
+        elif i.mnemonic in mmx_with_suffix2 and len(i.operands):
             if i.mnemonic.endswith('SS'):
                 if i.operands[1]._is_mem: i.operands[1].size = 32
             elif i.mnemonic.endswith('SD'):
@@ -305,17 +301,22 @@ class att_syntax(object): # Used as a namespace
             else:
                 if i.operands[1]._is_mem: i.operands[1].size = 128
         elif i.mnemonic in (
-            'CVTSI2SS',
+            'CVTSI2SS','CVTSI2SD','CVTTSS2SI','CVTTSS2SIL','CVTTSS2SIQ',
             ):
             if i.operands[1]._is_mem: i.operands[1].size = 32
+            # gcc 4.9.2 generates cvttss2siq %xmm0, %r15
+            # which is useless, because the size of the output is
+            # determined by the output register
+            if i.mnemonic[-1] in 'LQ': i.mnemonic = i.mnemonic[:-1]
         elif i.mnemonic in (
             'MOVLPD','MOVLPS','MOVHPD','MOVHPS',
             'MOVDDUP', 'PSHUFW',
-            'CVTSD2SS','CVTSD2SI','CVTTSD2SI',
+            'CVTSD2SS','CVTSD2SI','CVTTSD2SI','CVTTSD2SIL','CVTTSD2SIQ',
             'CVTPI2PD','CVTPI2PS','CVTPS2PI','CVTPS2PD','CVTDQ2PD',
             ):
             if i.operands[0]._is_mem: i.operands[0].size = 64
             if i.operands[1]._is_mem: i.operands[1].size = 64
+            if i.mnemonic[-1] in 'LQ': i.mnemonic = i.mnemonic[:-1]
         elif i.mnemonic in (
             'PSHUFD','PSHUFLW','PSHUFHW',
             'MOVDQA','MOVDQU','MOVSLDUP','MOVSHDUP',
@@ -326,7 +327,7 @@ class att_syntax(object): # Used as a namespace
             ):
             if i.operands[0]._is_mem: i.operands[0].size = 128
             if i.operands[1]._is_mem: i.operands[1].size = 128
-        elif i.mnemonic in att_syntax.mmx_with_suffix1 or i.mnemonic in (
+        elif i.mnemonic in mmx_with_suffix1 or i.mnemonic in (
             'PSHUFB',
             'PAND','PANDN','POR','PXOR',
             ):
@@ -354,10 +355,18 @@ class att_syntax(object): # Used as a namespace
                     break
                 i.mnemonic = _.upper()
                 sz = {'b':8, 'w':16, 'l':32, 'q':64}[mnemo[-1]]
+                if 'q' == mnemo[-1]:
+                    i.misc.update({'REX':(1,0,0,0)})
+                def set_size(e, sz):
+                    if e._is_mem: e.size = sz
+                    if e._is_cst: e.size = sz; e.v &= e.mask
+                    if e._is_lab: e.size = sz
+                    if e._is_eqn:
+                        e.size = sz
+                        if e.l is not None: set_size(e.l, sz)
+                        set_size(e.r, sz)
                 for _ in i.operands:
-                    if _._is_mem: _.size = sz
-                    if _._is_cst: _.size = sz; _.v &= _.mask
-                    if _._is_lab: _.size = sz
+                    set_size(_, sz)
             for _ in att_mnemo_suffix_one_iflt:
                 if mnemo[:-1] != _: continue
                 i.mnemonic = _.upper()
@@ -371,7 +380,7 @@ class att_syntax(object): # Used as a namespace
                     if _._is_mem: _.size = 64
             for _ in att_mnemo_float_optional_suffix:
                 if mnemo[:-1] != _: continue
-                if mnemo[-1] in ('p','r','z','1'): continue
+                if mnemo[-1] in ('i','p','r','z','1'): continue
                 i.mnemonic = _.upper()
                 sz = {'s':32, 'l':64, 't':80}[mnemo[-1]]
                 for _ in i.operands:
@@ -391,8 +400,37 @@ class att_syntax(object): # Used as a namespace
             idx = mnemo_sse_cmp_predicate.index(i.mnemonic[3:-2].lower())
             i.operands.append(expressions.cst(idx))
             i.mnemonic = i.mnemonic[:3] + i.mnemonic[-2:]
+        elif i.mnemonic in ('FADD','FSUB','FSUBR',
+                            'FMUL','FDIV','FDIVR',
+                            'FCOMI','FCOMIP','FUCOMI','FUCOMIP',
+                           ) \
+                and len(i.operands) == 1 \
+                and not i.operands[0]._is_mem:
+            i.operands.insert(0,env.st(0))
+        elif i.mnemonic in ('FADDP','FSUBP','FSUBRP',
+                            'FMULP','FDIVP','FDIVRP',
+                           ) \
+                and len(i.operands) == 1 \
+                and not i.operands[0]._is_mem:
+            i.operands.append(env.st(0))
+        elif i.mnemonic in ('FCOM','FCOMP','FUCOM','FUCOMP',
+                           ) \
+                and len(i.operands) == 0:
+            i.operands.append(env.st(1))
         return i
     instr.setParseAction(action_instr)
+    # Set instr.instr for compatibility with previous versions of amoco
+    # where att_syntax is a namespace containing 'instr'.
+    # Set instr.__name__ for test_parser
+    instr.instr = instr
+    instr.__name__ = 'att_syntax'
+    return instr
+
+from amoco.arch.x86.cpu_x86 import instruction_x86
+from amoco.arch.x86.utils import CONDITION_CODES
+from amoco.arch.x86 import env
+att_syntax = att_syntax_gen(env, CONDITION_CODES, 32, instruction_x86)
+
 
 
 #------------------------------------------------------------------------------

@@ -55,13 +55,13 @@ def oprel(i):
     return [(Token.Constant,'.%+d'%i.operands[0].value)]
 
 # main intel formats:
-format_intel_default = (mnemo,opers)
+format_intel_default = (pfx,mnemo,opers)
 
-format_intel_ptr = (mnemo,opers)
+format_intel_ptr = (pfx,mnemo,opers)
 
 format_intel_str = (pfx,mnemo,opers)
 
-format_intel_rel = (mnemo,oprel)
+format_intel_rel = (pfx,mnemo,oprel)
 
 # intel formats:
 IA32_Intel_formats = {
@@ -136,13 +136,13 @@ def oprel_att(i):
     return [(Token.Constant,'$.%+d'%i.operands[0].value)]
 
 # main at&t formats:
-format_att_default = (mnemo_att,opers_att)
+format_att_default = (pfx,mnemo_att,opers_att)
 
-format_att_ptr = (mnemo_att,opers_att)
+format_att_ptr = (pfx,mnemo_att,opers_att)
 
 format_att_str = (pfx,mnemo_att,opers_att)
 
-format_att_rel = (mnemo_att,oprel_att)
+format_att_rel = (pfx,mnemo_att,oprel_att)
 
 # formats:
 IA32_ATT_formats = {
@@ -180,6 +180,12 @@ def default_prefix_name(i):
             i.mnemonic.startswith('SCAS') or
             i.mnemonic.startswith('CMPS')):
         pfxgrp0 = 'repz'
+    # Special case: when gcc produces 'rep ret'
+    # http://mikedimmick.blogspot.fr/2008/03/what-heck-does-ret-mean.html
+    # it usually puts it on two separate lines, and old versions of
+    # GNU as don't like a true 'rep ret'
+    if pfxgrp0 == 'rep' and i.mnemonic == 'RET':
+        pfxgrp0 = 'rep;'
     return [(Token.Prefix,'%s '%pfxgrp0)]
 
 def default_mnemo_name(i):
@@ -205,15 +211,7 @@ def default_mnemo_name(i):
           }[i.cond[0]]
         op = op[:-2] + cc
     if op == 'retn': op = 'ret'
-    s = [(Token.Mnemonic,op)]
-    # Special case: when gcc produces 'rep ret'
-    # http://mikedimmick.blogspot.fr/2008/03/what-heck-does-ret-mean.html
-    # it usually puts it on two separate lines, and old versions of
-    # GNU as don't like a true 'rep ret'
-    if op == 'ret' and i.misc.get('pfx') is not None:
-        if i.misc['pfx'][0] == 'rep':
-            s = [(Token.Prefix,'rep; ')] + s
-    return s
+    return [(Token.Mnemonic,op)]
 
 def reg_name(r):
     assert r._is_reg
@@ -461,9 +459,9 @@ def intel_oprel(i):
     return [(Token.Constant,'{%s}'%op)]
 
 # Intel syntax, as used in GNU binutils
-intel_format_default = (                    intel_mnemo,intel_opers)
+intel_format_default = (default_prefix_name,intel_mnemo,intel_opers)
 intel_format_str     = (default_prefix_name,intel_mnemo,intel_opers)
-intel_format_rel     = (                    intel_mnemo,intel_oprel)
+intel_format_rel     = (default_prefix_name,intel_mnemo,intel_oprel)
 IA32_Binutils_Intel_formats = {
     'ia32_strings' : intel_format_str,
     'ia32_imm_rel' : intel_format_rel,
@@ -499,7 +497,7 @@ att_mnemo_suffix_one_ptr = [
     'sal', 'sar', 'shl', 'shr', 'rol', 'ror', 'sbb', 'shld', 'shrd',
     'bsf', 'bsr',
     'bt', 'bts', 'btr', 'btc', 'lgdt',
-    'cvtsi2sd', 'cvtsi2ss', 'cvttsd2si', 'fisttp',
+    'cvtsi2sd', 'cvtsi2ss', 'fisttp',
 ]
 att_mnemo_correspondance = {
     # 'movsl': 'movsd', # there is a SSE movsd and a string movsd
@@ -538,6 +536,7 @@ def att_mnemo_generic(i,s,m):
             if m == value ])[0]
     elif m in att_mnemo_suffix_one_ptr:
         if m == 'push' and (i.operands[0]._is_cst
+                         or i.operands[0]._is_eqn
                          or i.operands[0]._is_lab
                          or i.operands[0]._is_reg):
             if i.misc.get('opdsz',None) == 16:  m += 'w'
@@ -580,7 +579,7 @@ def att_mnemo_binutils(i):
             if   m[4:] == 'p':  m = m[:4]+'rp'
             elif m[4:] == 'rp': m = m[:4]+'p'
             else: NEVER
-        elif len(i.operands) == 2 and str(i.operands[1]) == 'st0':
+        elif len(i.operands) == 2 and str(i.operands[0]) != 'st0':
             if   m[4:] == '':   m = m+'r'
             elif m[4:] == 'r':  m = m[:4]
             else: NEVER
@@ -591,18 +590,15 @@ def att_mnemo_macosx(i):
     m = s[-1][1]
     if m == 'sal': m = 'shl' # clang assembler does not understand 'sal'
     if m.startswith('fsub') or m.startswith('fdiv'):
-        # Buggy too, but not the same as binutils
-        # only the 'p' variants are erroneous!
+        # same as binutils
         if m[-1] == 'p':
             if   m[4:] == 'p':  m = m[:4]+'rp'
             elif m[4:] == 'rp': m = m[:4]+'p'
             else: NEVER
-    if m == 'test':
-        # clang sometimes uses Intel argument order for 'test'
-        # verified for Apple LLVM version 7.0.2 (clang-700.1.81)
-        if i.operands[1]._is_slc or \
-          (i.operands[1]._is_reg and not i.operands[1]._is_lab):
-            i.operands.reverse()
+        elif len(i.operands) == 2 and str(i.operands[0]) != 'st0':
+            if   m[4:] == '':   m = m+'r'
+            elif m[4:] == 'r':  m = m[:4]
+            else: NEVER
     return att_mnemo_generic(i,s,m)
 
 def att_deref(op):
@@ -629,9 +625,20 @@ def att_deref(op):
         s = '%{}:{}'.format(seg,s)
     return s
 
-def att_opers(i):
+def att_opers_macosx(i):
+    if i.mnemonic == 'TEST':
+        # clang sometimes uses Intel argument order for 'test'
+        # verified for Apple LLVM version 7.0.2 (clang-700.1.81)
+        if i.operands[1]._is_slc or \
+          (i.operands[1]._is_reg and not i.operands[1]._is_lab):
+            return att_opers(i, operands=i.operands)
+    return att_opers(i)
+
+def att_opers(i, operands=None):
     s = []
-    for op in reversed(i.operands):
+    if operands is None:
+        operands = reversed(i.operands)
+    for op in operands:
         if op._is_mem:
             op = att_deref(op)
             if i.mnemonic in ('CALL','JMP'): op = '*'+op
@@ -668,12 +675,16 @@ def att_oprel(i):
     if op._is_eqn and op.op.symbol == '+' \
         and op.l._is_lab:
         return [(Token.Address,'%s%+d'%(op.l.ref,op.r))]
+    if op._is_eqn and op.op.symbol == '+' \
+        and op.l._is_eqn and op.l.op.symbol == '+' \
+        and op.l.l._is_lab and op.l.r._is_reg and op.l.r.ref == 'rip':
+        return [(Token.Address,'%s%+d(%%rip)'%(op.l.l.ref,op.r))]
     return [(Token.Constant,'{%s}'%op)]
 
 # AT&T syntax, as used in GNU binutils
-att_format_default = (                    att_mnemo_binutils,att_opers)
+att_format_default = (default_prefix_name,att_mnemo_binutils,att_opers)
 att_format_str     = (default_prefix_name,att_mnemo_binutils,att_opers)
-att_format_rel     = (                    att_mnemo_binutils,att_oprel)
+att_format_rel     = (default_prefix_name,att_mnemo_binutils,att_oprel)
 IA32_Binutils_ATT_formats = {
     'ia32_strings' : att_format_str,
     'ia32_imm_rel' : att_format_rel,
@@ -682,9 +693,9 @@ IA32_Binutils_ATT = Formatter(IA32_Binutils_ATT_formats)
 IA32_Binutils_ATT.default = att_format_default
 
 # AT&T syntax, as used by clang on MacOSX
-attm_format_default = (                    att_mnemo_macosx,att_opers)
+attm_format_default = (default_prefix_name,att_mnemo_macosx,att_opers_macosx)
 attm_format_str     = (default_prefix_name,att_mnemo_macosx,att_opers)
-attm_format_rel     = (                    att_mnemo_macosx,att_oprel)
+attm_format_rel     = (default_prefix_name,att_mnemo_macosx,att_oprel)
 IA32_MacOSX_ATT_formats = {
     'ia32_strings' : attm_format_str,
     'ia32_imm_rel' : attm_format_rel,

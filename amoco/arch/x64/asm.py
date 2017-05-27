@@ -406,6 +406,10 @@ def i_JMPF(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
   pc = fmap[rip]+i.length
 
+def i_RETF(i,fmap):
+  logger.warning('%s semantic is not defined'%i.mnemonic)
+  pc = fmap[rip]+i.length
+
 #------------------------------------------------------------------------------
 def _loop_(i,fmap,fcond):
   pc = fmap[rip]+i.length
@@ -1061,6 +1065,11 @@ def i_RDRAND(i,fmap):
    fmap[cf] = top(1)
    for f in (of,sf,zf,af,pf): fmap[f] = bit0
 
+def i_MOVNTI(i,fmap):
+   fmap[rip] = fmap[rip]+i.length
+   dst,src = i.operands
+   fmap[dst] = fmap(src)
+
 def i_RDTSC(i,fmap):
    logger.warning('%s semantic is not defined'%i.mnemonic)
    fmap[rip] = fmap[rip]+i.length
@@ -1073,6 +1082,14 @@ def i_RDTSCP(i,fmap):
    fmap[rdx] = top(64)
    fmap[rax] = top(64)
    fmap[rcx] = top(64)
+
+def i_CLTS(i,fmap):
+   logger.warning('%s semantic is not defined'%i.mnemonic)
+   fmap[rip] = fmap[rip]+i.length
+
+def i_CPUID(i,fmap):
+   logger.warning('%s semantic is not defined'%i.mnemonic)
+   fmap[rip] = fmap[rip]+i.length
 
 def i_BOUND(i,fmap):
    logger.warning('%s semantic is not defined'%i.mnemonic)
@@ -1208,6 +1225,11 @@ def i_INVD(i,fmap):
   fmap[rip] = fmap[rip]+i.length
   # cache not supported
 
+def i_WBINVD(i,fmap):
+  logger.warning('%s semantic is not defined'%i.mnemonic)
+  fmap[rip] = fmap[rip]+i.length
+  # cache not supported
+
 def i_INVLPG(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
@@ -1255,12 +1277,19 @@ def i_STR(i,fmap):
 def i_RDMSR(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
+def i_WRMSR(i,fmap):
+  logger.warning('%s semantic is not defined'%i.mnemonic)
+  fmap[rip] = fmap[rip]+i.length
 
 def i_RDPMC(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
 
 def i_RSM(i,fmap):
+  logger.warning('%s semantic is not defined'%i.mnemonic)
+  fmap[rip] = fmap[rip]+i.length
+
+def i_MONITOR(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
 
@@ -1316,6 +1345,11 @@ def i_PXOR(i,fmap):
   op2 = fmap(i.operands[1])
   x=fmap(op1)^op2
   fmap[op1] = x
+
+i_ANDPS  = i_PAND
+i_ANDNPS = i_PANDN
+i_ORPS   = i_POR
+i_XORPS  = i_PXOR
 
 def i_MOVD(i,fmap):
   fmap[rip] = fmap[rip]+i.length

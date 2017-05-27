@@ -80,10 +80,10 @@ class node(Vertex):
         return u'<%s [%s] at 0x%x>'%(self.__class__.__name__,self.name,id(self))
 
     def __cmp__(self,n):
-        return cmp(hash(self),hash(n))
+        return cmp(hash(self.data),hash(n.data))
 
     def __hash__(self):
-        return hash(self.data)
+        return id(self)
 
     def __len__(self):
         return self.data.length
@@ -250,6 +250,7 @@ class graph(Graph):
         # if vaddr is aligned with an oldblock instr, cut it:
         # this reduces oldblock up to vaddr if the cut is possible.
         cutdone = oldblock.cut(vaddr)
+        oldblock.misc['cut'] = cutdone
         if not cutdone:
             if mz is self.overlay:
                 logger.warning(u"double overlay block at %s"%vaddr)
@@ -316,6 +317,23 @@ class graph(Graph):
 
     def signature(self):
         return u''.join([signature(g) for g in self.C])
+
+    def to_dot(self,name=None):
+        dot  = "digraph G {\n"
+        dot += '    graph [orientation=landscape, labeljust=left];\n'
+        dot += "    node [shape=box,fontname=monospace,fontsize=8];\n"
+        if name:
+            g = self.get_by_name(name).c
+        else:
+            g = self
+        for v in g.V():
+            txt = u"%s"%v.data
+            dot += '    "%s" [label="%s"];\n'%(id(v),txt)
+        for e in g.E():
+            dot += '    "%s" -> "%s"'%(id(e.v[0]),id(e.v[1]))
+            dot += " [style=bold];\n" if e.feedback else ';\n'
+        dot += '}\n'
+        return dot
 
 #------------------------------------------------------------------------------
 

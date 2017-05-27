@@ -57,7 +57,7 @@ class PE(CoreExec):
         if v._is_cst:
             x = self.bin.functions.get(v.value,None) or self.bin.variables.get(v.value,None)
             if x is not None:
-                if isinstance(x,str): x=cpu.ext(x,size=64)
+                if isinstance(x,str): x=cpu.ext(x,size=v.size)
                 else: x=cpu.sym(x[0],v.value,v.size)
                 return x
         return None

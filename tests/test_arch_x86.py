@@ -187,14 +187,14 @@ def test_decoder_023():
   c = b'\xf3\x0f\x2c\x45\xf0'
   i = cpu.disassemble(c)
   assert i.mnemonic == 'CVTTSS2SI'
-  assert i.toks()[1][1] == 'eax'
+  assert i.toks()[2][1] == 'eax'
 
 # cvtss2si eax, [ebp-16]
 def test_decoder_024():
   c = b'\xf3\x0f\x2d\x45\xf0'
   i = cpu.disassemble(c)
   assert i.mnemonic == 'CVTSS2SI'
-  assert i.toks()[1][1] == 'eax'
+  assert i.toks()[2][1] == 'eax'
 
 # push -1
 def test_decoder_025():
@@ -211,15 +211,15 @@ def test_decoder_026():
   c = b'\x66\x0f\xd6\x4d\xf0'
   i = cpu.disassemble(c)
   assert i.mnemonic == 'MOVQ'
-  assert i.toks()[1][1] == 'qword ptr [ebp-16]'
+  assert i.toks()[2][1] == 'qword ptr [ebp-16]'
 
 # movq xmm2, qword ptr [ebp-16]
 def test_decoder_027():
   c = b'\xf3\x0f\x7e\x55\xf0'
   i = cpu.disassemble(c)
   assert i.mnemonic == 'MOVQ'
-  assert i.toks()[1][1] == 'xmm2'
-  assert i.toks()[3][1] == 'qword ptr [ebp-16]'
+  assert i.toks()[2][1] == 'xmm2'
+  assert i.toks()[4][1] == 'qword ptr [ebp-16]'
 
 # movq xmm0, xmm1
 def test_decoder_028():

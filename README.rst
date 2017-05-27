@@ -5,6 +5,10 @@ Amoco
 .. image:: https://travis-ci.org/bdcht/amoco.svg?branch=release
     :target: https://travis-ci.org/bdcht/amoco
 
+.. image:: http://readthedocs.org/projects/amoco/badge/?version=latest
+    :target: http://amoco.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
 +-----------+-----------------------------------+
 | Status:   | Under Development                 |
 +-----------+-----------------------------------+

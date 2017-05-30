@@ -31,7 +31,7 @@ except ImportError:
             self.options = options
         def format(self,tokensource,outfile):
             for t,v in tokensource:
-                outfile.write(v)
+                outfile.write(v.encode('latin1'))
     Formats = {
       'Null':NullFormatter(),
     }

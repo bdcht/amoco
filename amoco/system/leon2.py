@@ -13,7 +13,6 @@ class ELF(CoreExec):
 
     def __init__(self,p):
         CoreExec.__init__(self,p,cpu)
-        cpu.exp.setendian(-1) # set endianess to big-endian
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):

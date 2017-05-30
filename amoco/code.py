@@ -12,6 +12,7 @@ This module defines classes that represent assembly instructions blocks,
 functions, and calls to *external* functions. In amoco, such objects are
 found as :attr:`node.data` in nodes of a :class:`cfg.graph`. As such,they
 all provide a common API with:
+
     * ``name`` to get/set a name,
     * ``map`` to get the associated symbolic execution
     * ``address`` to identify and locate the object in memory
@@ -156,12 +157,14 @@ class block(object):
             return 0
         else:
             self.instr = self.instr[:pos]
+            self.misc = defaultdict(_code_misc_default)
             if self._map:
                 self._map.clear()
                 for i in self.instr:
                     i(self._map)
-            # TODO: update misc annotations too
-            return len(I)-pos
+                self.helper(self._map)
+            nl = len(I)-pos
+            return nl
 
     def __str__(self):
         T = self.view._vltable(formatter='Null')
@@ -204,7 +207,7 @@ class func(block):
         name (Optional[str]): the optional name of the function (defaults to the name of its root node.)
 
     Attributes:
-        cfg (graph_core): the :grandalf:class:`graph_core` CFG of the function (see :mod:`cfg`.)
+        cfg (graph_core): the :class:`graph_core` CFG of the function (see :mod:`cfg`.)
     """
     __slots__ = ['cfg']
 
@@ -234,9 +237,6 @@ class func(block):
         smin = self.address
         smax = max((b.address+b.length for b in self.blocks))
         return (smin,smax)
-
-    def __hash__(self):
-        return hash(self.address)
 
     #(re)compute the map of the entire function cfg:
     def makemap(self,withmap=None,widening=True):
@@ -364,9 +364,6 @@ class xfunc(object):
                 if (k in doc) or (v in doc):
                     self.misc[v] = 1
         self.view  = xfuncView(self)
-
-    def __hash__(self):
-        return hash(self.name)
 
     @property
     def support(self):

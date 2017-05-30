@@ -327,7 +327,6 @@ def sse_pd(obj,Mod,REG,RM,data):
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
-# r32, xmm
 @ispec_ia32("*>[ {0f}{50} /r ]", mnemonic="MOVMSKPD")
 @ispec_ia32("*>[ {0f}{d7} /r ]", mnemonic="PMOVMSKB")
 def sse_pd(obj,Mod,REG,RM,data):

@@ -15,8 +15,9 @@ class ELF(CoreExec):
 
     def __init__(self,p):
         CoreExec.__init__(self,p,cpu)
-        self.symbols.update(self.bin.functions)
-        self.symbols.update(self.bin.variables)
+        if self.bin:
+            self.symbols.update(self.bin.functions)
+            self.symbols.update(self.bin.variables)
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):
@@ -39,18 +40,6 @@ class ELF(CoreExec):
         for k,f in self.bin._Elf32__dynamic(None).items():
             self.mmap.write(k,cpu.ext(f,size=32))
 
-    # lookup in bin if v is associated with a function or variable name:
-    def check_sym(self,v):
-        if v._is_cst:
-            x = self.symbols.get(v.value,None)
-            if x is not None:
-                if isinstance(x,str):
-                    x=cpu.ext(x,size=32)
-                else:
-                    x=cpu.sym(x[0],v.value,v.size)
-                return x
-        return None
-
     def initenv(self):
         from amoco.cas.mapper import mapper
         m = mapper()
@@ -64,12 +53,6 @@ class ELF(CoreExec):
                     (cpu.edi, cpu.cst(0,32))):
             m[k] = v
         return m
-
-    def codehelper(self,**kargs):
-        if 'seq' in kargs: return self.seqhelper(kargs['seq'])
-        if 'block' in kargs: return self.blockhelper(kargs['block'])
-        if 'func' in kargs: return self.funchelper(kargs['func'])
-
 
     # seqhelper provides arch-dependent information to amoco.main classes
     def seqhelper(self,seq):
@@ -126,11 +109,8 @@ class ELF(CoreExec):
         return seq
 
     def blockhelper(self,block):
-        for i in self.seqhelper(block.instr):
-            block.misc.update(i.misc)
-        # delayed computation of block.map:
         block._helper = block_helper_
-        return block
+        return CoreExec.blockhelper(self,block)
 
     def funchelper(self,f):
         # check single root node:

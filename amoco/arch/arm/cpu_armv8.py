@@ -18,7 +18,7 @@ from amoco.arch.arm.v8.formats import ARM_V8_full
 
 instruction_armv8.set_formatter(ARM_V8_full)
 
-endian = (lambda : 1 if internals['endianstate']==0 else -1)
+endian = (lambda : 1 if internals['ibigend']==0 else -1)
 
 disassemble = disassembler([spec_armv8],endian=endian,iclass=instruction_armv8)
 

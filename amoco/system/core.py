@@ -4,6 +4,23 @@
 # Copyright (C) 2007-2013 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
+"""
+system/core.py
+==============
+
+This module defines all Memory related classes as well as the task/process
+execution core class inherited by all system specific execution classes of
+the `amoco.system_` package.
+
+The main class of amoco's Memory model is ``MemoryMap``. It provides a way
+to represent both concrete and abstract symbolic values located in the
+virtual memory space of a process. In order to allow addresses to be
+symbolic as well, the MemoryMap is organised as a collection of `zones`.
+A MemoryZone holds values located at addresses that are integer offsets
+related to a symbolic expression. A default zone with related address set
+to ``None`` holds values at concrete addresses in every MemoryMap.
+"""
+
 
 from amoco.logger import Log
 logger = Log(__name__)
@@ -13,19 +30,35 @@ from bisect import bisect_left
 from amoco.cas.expressions import exp,top
 
 #------------------------------------------------------------------------------
-# datadiv provides the API for manipulating data values extracted from memory.
-# These values are either considered as 'raw' (byte strings) or can be any
-# abstractions (or symbolic expressions)
-# The datadiv.val required API is:
-#   .__len__ => byte length
-#   .size => bit length
-#   .__getitem__ => extraction of bit slices.
-#   .__setitem__ => overwrite given bit slice.
 class datadiv(object):
-    __slots__ = ['val']
+    """
+    A datadiv represents any data within Memory, including symbolic expressions.
 
-    def __init__(self,data):
+    Args:
+        data : either a byte string or an amoco expression.
+
+    Attributes:
+        val : the reference to the data object.
+        _is_raw : a flag indicating that the data object is a raw byte string.
+
+    Methods:
+        cut(l): cut out the first l bytes of the current data, keeping only
+            the remaining part of the data.
+
+        getpart(o,l): returns a pair (result, counter) where result is a part
+            of data of length at most l located at offset o (relative to the
+            beginning of the data bytes), and counter is the number of bytes
+            missing (l-len(result)) if the current data length is less than l.
+
+        setpart(o,data): returns a list of contiguous datadiv objects that
+            correspond to overwriting self with data at offset o (possibly
+            extending the current datadiv length).
+    """
+    __slots__ = ['val','endian']
+
+    def __init__(self,data,endian):
         self.val = data
+        self.endian = endian
 
     @property
     def _is_raw(self):
@@ -53,11 +86,8 @@ class datadiv(object):
         if self._is_raw:
             self.val = self.val[l:]
         else:
-            self.val = self.val.bytes(l)
+            self.val = self.val.bytes(l,endian=self.endian)
 
-    # returns (result, counter) where result is a part of val of length l
-    # located at offset o, and counter is the number of bytes that still
-    # need to be read from another div.
     def getpart(self,o,l):
         try:
             assert o>=0 and l>=0
@@ -73,24 +103,33 @@ class datadiv(object):
             res = self.val[o:o+l]
             return (res,l-len(res))
         if o>=lv: return (None,l)
-        res = self.val.bytes(o,o+l)
+        res = self.val.bytes(o,o+l,self.endian)
         return (res,l-res.length)
 
-    # returns a list of (contiguous) datadiv objects resulting from
-    # overwriting self with data at offset o, possibly extending self.
-    def setpart(self,o,data):
+    def setpart(self,o,data,endian):
         assert 0<=o<=len(self)
-        P = [datadiv(data)]
+        P = [datadiv(data,endian)]
         olv = o+len(data)
         endl = len(self)-olv
         if endl>0:
-            P.append(datadiv(self.getpart(olv,endl)[0]))
+            P.append(datadiv(self.getpart(olv,endl)[0],self.endian))
         if o>0:
-            P.insert(0,datadiv(self.getpart(0,o)[0]))
+            P.insert(0,datadiv(self.getpart(0,o)[0],self.endian))
         # now merge contiguous parts if they have same type:
         return mergeparts(P)
 
+#------------------------------------------------------------------------------
 def mergeparts(P):
+    """This function will detect every contigous raw datadiv objects in the
+    input list P, and will return a new list where these objects have been
+    merged into a single raw datadiv object.
+
+    Args:
+        P (list): input list of datadiv objects.
+
+    Returns:
+        list: the list after raw datadiv objects have been merged.
+    """
     parts = [P.pop(0)]
     while len(P)>0:
         p = P.pop(0)
@@ -104,14 +143,35 @@ def mergeparts(P):
     return parts
 
 #------------------------------------------------------------------------------
-# mo are abstractions for 'memory objects'. Such obj is located at a virtual
-# address in Memory. Data contained in the obj is stored as datadiv object.
 class mo(object):
+    """A mo object essentially associates a datadiv with a Memory address, and
+    provides methods to detect if an address is located within this object,
+    to read or write bytes at a given address. Such Memory address is a integer
+    relative to the Memory zone ``rel`` expression.
+
+    Attributes:
+        vaddr : a python integer that represents the address within the Memory
+            zone that contains this memory object (mo).
+        data : the datadiv object located at this address.
+
+    Methods:
+        trim(vaddr): if this mo contains data at given address, cut out this
+            data and points current object to this address. Note that a trim is
+            generally the result of data being overwritten by another mo.
+
+        read(vaddr,l): returns the list of datadiv objects at given address so
+            that the total length is at most l, and the number of bytes missing
+            if the total length is less than l.
+
+        write(vaddr,data): updates current mo to reflect the writing of data at
+            given address and returns the list of possibly new mo objects to be
+            inserted in the Memory zone.
+    """
     __slots__ = ['vaddr','data']
 
-    def __init__(self,vaddr,data):
+    def __init__(self,vaddr,data,endian=1):
         self.vaddr=vaddr
-        self.data=datadiv(data)
+        self.data=datadiv(data,endian)
 
     @property
     def end(self):
@@ -127,47 +187,80 @@ class mo(object):
             if self.data._is_raw: data+="'"
         return '<mo [%08x,%08x] data:%s>'%(self.vaddr,self.end,data)
 
-    # change current obj to start at provided vaddr
     def trim(self,vaddr):
         if vaddr in self:
             l = vaddr-self.vaddr
             if l>0: self.data.cut(l)
             self.vaddr = vaddr
 
-    # provide list of datadivs resulting from reading l bytes starting at vaddr
     def read(self,vaddr,l):
         if vaddr in self:
             return self.data.getpart(vaddr-self.vaddr,l)
         else:
             return (None,l)
 
-    # update current obj resulting from writing datadiv at vaddr, returning the
-    # list of possibly additional objs to insert in the map
-    def write(self,vaddr,data):
+    def write(self,vaddr,data,endian):
         if vaddr in self or vaddr==self.end:
-            parts = self.data.setpart(vaddr-self.vaddr,data)
+            parts = self.data.setpart(vaddr-self.vaddr,data,endian)
             self.data = parts[0]
             O = []
             vaddr = self.end
             for p in parts[1:]:
-                O.append(mo(vaddr,p.val))
+                O.append(mo(vaddr,p.val,p.endian))
                 vaddr += len(p)
             return O
         else:
-            return [mo(vaddr,data)]
+            return [mo(vaddr,data,endian)]
 
 #------------------------------------------------------------------------------
 class MemoryZone(object):
+    """A MemoryZone contains mo objects at addresses that are integer offsets
+    related to a symbolic expression. A default zone with related address set
+    to ``None`` holds values at concrete addresses in every MemoryMap.
+
+    Args:
+        rel (exp): the relative symbolic expression, defaults to None.
+
+    Attributes:
+        rel : the relative symbolic expression, or None.
+        _map : the ordered list of mo objects of this zone.
+        __dead : this internal flag indicates that unmapped `void` data is
+            set to ``top`` if set.
+
+    Methods:
+        range(): returns the lowest and highest addresses currently used by
+            mo objects of this zone.
+
+        locate(vaddr): if the given address is within range, return the
+            index of the corresponding mo object in _map, otherwise
+            return None.
+
+        read(vaddr,l): reads l bytes starting at vaddr. returns a list of
+            datadiv values, unmapped areas are returned as 'void' expressions
+            (top if zone is marked as 'dead' or bottom otherwise.)
+
+        write(vaddr,data,res=False,dead=False): writes data expression or
+            bytes at given (concrete) address. Calls a restruct operation
+            if res is True, and optionally sets the zone dead flag.
+
+        addtomap(z): add (possibly overlapping) mo object z to the _map,
+            eventually adjusting other mo objects.
+
+        restruct(): optimize the zone to merge contiguous raw bytes into single
+            mo objects.
+
+        shift(offset): shift all mo objects by a given offset.
+
+        grep(pattern): find all occurences of the given regular expression in
+            the raw bytes objects of the zone.
+    """
     __slots__ = ['rel','_map','__cache','__dead']
 
-    def __init__(self,rel=None,D=None):
+    def __init__(self,rel=None):
         self.rel = rel
-        self.__dead = False
         self._map = []
         self.__cache = [] # speedup locate method
-        if D != None and isinstance(D,dict):
-            for vaddr,data in iter(D.items()):
-                self.addtomap(mo(vaddr,data))
+        self.__dead = False
 
     def range(self):
         return (self._map[0].vaddr,self._map[-1].end)
@@ -189,10 +282,6 @@ class MemoryZone(object):
         if i==0: return None
         else: return i-1
 
-    # read l bytes starting at vaddr.
-    # return value is a list of datadiv values, unmapped areas
-    # are returned as 'void' expressions : top if zone is marked as 'dead'
-    # or bottom otherwise.
     def read(self,vaddr,l):
         void = top if self.__dead else exp
         res = []
@@ -230,15 +319,15 @@ class MemoryZone(object):
         return res
 
     # write data at address vaddr in map
-    def write(self,vaddr,data,res=False,dead=False):
+    def write(self,vaddr,data,endian=1,res=False,dead=False):
         if dead:
             self._map = []
-            self._cache = []
+            self.__cache = []
             self.__dead = dead
-        self.addtomap(mo(vaddr,data))
+        self.addtomap(mo(vaddr,data,endian))
         if res is True: self.restruct()
 
-    # add (possibly overlapping) object z to the map
+    # add (possibly overlapping) object z (mo) to the map
     def addtomap(self,z):
         i = self.locate(z.vaddr)
         j = self.locate(z.end)
@@ -248,7 +337,7 @@ class MemoryZone(object):
             self.__update_cache()
             return
         if j==i:
-            Z = self._map[i].write(z.vaddr,z.data.val)
+            Z = self._map[i].write(z.vaddr,z.data.val,z.data.endian)
             i += 1
             for newz in Z:
                 self._map.insert(i,newz)
@@ -268,7 +357,7 @@ class MemoryZone(object):
             i=-1
         elif z.vaddr <= self._map[i].end:
             # overright data:
-            Z = self._map[i].write(z.vaddr,z.data.val)
+            Z = self._map[i].write(z.vaddr,z.data.val,z.data.endian)
         i += 1
         del self._map[i:j]
         # insert new zones:
@@ -312,6 +401,37 @@ class MemoryZone(object):
 
 #------------------------------------------------------------------------------
 class MemoryMap(object):
+    """It provides a way to represent concrete and abstract symbolic values
+    located in the virtual memory space of a process.
+    The MemoryMap is organised as a collection of `zones`.
+
+    Attributes:
+        _zones : dict of zones, keys are the related address expressions.
+
+    Methods:
+        newzone(label): creates a new memory zone with the given label related
+            expression.
+
+        locate(address): returns the memory object that maps the provided
+            address expression.
+
+        reference(address): returns a couple (rel,offset) based on the given
+            address, an integer, a string or an expression allowing to find
+            a candidate zone within memory.
+
+        read(address,l): reads l bytes at address. returns a list of
+            datadiv values.
+
+        write(address,expr,deadzone=False): writes given expression
+            at given (possibly symbolic) address.
+            Optionally sets the associated zone dead flag.
+
+        restruct(): optimize all zones to merge contiguous raw bytes into single
+            mo objects.
+
+        grep(pattern): find all occurences of the given regular expression in
+            the raw bytes objects of all memory zones.
+    """
     __slots__ = ['_zones','perms']
 
     def __init__(self,D=None):
@@ -345,7 +465,8 @@ class MemoryMap(object):
         raise MemoryError(address)
 
     def __len__(self):
-        return self._zones[None].range()[1]
+        sta,sto = self._zones[None].range()
+        return (sto-sta)
 
     def __str__(self):
         return '\n'.join(map(str,self._zones.values()))
@@ -357,11 +478,11 @@ class MemoryMap(object):
         else:
             raise MemoryError(address)
 
-    def write(self,address,expr,deadzone=False):
+    def write(self,address,expr,endian=1,deadzone=False):
         r,o = self.reference(address)
         if not r in self._zones:
             self.newzone(r)
-        self._zones[r].write(o,expr,deadzone)
+        self._zones[r].write(o,expr,endian,dead=deadzone)
 
     def restruct(self):
         for z in iter(self._zones.values()): z.restruct()
@@ -418,14 +539,35 @@ class CoreExec(object):
             i.address = vaddr
             return i
 
+    # lookup in bin if v is associated with a function or variable name:
+    def check_sym(self,v):
+        if v._is_cst:
+            x = self.symbols.get(v.value,None)
+            if x is not None:
+                if isinstance(x,str):
+                    x=self.cpu.ext(x,size=v.size)
+                else:
+                    x=self.cpu.sym(x[0],v.value,v.size)
+                return x
+        return None
+
     # optional codehelper method allows platform-specific analysis of
     # either a (raw) list of instruction, a block/func object (see amoco.code)
     # the default helper is a no-op:
-    def codehelper(self,seq=None,block=None,func=None):
-        if seq is not None: return seq
-        if block is not None: return block
-        if func is not None: return func
+    def codehelper(self,**kargs):
+        if 'seq' in kargs: return self.seqhelper(kargs['seq'])
+        if 'block' in kargs: return self.blockhelper(kargs['block'])
+        if 'func' in kargs: return self.funchelper(kargs['func'])
 
+    def seqhelper(self,seq):
+        return seq
+    # default blockhelper calls seqhelper, updates block.misc and
+    def blockhelper(self,block):
+        for i in self.seqhelper(block.instr):
+            block.misc.update(i.misc)
+        return block
+    def funchelper(self,func):
+        return func
 
 #------------------------------------------------------------------------------
 from collections import defaultdict

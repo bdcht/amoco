@@ -37,7 +37,6 @@ def test_reg(r):
 def test_comp():
     c = composer([cst(1,8),cst(2,8),cst(3,8)])
     assert c == 0x030201
-    assert c._endian==1
     assert c.bytes(0,2)==0x0201
     c = comp(24)
     c[0:24] = cst(0xf30201,24)

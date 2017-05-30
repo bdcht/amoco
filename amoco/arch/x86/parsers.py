@@ -432,6 +432,8 @@ from amoco.arch.x86.utils import CONDITION_CODES
 from amoco.arch.x86 import env
 att_syntax = att_syntax_gen(env, CONDITION_CODES, 32, instruction_x86)
 
+
+
 #------------------------------------------------------------------------------
 # parser for x86 INTEL assembler syntax.
 # (not working)

@@ -7,14 +7,17 @@ try:
     from builtins import object
 except ImportError:
     pass
-from operator import itemgetter
+import operator
 from amoco.logger import Log
 logger = Log(__name__)
-
+from amoco.config import get_module_conf
 from amoco.ui import render
+
+conf = get_module_conf('cas')
 
 try:
     IntType = (int,long)
+    conf['unicode']=False
 except NameError:
     IntType = (int,)
 
@@ -74,8 +77,10 @@ def _checkarg_slice(f):
 # It defines mandatory attributes, shared methods like dumps/loads, etc.
 #------------------------------------------------------------------------------
 class exp(object):
+    '''the core class for all expressions.
+    It defines mandatory attributes, shared methods like dumps/loads etc.
+    '''
     __slots__ = ['size','sf']
-    _endian   = 1      # defaults to little-endian
     _is_def   = False
     _is_cst   = False
     _is_reg   = False
@@ -95,23 +100,9 @@ class exp(object):
 
     def __len__(self): return self.length
 
-    @classmethod
-    def setendian(cls,e):
-        assert e in (-1,+1)
-        cls._endian = e
-
     @property
     def length(self): # length value is in bytes
         return self.size//8
-
-    def bytes(self,sta=0,sto=None,endian=0):
-        s = slice(sta,sto)
-        l = self.length
-        sta,sto,stp = s.indices(l)
-        endian |= self._endian
-        if endian==-1:
-            sta,sto = l-sto,l-sta
-        return self[sta*8:sto*8]
 
     @property
     def mask(self):
@@ -122,7 +113,9 @@ class exp(object):
         if self._is_def is False: return exp(self.size)
         else: raise NotImplementedError("can't eval %s"%self)
 
-    def simplify(self):
+    def simplify(self,**kargs):
+        '''simplify expression based on predefined heuristics
+        '''
         return self
 
     def depth(self):
@@ -140,12 +133,12 @@ class exp(object):
         return self
 
     def __str__(self):
-        if self._is_def is 0: return 'T%d'%self.size
-        if self._is_def is False: return '⊥%d'%self.size
+        if self._is_def is 0: return u'\u22A4%d'%self.size if conf['unicode'] else 'T%d'%self.size
+        if self._is_def is False: return u'\u22A5%d'%self.size if conf['unicode'] else '_%d'%self.size
         raise ValueError("void expression")
 
     def toks(self,**kargs):
-        return [(render.Token.Literal,str(self))]
+        return [(render.Token.Literal,u'%s'%self)]
 
     def pp(self,**kargs):
         return render.highlight(self.toks(**kargs))
@@ -153,6 +146,16 @@ class exp(object):
     def bit(self,i):
         i = i%self.size
         return self[i:i+1]
+
+    # return the expression slice located at bytes
+    # (sta,sto) depending on provided endianess.
+    def bytes(self,sta=0,sto=None,endian=1):
+        s = slice(sta,sto)
+        l = self.length
+        sta,sto,stp = s.indices(l)
+        if endian==-1:
+            sta,sto = l-sto,l-sta
+        return self[sta*8:sto*8]
 
     # get item allows to extract the expression of a slice of the exp
     @_checkarg_slice
@@ -187,56 +190,58 @@ class exp(object):
 
     # arithmetic / logic methods : These methods are shared by all nodes.
     # unary operators:
-    def __invert__(self): return oper('~',self)
-    def __neg__(self): return oper('-',self)
+    def __invert__(self): return oper(OP_NOT,self)
+    def __neg__(self): return oper(OP_MIN,self)
     def __pos__(self): return self
     # binary operators:
     @_checkarg_numeric
-    def __add__(self,n): return oper('+',self,n)
+    def __add__(self,n): return oper(OP_ADD,self,n)
     @_checkarg_numeric
-    def __sub__(self,n): return oper('-',self,n)
+    def __sub__(self,n): return oper(OP_MIN,self,n)
     @_checkarg_numeric
-    def __mul__(self,n): return oper('*',self,n)
+    def __mul__(self,n): return oper(OP_MUL,self,n)
     @_checkarg_numeric
-    def __pow__(self,n): return oper('**',self,n)
+    def __pow__(self,n): return oper(OP_MUL2,self,n)
     @_checkarg_numeric
-    def __div__(self,n): return oper('/',self,n)
+    def __truediv__(self,n): return oper(OP_DIV,self,n)
     @_checkarg_numeric
-    def __truediv__(self,n): return oper('/',self,n)
+    def __div__(self,n): return oper(OP_DIV,self,n)
     @_checkarg_numeric
-    def __mod__(self,n): return oper('%',self,n)
+    def __truediv__(self,n): return oper(OP_DIV,self,n)
     @_checkarg_numeric
-    def __floordiv__(self,n): return oper('//',self,n)
+    def __mod__(self,n): return oper(OP_MOD,self,n)
     @_checkarg_numeric
-    def __and__(self,n): return oper('&',self,n)
+    def __floordiv__(self,n): return oper(OP_ASR,self,n)
     @_checkarg_numeric
-    def __or__(self,n): return oper('|',self,n)
+    def __and__(self,n): return oper(OP_AND,self,n)
     @_checkarg_numeric
-    def __xor__(self,n): return oper('^',self,n)
+    def __or__(self,n): return oper(OP_OR,self,n)
+    @_checkarg_numeric
+    def __xor__(self,n): return oper(OP_XOR,self,n)
     # reflected operand cases:
     @_checkarg_numeric
-    def __radd__(self,n): return oper('+',n,self)
+    def __radd__(self,n): return oper(OP_ADD,n,self)
     @_checkarg_numeric
-    def __rsub__(self,n): return oper('-',n,self)
+    def __rsub__(self,n): return oper(OP_MIN,n,self)
     @_checkarg_numeric
-    def __rmul__(self,n): return oper('*',n,self)
+    def __rmul__(self,n): return oper(OP_MUL,n,self)
     @_checkarg_numeric
-    def __rpow__(self,n): return oper('**',n,self)
+    def __rpow__(self,n): return oper(OP_MUL2,n,self)
     @_checkarg_numeric
-    def __rand__(self,n): return oper('&',n,self)
+    def __rand__(self,n): return oper(OP_AND,n,self)
     @_checkarg_numeric
-    def __ror__(self,n): return oper('|',n,self)
+    def __ror__(self,n): return oper(OP_OR,n,self)
     @_checkarg_numeric
-    def __rxor__(self,n): return oper('^',n,self)
+    def __rxor__(self,n): return oper(OP_XOR,n,self)
     # shifts:
     @_checkarg_numeric
-    def __lshift__(self,n): return oper('<<',self,n)
+    def __lshift__(self,n): return oper(OP_LSL,self,n)
     @_checkarg_numeric
-    def __rshift__(self,n): return oper('>>',self,n)
+    def __rshift__(self,n): return oper(OP_LSR,self,n)
 
     # WARNING: comparison operators cmp returns a python bool
     # but any other operators always return an expression !
-    def __hash__(self): return hash(str(self))+self.size
+    def __hash__(self): return hash(u'%s'%self)+self.size
     #@_checkarg_numeric
     #def __cmp__(self,n): return cmp(hash(self),hash(n))
 
@@ -248,27 +253,27 @@ class exp(object):
     @_checkarg_numeric
     def __eq__(self,n):
         if hash(self)==hash(n): return bit1
-        return oper('==',self,n)
+        return oper(OP_EQ,self,n)
     @_checkarg_numeric
     def __ne__(self,n):
         if hash(self)==hash(n): return bit0
-        return oper('!=',self,n)
+        return oper(OP_NEQ,self,n)
     @_checkarg_numeric
     def __lt__(self,n):
         if hash(self)==hash(n): return bit0
-        return oper('<',self,n)
+        return oper(OP_LT,self,n)
     @_checkarg_numeric
     def __le__(self,n):
         if hash(self)==hash(n): return bit1
-        return oper('<=',self,n)
+        return oper(OP_LE,self,n)
     @_checkarg_numeric
     def __ge__(self,n):
         if hash(self)==hash(n): return bit1
-        return oper('>=',self,n)
+        return oper(OP_GE,self,n)
     @_checkarg_numeric
     def __gt__(self,n):
         if hash(self)==hash(n): return bit0
-        return oper('>',self,n)
+        return oper(OP_GT,self,n)
 
     def to_smtlib(self,solver=None):
         logger.warning('no SMT solver defined')
@@ -315,10 +320,10 @@ class cst(exp):
 
     # defaults to signed hex base
     def __str__(self):
-        return '{:#x}'.format(self.value)
+        return u'{:#x}'.format(self.value)
 
     def toks(self,**kargs):
-        return [(render.Token.Constant,str(self))]
+        return [(render.Token.Constant,u'%s'%self)]
 
     def to_sym(self,ref):
         return sym(ref,self.v,self.size)
@@ -378,6 +383,10 @@ class cst(exp):
     def __truediv__(self,n):
         if n._is_cst: return cst(self.value//n.value,self.size)
         else : return exp.__truediv__(self,n)
+    @_checkarg_numeric
+    def __div__(self,n):
+        if n._is_cst: return cst(self.value//n.value,self.size)
+        else : return exp.__div__(self,n)
     @_checkarg_numeric
     def __mod__(self,n):
         if n._is_cst: return cst(self.value%n.value,self.size)
@@ -482,7 +491,7 @@ class sym(cst):
         cst.__init__(self,v,size)
 
     def __str__(self):
-        return "#%s"%self.ref
+        return u"#%s"%self.ref
 
 #---------------------------------
 # cfp holds float immediate values
@@ -507,10 +516,10 @@ class cfp(exp):
         return NotImplementedError
 
     def __str__(self):
-        return '{:f}'.format(self.value)
+        return u'{:f}'.format(self.value)
 
     def toks(self,**kargs):
-        return [(render.Token.Constant,str(self))]
+        return [(render.Token.Constant,u'%s'%self)]
 
     def eval(self,env): return cfp(self.value,self.size)
 
@@ -609,10 +618,10 @@ class reg(exp):
         self.type = regtype.STD
 
     def __str__(self):
-        return self.ref
+        return u"%s"%self.ref
 
     def toks(self,**kargs):
-        return [(render.Token.Register,str(self))]
+        return [(render.Token.Register,u'%s'%self)]
 
     def eval(self,env):
         return env[self]
@@ -681,11 +690,11 @@ class ext(reg):
         self.type = regtype.OTHER
 
     def __str__(self):
-        return '@%s'%self.ref
+        return u'@%s'%self.ref
 
     def toks(self,**kargs):
         tk = render.Token.Tainted if '!' in self.ref else render.Token.Name
-        return [(tk,str(self))]
+        return [(tk,u'%s'%self)]
 
     def __setattr__(self,a,v):
         exp.__setattr__(self,a,v)
@@ -754,13 +763,13 @@ class comp(exp):
         # the symp is only obtained after a restruct !
 
     def __str__(self):
-        s = '{ |'
+        s = u'{ |'
         cur = 0
         for nv in self:
             nk = cur,cur+nv.size
-            s += ' %s->%s |'%('[%d:%d]'%nk,str(nv))
+            s += u' %s->%s |'%('[%d:%d]'%nk,nv)
             cur += nv.size
-        return s+' }'
+        return s+u' }'
 
     def toks(self,**kargs):
         if 'indent' in kargs:
@@ -769,18 +778,18 @@ class comp(exp):
             kargs['indent'] = p+4
         else:
             pad = ''
-        tl = (render.Token.Literal,', ')
-        s  = [(render.Token.Literal,'{')]
+        tl = (render.Token.Literal,u', ')
+        s  = [(render.Token.Literal,u'{')]
         cur=0
         for nv in self:
-            loc = "%s[%2d:%2d] -> "%(pad,cur,cur+nv.size)
+            loc = u"%s[%2d:%2d] -> "%(pad,cur,cur+nv.size)
             cur += nv.size
             s.append((render.Token.Literal,loc))
             t = nv.toks(**kargs)
             s.extend(t)
             s.append(tl)
         if len(s)>1: s.pop()
-        s.append((render.Token.Literal,'%s}'%pad))
+        s.append((render.Token.Literal,u'}'))
         return s
 
     def eval(self,env):
@@ -803,9 +812,9 @@ class comp(exp):
         res.sf = self.sf
         return res
 
-    def simplify(self):
+    def simplify(self,**kargs):
         for nk,nv in iter(self.parts.items()):
-            self.parts[nk] = nv.simplify()
+            self.parts[nk] = nv.simplify(**kargs)
         self.restruct()
         if (0,self.size) in self.parts.keys():
             return self.parts[(0,self.size)]
@@ -886,7 +895,7 @@ class comp(exp):
     def __iter__(self):
         # gather cst as possible:
         part = list(self.parts.keys())
-        part.sort(key=itemgetter(0))
+        part.sort(key=operator.itemgetter(0))
         cur = 0
         for p in part:
             assert p[0]==cur
@@ -898,7 +907,7 @@ class comp(exp):
     def restruct(self):
         # gather cst as possible:
         part = list(self.parts.keys())
-        part.sort(key=itemgetter(0))
+        part.sort(key=operator.itemgetter(0))
         for i in range(len(part)-1):
             ra = part[i]
             rb = part[i+1]
@@ -906,8 +915,8 @@ class comp(exp):
                 na = self.parts[ra]
                 nb = self.parts[rb]
                 if na._is_cst and nb._is_cst:
-                    v = (nb.v<<ra[1])|(na.v)
-                    self.parts[(ra[0],rb[1])] = cst(v,rb[1]-ra[0])
+                    v = (nb.v<<na.size)|(na.v)
+                    self.parts[(ra[0],rb[1])] = cst(v,na.size+nb.size)
                     self.parts.pop(ra)
                     self.parts.pop(rb)
                     self.smask[ra[0]:rb[1]] = [(ra[0],rb[1])]*(rb[1]-ra[0])
@@ -933,24 +942,25 @@ class comp(exp):
 # and adjust the eval result accordingly.
 #------------------------------------------------------------------------------
 class mem(exp):
-    __slots__ = ['a', 'mods']
+    __slots__ = ['a', 'mods', 'endian']
     __hash__ = exp.__hash__
     _is_def   = True
     _is_mem   = True
 
-    def __init__(self,a,size=32,seg='',disp=0,mods=None):
+    def __init__(self,a,size=32,seg='',disp=0,mods=None,endian=1):
         self.size  = size
         self.sf    = False
         self.a  = ptr(a,seg,disp)
         self.mods = mods or []
+        self.endian = endian
 
     def __str__(self):
         n = len(self.mods)
-        n = '$%d'%n if n>0 else ''
-        return 'M%d%s%s'%(self.size,n,self.a)
+        n = u'$%d'%n if n>0 else u''
+        return u'M%d%s%s'%(self.size,n,self.a)
 
     def toks(self,**kargs):
-        return [(render.Token.Memory,str(self))]
+        return [(render.Token.Memory,u'%s'%self)]
 
     def eval(self,env):
         a = self.a.eval(env)
@@ -958,19 +968,45 @@ class mem(exp):
         for loc,v in self.mods:
             if loc._is_ptr: loc = env(loc)
             m[loc] = env(v)
-        return m[mem(a,self.size)]
+        return m[mem(a,self.size,endian=self.endian)]
 
-    def simplify(self):
-        self.a.simplify()
+    def simplify(self,**kargs):
+        self.a.simplify(**kargs)
         if self.a.base._is_vec:
             seg,disp = self.a.seg,self.a.disp
-            v = vec([mem(a,self.size,seg,disp,mods=self.mods) for a in self.a.base.l])
+            l = []
+            for a in self.a.base.l:
+                x = mem(a,self.size,seg,disp,mods=self.mods,endian=self.endian)
+                l.append(x)
+            v = vec(l)
             return v if self.a.base._is_def else vecw(v)
         return self
 
     def addr(self,env):
         return self.a.eval(env)
 
+    def bytes(self,b1=0,b2=None,endian=0):
+        s = slice(b1,b2)
+        l = self.length
+        sta,sto,stp = s.indices(l)
+        size = (sto-sta)*8
+        a = self.a
+        return mem(a,size,disp=sta,mods=self.mods,endian=self.endian)
+
+    @_checkarg_slice
+    def __getitem__(self,i):
+        sta,sto,stp = i.indices(self.size)
+        b1,r1 = divmod(sta,8)
+        b2,r2 = divmod(sto,8)
+        if r2>0: b2 += 1
+        l = self.length
+        if self.endian==-1: b1,b2 = l-b2,l-b1
+        a = self.a
+        size = (b2-b1)*8
+        x = mem(a,size,disp=b1,mods=self.mods,endian=self.endian)
+        if r1>0 or r2>0:
+            x = slc(x,r1,(sto-sta))
+        return x
 
 #------------------------------------------------------------------------------
 # ptr holds memory addresses with segment, base expressions and
@@ -995,7 +1031,7 @@ class ptr(exp):
 
     def __str__(self):
         d = self.disp_tostring()
-        return '%s(%s%s)'%(self.seg,self.base,d)
+        return u'%s(%s%s)'%(self.seg,self.base,d)
 
     def disp_tostring(self,base10=True):
         if hasattr(self.disp, '_is_cst'):
@@ -1004,21 +1040,21 @@ class ptr(exp):
             # from a base address in memory) can not only be a number as
             # in standard amoco, but also a label, a difference of labels
             # or even a difference of labels added with an integer
-            return '+%s'%self.disp
-        if self.disp==0: return ''
-        if base10: return '%+d'%self.disp
+            return u'+%s'%self.disp
+        if self.disp==0: return u''
+        if base10: return u'%+d'%self.disp
         c = cst(self.disp,self.size)
         c.sf=False
-        return '+%s'%str(c)
+        return u'+%s'%c
 
     def toks(self,**kargs):
-        return [(render.Token.Address,str(self))]
+        return [(render.Token.Address,u'%s'%self)]
 
-    def simplify(self):
+    def simplify(self,**kargs):
         self.base,offset = extract_offset(self.base)
         self.disp += offset
         if isinstance(self.seg,exp):
-            self.seg = self.seg.simplify()
+            self.seg = self.seg.simplify(**kargs)
         if not self.base._is_def: self.disp=0
         return self
 
@@ -1044,12 +1080,7 @@ def slicer(x,pos,size):
     if pos==0 and size==x.size:
         return x
     else:
-        if x._is_mem and size%8==0:
-            off,rst = divmod(pos,8)
-            if rst==0:
-                a = ptr(x.a.base,x.a.seg,x.a.disp+off)
-                return mem(a,size)
-        elif x._is_cmp:
+        if x._is_mem or x._is_cmp:
             return x[pos:pos+size]
         return slc(x,pos,size)
 
@@ -1089,7 +1120,7 @@ class slc(exp):
         if self._is_reg: return self.x.type
 
     def raw(self):
-        return "%s[%d:%d]"%(str(self.x),self.pos,self.pos+self.size)
+        return u"%s[%d:%d]"%(self.x,self.pos,self.pos+self.size)
 
     def __setattr__(self,a,v):
         if a is 'size' and self.__protect is True:
@@ -1100,8 +1131,8 @@ class slc(exp):
         return self.ref or self.raw()
 
     def toks(self,**kargs):
-        if self._is_reg: return [(render.Token.Register,str(self))]
-        subpart = [(render.Token.Literal,'[%d:%d]'%(self.pos,self.pos+self.size))]
+        if self._is_reg: return [(render.Token.Register,u'%s'%self)]
+        subpart = [(render.Token.Literal,u'[%d:%d]'%(self.pos,self.pos+self.size))]
         return self.x.toks(**kargs)+subpart
 
     def __hash__(self): return hash(self.raw())
@@ -1114,16 +1145,18 @@ class slc(exp):
 
     # slc of mem objects are simplified by adjusting the disp offset of
     # the sliced mem object.
-    def simplify(self):
-        self.x = self.x.simplify()
+    def simplify(self,**kargs):
+        self.x = self.x.simplify(**kargs)
         if not self.x._is_def: return top(self.size)
+        if self.x._is_cmp or self.x._is_cst:
+            return self.x[self.pos:self.pos+self.size]
         if self.x._is_mem and self.size%8==0:
             off,rst = divmod(self.pos,8)
             if rst==0:
                 a = ptr(self.x.a.base,self.x.a.seg,self.x.a.disp+off)
                 return mem(a,self.size)
         if self.x._is_eqn and (self.x.op.type==2 or
-                              (self.x.op.symbol in '+-' and self.pos==0)):
+                              (self.x.op.symbol in (OP_ADD,OP_MIN) and self.pos==0)):
             r = self.x.r[self.pos:self.pos+self.size]
             if self.x.op.unary:
                 return self.x.op(r)
@@ -1186,7 +1219,7 @@ class tst(exp):
         self.sf   = False
     ##
     def __str__(self):
-        return '(%s ? %s : %s)'%(str(self.tst),str(self.l),str(self.r))
+        return '(%s ? %s : %s)'%(self.tst,self.l,self.r)
 
     def toks(self,**kargs):
         ttest  = self.tst.toks(**kargs)
@@ -1220,15 +1253,15 @@ class tst(exp):
         if cond.v == 1: return l
         else          : return r
 
-    def simplify(self):
+    def simplify(self,**kargs):
         if self.l == self.r: return self.l
-        self.tst = self.tst.simplify()
-        self.l   = self.l.simplify()
-        self.r   = self.r.simplify()
+        self.tst = self.tst.simplify(**kargs)
+        self.l   = self.l.simplify(**kargs)
+        self.r   = self.r.simplify(**kargs)
         if   self.tst==bit1: return self.l
         elif self.tst==bit0: return self.r
         if not self.tst._is_def:
-            return vec([self.l,self.r]).simplify()
+            return vec([self.l,self.r]).simplify(**kargs)
         return self
 
     def depth(self):
@@ -1262,7 +1295,7 @@ class op(exp):
         self.size = self.l.size
         if self.prop==4:
             self.size=1
-        elif self.op.symbol in ['**']: self.size *= 2
+        elif self.op.symbol in [OP_MUL2]: self.size *= 2
         self.sf = l.sf
         if self.prop==1: self.sf |= r.sf
         if self.l._is_eqn: self.prop |= self.l.prop
@@ -1282,7 +1315,7 @@ class op(exp):
     ##
 
     def __str__(self):
-        return '(%s%s%s)'%(str(self.l),self.op.symbol,str(self.r))
+        return u'(%s%s%s)'%(self.l,self.op.symbol,self.r)
 
     def toks(self,**kargs):
         l = self.l.toks(**kargs)
@@ -1291,35 +1324,35 @@ class op(exp):
         r.append((render.Token.Literal,')'))
         return l+[(render.Token.Literal,self.op.symbol)]+r
 
-    def simplify(self):
-        l = self.l.simplify()
-        r = self.r.simplify()
-        minus = (self.op.symbol=='-')
-        if self.prop<4:
+    def simplify(self,**kargs):
+        l = self.l.simplify(**kargs)
+        r = self.r.simplify(**kargs)
+        if self.prop<4 and self.op.symbol not in (OP_DIV,OP_MOD):
             if l._is_def==0: return l
             if r._is_def==0: return r
+            minus = (self.op.symbol==OP_MIN)
             # arithm/logic normalisation:
             # push cst to the right
             if l._is_cst:
                 if r._is_cst: return self.op(l,r)
                 if minus:
                     l,r = (-r),l
-                    self.op = _operator('+')
+                    self.op = _operator(OP_ADD)
                 else:
                     l,r = r,l
             # lexical ordering of symbols:
             elif not r._is_cst:
-                lh = ''.join([str(x) for x in symbols_of(l)])
-                rh = ''.join([str(x) for x in symbols_of(r)])
+                lh = u''.join([u'%s'%x for x in symbols_of(l)])
+                rh = u''.join([u'%s'%x for x in symbols_of(r)])
                 if lh>rh:
                     if minus:
                         l,r = (-r),l
-                        self.op = _operator('+')
+                        self.op = _operator(OP_ADD)
                     else:
                         l,r=r,l
         self.l = l
         self.r = r
-        return eqn2_helpers(self)
+        return eqn2_helpers(self,**kargs)
 
     def depth(self):
         return self.l.depth()+self.r.depth()
@@ -1355,18 +1388,18 @@ class uop(exp):
     def l(self): return None
 
     def __str__(self):
-        return '(%s%s)'%(self.op.symbol,str(self.r))
+        return '(%s%s)'%(self.op.symbol,self.r)
 
     def toks(self,**kargs):
         r = self.r.toks(**kargs)
-        r.append((render.Token.Literal,')'))
-        return [(render.Token.Literal,'(%s'%self.op.symbol)]+r
+        r.append((render.Token.Literal,u')'))
+        return [(render.Token.Literal,u'(%s'%self.op.symbol)]+r
 
-    def simplify(self):
-        r = self.r.simplify()
+    def simplify(self,**kargs):
+        r = self.r.simplify(**kargs)
         if r._is_def==0: return r
         self.r = r
-        return eqn1_helpers(self)
+        return eqn1_helpers(self,**kargs)
 
     def depth(self):
         return self.r.depth()
@@ -1375,57 +1408,128 @@ class uop(exp):
 # operators:
 #-----------
 
-import operator
+if conf['unicode']:
+    OP_ADD  = u'+'
+    OP_MIN  = u'-'
+    OP_MUL  = u'*'
+    OP_MUL2 = u'\u2217'
+    OP_DIV  = u'/'
+    OP_MOD  = u'%'
+    OP_AND  = u'\u2227'
+    OP_OR   = u'\u2228'
+    OP_XOR  = u'\u2295'
+    OP_NOT  = u'\u2310'
+    OP_EQ   = u'=='
+    OP_NEQ  = u'\u2260'
+    OP_LE   = u'\u2264'
+    OP_GE   = u'\u2265'
+    OP_GEU  = u'\u22DD'
+    OP_LT   = u'<'
+    OP_LTU  = u'\u22D6'
+    OP_GT   = u'>'
+    OP_LSL  = u'<<'
+    OP_LSR  = u'>>'
+    OP_ASR  = u'\u00B1>>'
+    OP_ROR  = u'>>>'
+    OP_ROL  = u'<<<'
+else:
+    OP_ADD  = '+'
+    OP_MIN  = '-'
+    OP_MUL  = '*'
+    OP_MUL2 = '**'
+    OP_DIV  = '/'
+    OP_MOD  = '%'
+    OP_AND  = '&'
+    OP_OR   = '|'
+    OP_XOR  = '^'
+    OP_NOT  = '~'
+    OP_EQ   = '=='
+    OP_NEQ  = '!='
+    OP_LE   = '<='
+    OP_GE   = '>='
+    OP_GEU  = '>=.'
+    OP_LT   = '<'
+    OP_LTU  = '<.'
+    OP_GT   = '>'
+    OP_LSL  = '<<'
+    OP_LSR  = '>>'
+    OP_ASR  = '.>>'
+    OP_ROR  = '>>>'
+    OP_ROL  = '<<<'
 
 def ror(x,n):
-    return (x>>n | x<<(x.size-n)) if x._is_cst else op('>>>',x,n)
+    return (x>>n | x<<(x.size-n)) if x._is_cst else op(OP_ROR,x,n)
 
 def rol(x,n):
-    return (x<<n | x>>(x.size-n)) if x._is_cst else op('<<<',x,n)
+    return (x<<n | x>>(x.size-n)) if x._is_cst else op(OP_ROL,x,n)
 
-OP_ARITH = {'+'  : operator.add,
-            '-'  : operator.sub,
-            '*'  : operator.mul,
-            '**' : operator.pow,
-            '/'  : operator.truediv,
-            '%'  : operator.mod,
+def ltu(x,y):
+    try:
+        if not (x._is_cst and y._is_cst):
+            return op(OP_LTU,x,y)
+    except AttributeError:
+        pass
+    x.sf = y.sf = True
+    return x<y
+
+def geu(x,y):
+    try:
+        if not (x._is_cst and y._is_cst):
+            return op(OP_GEU,x,y)
+    except AttributeError:
+        pass
+    x.sf = y.sf = True
+    return x>=y
+
+OP_ARITH = {OP_ADD  : operator.add,
+            OP_MIN  : operator.sub,
+            OP_MUL  : operator.mul,
+            OP_MUL2 : operator.pow,
+            OP_DIV  : operator.truediv,
+            OP_MOD  : operator.mod,
            }
-OP_LOGIC = {'&'  : operator.and_,
-            '|'  : operator.or_,
-            '^'  : operator.xor,
-            '~'  : operator.invert,
+OP_LOGIC = {OP_AND  : operator.and_,
+            OP_OR   : operator.or_,
+            OP_XOR  : operator.xor,
+            OP_NOT  : operator.invert,
            }
-OP_CONDT = {'==' : operator.eq,
-            '!=' : operator.ne,
-            '<=' : operator.le,
-            '>=' : operator.ge,
-            '<'  : operator.lt,
-            '>'  : operator.gt,
+OP_CONDT = {OP_EQ   : operator.eq,
+            OP_NEQ  : operator.ne,
+            OP_LE   : operator.le,
+            OP_GE   : operator.ge,
+            OP_GEU  : geu,
+            OP_LT   : operator.lt,
+            OP_LTU  : ltu,
+            OP_GT   : operator.gt,
            }
-OP_SHIFT = {'>>' : operator.rshift, # logical shift right (see cst.value)
-            '<<' : operator.lshift,
-            '//' : operator.floordiv, # this is arithmetic shift right
-            '>>>': ror,
-            '<<<': rol
+OP_SHIFT = {OP_LSR  : operator.rshift, # logical shift right (see cst.value)
+            OP_LSL  : operator.lshift,
+            OP_ASR  : operator.floordiv, # this is arithmetic shift right
+            OP_ROR  : ror,
+            OP_ROL  : rol
            }
 
 class _operator(object):
     def __init__(self,op,unary=0):
         self.symbol = op
         self.unary = unary
+        self.unsigned = False
         if   op in OP_ARITH:
             self.type = 1
             if self.unary:
-                self.impl = {'+': operator.pos, '-': operator.neg}[op]
+                self.impl = {OP_ADD: operator.pos, OP_MIN: operator.neg}[op]
             else:
                 self.impl = OP_ARITH[op]
         elif op in OP_LOGIC:
             self.type = 2
-            if self.unary: assert op == '~'
+            self.unsigned = True
+            if self.unary: assert op == OP_NOT
             self.impl = OP_LOGIC[op]
         elif op in OP_CONDT:
             self.type = 4
             self.impl = OP_CONDT[op]
+            if op in (OP_GEU,OP_LTU):
+                self.unsigned=True
         elif op in OP_SHIFT:
             self.type = 8
             self.impl = OP_SHIFT[op]
@@ -1436,25 +1540,21 @@ class _operator(object):
         if r  is None:
             assert self.unary
             return self.impl(l)
+        if self.unsigned:
+            l.sf = r.sf = False
         return self.impl(l,r)
 
     def __mul__(self,op):
         ss = self.symbol+op.symbol
-        if ss in ('++','--'): return '+'
-        if ss in ('+-','-+'): return '-'
+        if ss in (u'++',u'--'): return OP_ADD
+        if ss in (u'+-',u'-+'): return OP_MIN
         return None
 
 # basic simplifier:
 #------------------
 
-def configure(**kargs):
-    from amoco.config import get_module_conf
-    conf = get_module_conf('cas')
-    conf.update(kargs)
-    if conf['complexity']:
-        op.limit(conf['complexity'])
-
-configure()
+if conf['complexity']:
+    op.limit(conf['complexity'])
 
 def symbols_of(e):
     if e is None: return []
@@ -1489,7 +1589,7 @@ def complexity(e):
     return (e.depth()+len(locations_of(e)))*factor
 
 # helpers for unary expressions:
-def eqn1_helpers(e):
+def eqn1_helpers(e,**kargs):
     assert e.op.unary
     if e.r._is_cst:
         return e.op(e.r)
@@ -1498,17 +1598,18 @@ def eqn1_helpers(e):
     if e.r._is_eqn:
         if e.r.op.unary:
             ss = e.op*e.r.op
-            if   ss == '+': return e.r.r
-            elif ss == '-': return -e.r.r
-        elif e.op.symbol == '-':
-            if e.r.op.symbol in ('-','+'):
+            if   ss == OP_ADD: return e.r.r
+            elif ss == OP_MIN: return -e.r.r
+        elif e.op.symbol == OP_MIN:
+            if e.r.op.symbol in (OP_MIN,OP_ADD):
                 l = -e.r.l
                 r = e.r.r
                 return OP_ARITH[e.op*e.r.op](l,r)
-        elif e.op.symbol == '~' and e.r.op.type==4:
-            notop = {'==':'!=', '!=':'==',
-                     '<':'>=' , '>' :'<=',
-                     '<=':'>' , '>=':'<'}[e.r.op.symbol]
+        elif e.op.symbol == OP_NOT and e.r.op.type==4:
+            notop = {OP_EQ:OP_NEQ, OP_NEQ:OP_EQ,
+                     OP_LT:OP_GE , OP_GT :OP_LE,
+                     OP_LTU:OP_GEU , OP_GEU:OP_LTU,
+                     OP_LE:OP_GT , OP_GE:OP_LT}[e.r.op.symbol]
             return OP_CONDT[notop](e.r.l,e.r.r)
     return e
 
@@ -1516,7 +1617,7 @@ def eqn1_helpers(e):
 # reminder: be careful not to modify the internal structure of
 # e.l or e.r because these objects might be used also in other
 # expressions. See tests/test_cas_exp.py for details.
-def eqn2_helpers(e):
+def eqn2_helpers(e,bitslice=False):
     if complexity(e.r)>e.threshold: e.r = top(e.r.size)
     if complexity(e.l)>e.threshold: e.l = top(e.l.size)
     if not (e.r._is_def and e.l._is_def): return top(e.size)
@@ -1527,8 +1628,8 @@ def eqn2_helpers(e):
             lr,e.r   = e.r,e.l.r
             e.l = lop(e.l.l,lr)
     if e.r._is_eqn and e.r.op.unary:
-        if e.op.symbol == '+' and e.r.op.symbol == '-':
-            e.op = _operator('-')
+        if e.op.symbol == OP_ADD and e.r.op.symbol == OP_MIN:
+            e.op = _operator(OP_MIN)
             e.r  = e.r.r
     if e.r._is_eqn and e.r.r._is_cst:
         xop = e.op*e.r.op
@@ -1538,12 +1639,21 @@ def eqn2_helpers(e):
             e.op = _operator(xop)
     if e.r._is_cst:
         if e.r.value==0:
-            if e.op.symbol in ('|','^','+','-','>>','<<','>>>','<<<'):
+            if e.op.symbol in (OP_OR,OP_XOR,OP_ADD,OP_MIN,OP_LSR,OP_LSL,OP_ROR,OP_ROL):
                 return e.l
-            if e.op.symbol in ('&','*'):
+            if e.op.symbol in (OP_AND,OP_MUL,OP_MUL2):
                 return cst(0,e.size)
-        elif e.r.value==1 and e.op.symbol in ('*','/'):
+        elif e.r.value==1 and e.op.symbol in (OP_MUL,OP_MUL2,OP_DIV):
             return e.l
+        elif e.r.value in (0x1,0xf,0xff,0xffff,0xffffffff) and e.op.symbol==OP_AND:
+            s = {1:1,0xf:4,0xff:8,0xffff:16,0xffffffff:32}[e.r.value]
+            return e.l[0:s].zeroextend(e.size)
+        elif bitslice and e.op.symbol in (OP_AND,OP_OR,OP_XOR):
+            return composer([e.op(e.l[i:i+1],e.r[i:i+1]) for i in range(e.size)])
+        elif bitslice and e.op.symbol in (OP_LSL):
+            return composer([bit0]*e.r.value + [e.l[i:i+1] for i in range(0,e.size-e.r.value)])
+        elif bitslice and e.op.symbol in (OP_LSR):
+            return composer([e.l[i:i+1] for i in range(e.r.value,e.size)]+[bit0]*e.r.value)
         if e.l._is_eqn:
             xop = e.op*e.l.op
             if xop:
@@ -1554,35 +1664,42 @@ def eqn2_helpers(e):
                     e.r = cc
                 return e
             elif e.r.size==1:
-                if e.op.symbol == '==':
+                if e.op.symbol == OP_EQ:
                     return e.l if e.r.value==1 else ~(e.l)
-                if e.op.symbol == '!=':
+                if e.op.symbol == OP_NEQ:
                     return ~(e.l) if e.r.value==1 else ~(e.l)
         elif e.l._is_ptr:
-            if e.op.symbol in ('-','+'):
+            if e.op.symbol in (OP_MIN,OP_ADD):
                 return ptr(e.l,disp=e.op(0,e.r.value))
+        elif e.l._is_cmp:
+            if e.op.symbol in (OP_AND,OP_OR,OP_XOR):
+                cc = comp(e.l.size)
+                for (ij,p) in e.l.parts.items():
+                    i,j = ij
+                    cc[i:j] = e.op(p,e.r[i:j])
+                return cc.simplify(bitslice=bitslice)
         elif e.l._is_cst:
             return e.op(e.l,e.r)
     if e.l._is_vec:
         return vec([e.op(x,e.r) for x in e.l.l]).simplify()
     if e.r._is_vec:
         return vec([e.op(e.l,x) for x in e.r.l]).simplify()
-    if str(e.l)==str(e.r):
-        if e.op.symbol in ('!=','<', '>' ): return bit0
-        if e.op.symbol in ('==','<=','>='): return bit1
-        if e.op.symbol is '-' : return cst(0,e.size)
-        if e.op.symbol is '^' : return cst(0,e.size)
-        if e.op.symbol is '&' : return e.l
-        if e.op.symbol is '|' : return e.l
+    if u'%s'%(e.l)==u'%s'%(e.r):
+        if e.op.symbol in (OP_NEQ,OP_LT,OP_GT): return bit0
+        if e.op.symbol in (OP_EQ,OP_LE,OP_GE): return bit1
+        if e.op.symbol is OP_MIN : return cst(0,e.size)
+        if e.op.symbol is OP_XOR : return cst(0,e.size)
+        if e.op.symbol is OP_AND : return e.l
+        if e.op.symbol is OP_OR  : return e.l
     return e
 
 # separate expression e into (e' + C) with C cst offset.
 def extract_offset(e):
     x = e.simplify()
     if x._is_eqn and x.r._is_cst:
-        if e.op.symbol == '+':
+        if e.op.symbol == OP_ADD:
             return (x.l,x.r.value)
-        elif e.op.symbol == '-':
+        elif e.op.symbol == OP_MIN:
             return (x.l,-x.r.value)
     return (x,0)
 
@@ -1612,17 +1729,17 @@ class vec(exp):
         self.sf = any([e.sf for e in self.l])
 
     def __str__(self):
-        s = ','.join([str(x) for x in self.l])
-        return '[%s]'%(s)
+        s = u','.join([u'%s'%x for x in self.l])
+        return u'[%s]'%(s)
 
     def toks(self,**kargs):
         t = []
         for x in self.l:
             t.extend(x.toks(**kargs))
-            t.append((render.Token.Literal,', '))
+            t.append((render.Token.Literal,u', '))
         if len(t)>0: t.pop()
-        t.insert(0,(render.Token.Literal,'['))
-        t.append((render.Token.Literal,']'))
+        t.insert(0,(render.Token.Literal,u'['))
+        t.append((render.Token.Literal,u']'))
         return t
 
     def simplify(self,widening=False):
@@ -1685,17 +1802,17 @@ class vecw(top):
         self.sf = False
 
     def __str__(self):
-        s = ','.join([str(x) for x in self.l])
-        return '[%s, ...]'%(s)
+        s = u','.join([u'%s'%x for x in self.l])
+        return u'[%s, ...]'%(s)
 
     def toks(self,**kargs):
         t = []
         for x in self.l:
             t.extend(x.toks(**kargs))
-            t.append((render.Token.Literal,', '))
+            t.append((render.Token.Literal,u', '))
         if len(t)>0: t.pop()
-        t.insert(0,(render.Token.Literal,'['))
-        t.append((render.Token.Literal,', ...]'))
+        t.insert(0,(render.Token.Literal,u'['))
+        t.append((render.Token.Literal,u', ...]'))
         return t
 
     def eval(self,env):

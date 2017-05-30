@@ -58,18 +58,18 @@ class blockView(View):
         for i in self.of.instr:
             ins2 = i.toks()
             if isinstance(ins2,str): ins2 = [(Token.Literal,ins2)]
-            ins = [ (Token.Address,'{:<10}'.format(str(i.address))),
-                    (Token.Column,''),
-                    (Token.Literal,"'%s'"%(''.join(["%02x"%x for x in bytes(i.bytes)]))),
-                    (Token.Column,'') ]
+            ins = [ (Token.Address,u'{:<20}'.format(str(i.address))),
+                    (Token.Column,u''),
+                    (Token.Literal,u"'%s'"%(u''.join([u"%02x"%x for x in bytes(i.bytes)]))),
+                    (Token.Column,u'') ]
             T.addrow(ins+ins2)
         if conf.getboolean('block','bytecode'):
             pad = conf.getint('block','padding') or 0
             T.colsize[1] += pad
         if conf.getboolean('block','header'):
-            T.header = ('# --- block %s ---' % self.of.name).ljust(T.width,'-')
+            T.header = (u'# --- block %s ---' % self.of.name).ljust(T.width,'-')
         if conf.getboolean('block','footer'):
-            T.footer = '-'*T.width
+            T.footer = u'-'*T.width
         return T
 
     def __str__(self):

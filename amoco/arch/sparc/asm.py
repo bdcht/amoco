@@ -9,14 +9,17 @@ from .utils import *
 
 from amoco.cas.utils import *
 
+def __mem(a,sz):
+    return mem(a,sz,endian=-1)
+
 #------------------------------------------------------------------------------
 # helpers and decorators :
 def _push_(fmap,_x):
   fmap[sp] = fmap[sp]-_x.length
-  fmap[mem(sp,_x.size)] = _x
+  fmap[__mem(sp,_x.size)] = _x
 
 def _pop_(fmap,_l):
-  fmap[_l] = fmap(mem(sp,_l.size))
+  fmap[_l] = fmap(__mem(sp,_l.size))
   fmap[sp] = fmap[sp]+_l.length
 
 def __pcnpc(i_xxx):
@@ -36,36 +39,36 @@ def trap(ins,fmap,trapname):
 def i_ldsb(ins,fmap):
     src,dst = ins.operands
     if dst is not g0:
-        fmap[dst] = fmap(mem(src,8)).signextend(32)
+        fmap[dst] = fmap(__mem(src,8)).signextend(32)
 
 @__pcnpc
 def i_ldsh(ins,fmap):
     src,dst = ins.operands
     if dst is not g0:
-        fmap[dst] = fmap(mem(src,16)).signextend(32)
+        fmap[dst] = fmap(__mem(src,16)).signextend(32)
 
 @__pcnpc
 def i_ldub(ins,fmap):
     src,dst = ins.operands
     if dst is not g0:
-        fmap[dst] = fmap(mem(src,8)).zeroextend(32)
+        fmap[dst] = fmap(__mem(src,8)).zeroextend(32)
 
 @__pcnpc
 def i_lduh(ins,fmap):
     src,dst = ins.operands
     if dst is not g0:
-        fmap[dst] = fmap(mem(src,16)).zeroextend(32)
+        fmap[dst] = fmap(__mem(src,16)).zeroextend(32)
 
 @__pcnpc
 def i_ld(ins,fmap):
     src,dst = ins.operands
     if dst is not g0:
-        fmap[dst] = fmap(mem(src,32))
+        fmap[dst] = fmap(__mem(src,32))
 
 @__pcnpc
 def i_ldd(ins,fmap):
     src,dst = ins.operands
-    v = fmap(mem(src,64))
+    v = fmap(__mem(src,64))
     if dst is not g0:
         fmap[dst] = v[32:64]
     fmap[r[ins.rd|1]] = v[0:32]
@@ -99,19 +102,19 @@ def i_ldda(ins,fmap):
 def i_stb(ins,fmap):
     src,dst = ins.operands
     if dst.base is not g0:
-        fmap[mem(dst,8)] = fmap(src[0:8])
+        fmap[__mem(dst,8)] = fmap(src[0:8])
 
 @__pcnpc
 def i_sth(ins,fmap):
     src,dst = ins.operands
     if dst.base is not g0:
-        fmap[mem(dst,16)] = fmap(src[0:16])
+        fmap[__mem(dst,16)] = fmap(src[0:16])
 
 @__pcnpc
 def i_st(ins,fmap):
     src,dst = ins.operands
     if dst.base is not g0:
-        fmap[mem(dst,32)] = fmap(src)
+        fmap[__mem(dst,32)] = fmap(src)
 
 @__pcnpc
 def i_std(ins,fmap):
@@ -120,7 +123,7 @@ def i_std(ins,fmap):
     rr[32:64] = src
     rr[0:32] = r[ins.rd|1]
     if dst.base is not g0:
-        fmap[mem(dst,64)] = fmap(rr)
+        fmap[__mem(dst,64)] = fmap(rr)
 
 def i_stba(ins,fmap):
     i_stb(ins,fmap)
@@ -150,7 +153,7 @@ def i_stda(ins,fmap):
 def i_ldstub(ins,fmap):
     i_ldub(ins,fmap)
     src = ins.operands[0]
-    fmap[mem(src,8)] = cst(0xff,8)
+    fmap[__mem(src,8)] = cst(0xff,8)
 
 def i_ldstuba(ins,fmap):
     i_ldstub(ins,fmap)
@@ -158,8 +161,8 @@ def i_ldstuba(ins,fmap):
 @__pcnpc
 def i_swap(ins,fmap):
     src,dst = ins.operands
-    _tmp = fmap(mem(src,32))
-    fmap[mem(src,32)] = fmap(dst)
+    _tmp = fmap(__mem(src,32))
+    fmap[__mem(src,32)] = fmap(dst)
     if dst is not g0:
         fmap[dst] = _tmp
 

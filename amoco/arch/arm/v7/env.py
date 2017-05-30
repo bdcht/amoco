@@ -86,6 +86,7 @@ internals = {    # states MUST be in a mutable object !
         'isetstate'  : 0, #0: ARM, 1: Thumb, 2: Jazelle, 3: ThumbEE
         'itstate'    : 0, # thumb internal parameter (see IT instruction)
         'endianstate': 0, #0: LE, 1: BE
+        'ibigend'    : 0, # instruction endianess (0: LE, 1:BE)
 }
 
 # SIMD and VFP (floating point) extensions:

@@ -4,6 +4,13 @@
 # Copyright (C) 2006 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
+"""
+system/elf.py
+=============
+
+The system elf module implements Elf32 and Elf64 classes for executable format.
+"""
+
 import struct
 import codecs
 from collections import defaultdict
@@ -420,8 +427,8 @@ class Elf32_Sym(Elfcore):
     st_visibility = property(ELF32_ST_VISIBILITY)
     def __str__(self):
         s = Elfcore.__str__(self)+'\n'
-        s += self.strkey('st_bind')
-        s += self.strkey('st_type')
+        s += self.strkey('st_bind')+'\n'
+        s += self.strkey('st_type')+'\n'
         s += self.strkey('st_visibility')
         return s
 
@@ -847,6 +854,10 @@ class Elf32(object):
                     data = c[offset:]
         return data,0,base+offset
 
+    def getfileoffset(self,addr):
+        s,offset,base = self.getinfo(target)
+        return S.p_offset+offset
+
     def readsegment(self,S):
         if S:
             if S.p_type==PT_LOAD:
@@ -1178,8 +1189,8 @@ class Elf64_Sym(Elfcore):
     st_visibility = property(ELF64_ST_VISIBILITY)
     def __str__(self):
         s = Elfcore.__str__(self)+'\n'
-        s += self.strkey('st_bind')
-        s += self.strkey('st_type')
+        s += self.strkey('st_bind')+'\n'
+        s += self.strkey('st_type')+'\n'
         s += self.strkey('st_visibility')
         return s
 
@@ -1402,6 +1413,10 @@ class Elf64(object):
                 else:
                     data = c[offset:]
         return data,0,base+offset
+
+    def getfileoffset(self,addr):
+        s,offset,base = self.getinfo(target)
+        return S.p_offset+offset
 
     def readsegment(self,S):
         if S:

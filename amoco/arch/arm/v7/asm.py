@@ -36,6 +36,12 @@ def __check_state(i,fmap):
         else:
             logger.verbose('impossible to check isetstate (ARM/Thumb) until pc is cst')
 
+def __mem(a,sz):
+    endian = 1
+    if internals['endianstate']==1:
+        endian = -1
+    return mem(a,sz,endian=endian)
+
 def __pre(i,fmap):
     fmap[pc] = fmap(pc+i.length)
     cond = fmap(CONDITION[i.cond][1])
@@ -562,7 +568,7 @@ def i_LDR(i,fmap):
     cond,dest,src,sht = __pre(i,fmap)
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.index else src
-    result = fmap(mem(adr,32))
+    result = fmap(__mem(adr,32))
     if i.wback:
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
     fmap[dest] = tst(cond,result,fmap(dest))
@@ -571,7 +577,7 @@ def i_LDREX(i,fmap):
     cond,dest,src,imm = __pre(i,fmap)
     off_addr = (src+imm)
     adr = off_addr
-    result = fmap(mem(adr,32))
+    result = fmap(__mem(adr,32))
     fmap[dest] = tst(cond,result,fmap(dest))
     # exclusive monitor not supported
 
@@ -596,7 +602,7 @@ def i_LDRH(i,fmap):
     cond,dest,src,sht = __pre(i,fmap)
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.index else src
-    result = fmap(mem(adr,16)).zeroextend(32)
+    result = fmap(__mem(adr,16)).zeroextend(32)
     fmap[dest] = tst(cond,result,fmap(dest))
     if i.wback:
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
@@ -605,7 +611,7 @@ def i_LDREXH(i,fmap):
     cond,dest,src,imm = __pre(i,fmap)
     off_addr = (src+imm)
     adr = off_addr
-    result = fmap(mem(adr,16)).zeroextend(32)
+    result = fmap(__mem(adr,16)).zeroextend(32)
     fmap[dest] = tst(cond,result,fmap(dest))
     # exclusive monitor not supported
 
@@ -622,7 +628,7 @@ def i_LDRSH(i,fmap):
     cond,dest,src,sht = __pre(i,fmap)
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.index else src
-    result = fmap(mem(adr,16)).signextend(32)
+    result = fmap(__mem(adr,16)).signextend(32)
     fmap[dest] = tst(cond,result,fmap(dest))
     if i.wback:
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
@@ -634,8 +640,8 @@ def i_LDRD(i,fmap):
     if src is pc: src = src+i.length
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.index else src
-    res1 = fmap(mem(adr,32))
-    res2 = fmap(mem(adr+4,32))
+    res1 = fmap(__mem(adr,32))
+    res2 = fmap(__mem(adr+4,32))
     fmap[dst1] = tst(cond,res1,fmap(dst1))
     fmap[dst2] = tst(cond,res2,fmap(dst2))
     if i.wback:
@@ -645,7 +651,7 @@ def i_LDRT(i,fmap):
     cond,dest,src,sht = __pre(i,fmap)
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.postindex else src
-    result = fmap(mem(adr,32))
+    result = fmap(__mem(adr,32))
     if i.postindex:
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
     fmap[dest] = tst(cond,result,fmap(dest))
@@ -663,7 +669,7 @@ def i_LDRHT(i,fmap):
     cond,dest,src,sht = __pre(i,fmap)
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.postindex else src
-    result = fmap(mem(adr,16)).zeroextend(32)
+    result = fmap(__mem(adr,16)).zeroextend(32)
     if i.postindex:
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
     fmap[dest] = tst(cond,result,fmap(dest))
@@ -681,7 +687,7 @@ def i_LDRSHT(i,fmap):
     cond,dest,src,sht = __pre(i,fmap)
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.postindex else src
-    result = fmap(mem(adr,16)).signextend(32)
+    result = fmap(__mem(adr,16)).signextend(32)
     if i.postindex:
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
     fmap[dest] = tst(cond,result,fmap(dest))
@@ -693,14 +699,14 @@ def i_STR(i,fmap):
     result = fmap(dest)
     if i.wback:
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
-    fmap[mem(adr,32)] = tst(cond,result,fmap(mem(adr,32)))
+    fmap[__mem(adr,32)] = tst(cond,result,fmap(__mem(adr,32)))
 
 def i_STREX(i,fmap):
     cond,dest,src,imm = __pre(i,fmap)
     off_addr = (src+imm)
     adr = off_addr
     result = fmap(dest)
-    fmap[mem(adr,32)] = tst(cond,result,fmap(mem(adr,32)))
+    fmap[__mem(adr,32)] = tst(cond,result,fmap(__mem(adr,32)))
     # exclusive monitor not supported
 
 def i_STRB(i,fmap):
@@ -725,7 +731,7 @@ def i_STRH(i,fmap):
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.index else src
     result = fmap(dest[0:16])
-    fmap[mem(adr,16)] = tst(cond,result,fmap(mem(adr,16)))
+    fmap[__mem(adr,16)] = tst(cond,result,fmap(__mem(adr,16)))
     if i.wback:
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
 
@@ -734,7 +740,7 @@ def i_STREXH(i,fmap):
     off_addr = (src+imm)
     adr = off_addr
     result = fmap(dest[0:16])
-    fmap[mem(adr,16)] = tst(cond,result,fmap(mem(adr,16)))
+    fmap[__mem(adr,16)] = tst(cond,result,fmap(__mem(adr,16)))
     # exclusive monitor not supported
 
 def i_STRD(i,fmap):
@@ -744,8 +750,8 @@ def i_STRD(i,fmap):
     if src is pc: src = src+i.length
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.index else src
-    adr1 = mem(adr,32)
-    adr2 = mem(adr+4,32)
+    adr1 = __mem(adr,32)
+    adr2 = __mem(adr+4,32)
     res1 = fmap(dst1)
     res2 = fmap(dst2)
     fmap[adr1] = tst(cond,res1,fmap(adr1))
@@ -757,7 +763,7 @@ def i_STRT(i,fmap):
     cond,dest,src,sht = __pre(i,fmap)
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.postindex else src
-    adr1 = mem(adr,32)
+    adr1 = __mem(adr,32)
     result = fmap(dest)
     if i.postindex:
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
@@ -777,7 +783,7 @@ def i_STRHT(i,fmap):
     cond,dest,src,sht = __pre(i,fmap)
     off_addr = (src+sht) if i.add else (src-sht)
     adr = off_addr if i.postindex else src
-    adr1 = mem(adr,16)
+    adr1 = __mem(adr,16)
     result = fmap(dest[0:16])
     if i.postindex:
         fmap[src] = tst(cond,fmap(off_addr),fmap(src))
@@ -795,7 +801,7 @@ def i_POP(i,fmap):
     regs = i.operands[0]
     adr  = sp
     for _r in regs:
-        fmap[_r] = fmap(tst(cond,mem(adr,32),_r))
+        fmap[_r] = fmap(tst(cond,__mem(adr,32),_r))
         adr = adr+4
     fmap[sp] = fmap(tst(cond,sp+(4*len(regs)),sp))
 
@@ -806,7 +812,7 @@ def i_PUSH(i,fmap):
     adr  = sp-(4*len(regs))
     for _r in regs:
         if _r is pc: _r = _r+i.length
-        fmap[mem(adr,32)] = fmap(tst(cond,_r,mem(adr,32)))
+        fmap[__mem(adr,32)] = fmap(tst(cond,_r,__mem(adr,32)))
         adr = adr+4
     fmap[sp] = fmap(tst(cond,sp-(4*len(regs)),sp))
 
@@ -866,8 +872,7 @@ def i_PLI(i,fmap):
 # change endianess
 def i_SETEND(i,fmap):
     fmap[pc] = fmap(pc+i.length)
-    internals['endianstate'] = 1 if i.set_bigend else 0
-    exp.setendian(-1 if i.set_bigend else +1)
+    internals['endianstate'] = -1 if i.set_bigend else 1
 
 # event hint
 def i_SEV(i,fmap):
@@ -881,8 +886,8 @@ def i_SVC(i,fmap):
 def i_SWP(i,fmap):
     fmap[pc] = fmap(pc+i.length)
     Rt,Rt2,Rn = i.operands
-    data = fmap(mem(Rn,32))
-    fmap[mem(Rn,32)] = fmap(Rt2)
+    data = fmap(__mem(Rn,32))
+    fmap[__mem(Rn,32)] = fmap(Rt2)
     fmap[Rt] = data
 
 def i_SWPB(i,fmap):

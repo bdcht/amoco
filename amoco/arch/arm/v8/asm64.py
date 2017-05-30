@@ -11,6 +11,12 @@ from .env64 import *
 from .utils import *
 from amoco.cas.utils import *
 
+def __mem(a,sz):
+    endian = 1
+    if internals['endianstate']==1:
+        endian=-1
+    return mem(a,sz,endian=endian)
+
 def i_ADC(i,fmap):
     fmap[pc] = fmap[pc]+i.length
     op1,op2 = map(fmap,i.operands[1:])
@@ -276,7 +282,7 @@ def i_HVC(i,fmap):
 
 def i_LDAR(i,fmap):
     fmap[pc] = fmap[pc]+i.length
-    data = fmap(mem(i.n,i.datasize))
+    data = fmap(__mem(i.n,i.datasize))
     if i.pair:
         if not i.excl: raise InstructionError(i)
         if i.elsize==32:
@@ -287,8 +293,8 @@ def i_LDAR(i,fmap):
                 fmap[i.t]  = data[i.elsize:i.datasize]
                 fmap[i.t2] = data[0:i.elsize]
         else:
-            fmap[i.t]  = fmap(mem(i.n, 64))
-            fmap[i.t2] = fmap(mem(i.n, 64, disp=8))
+            fmap[i.t]  = fmap(__mem(i.n, 64))
+            fmap[i.t2] = fmap(__mem(i.n, 64, disp=8))
     else:
         fmap[i.t] = data.zeroextend(i.regsize)
 
@@ -333,8 +339,8 @@ def i_LDP(i,fmap):
     fmap[pc] = fmap[pc]+i.length
     address = i.n
     if not i.postindex: address += i.offset
-    data1 = mem(address,i.datasize)
-    data2 = mem(address,i.datasize, disp=i.datasize/8)
+    data1 = __mem(address,i.datasize)
+    data2 = __mem(address,i.datasize, disp=i.datasize/8)
     fmap[i.t]  = fmap(data1)
     fmap[i.t2] = fmap(data2)
     if i.wback:
@@ -347,8 +353,8 @@ def i_STP(i,fmap):
     if not i.postindex: address += i.offset
     data1 = fmap(i.t)
     data2 = fmap(i.t2)
-    fmap[mem(address,i.datasize)]  = data1
-    fmap[mem(address,i.datasize,disp=i.datasize/8)] = data2
+    fmap[__mem(address,i.datasize)]  = data1
+    fmap[__mem(address,i.datasize,disp=i.datasize/8)] = data2
     if i.wback:
         if i.postindex: address += i.offset
         fmap[i.n] = fmap(address)
@@ -360,8 +366,8 @@ def i_LDPSW(i,fmap):
     fmap[pc] = fmap[pc]+i.length
     address = i.n
     if not i.postindex: address += i.offset
-    data1 = mem(address,i.datasize)
-    data2 = mem(address,i.datasize, disp=i.datasize/8)
+    data1 = __mem(address,i.datasize)
+    data2 = __mem(address,i.datasize, disp=i.datasize/8)
     fmap[i.t]  = fmap(data1).signextend(64)
     fmap[i.t2] = fmap(data2).signextend(64)
     if i.wback:
@@ -374,7 +380,7 @@ def i_LDR(i,fmap):
         Xt, Xn, offset = i.operands
         address = Xn
         if not i.postindex: address += offset
-        data = mem(address,i.datasize)
+        data = __mem(address,i.datasize)
         if i.signed:
             fmap[Xt] = data.signextend(i.regsize)
         else:
@@ -386,7 +392,7 @@ def i_LDR(i,fmap):
         Xt, offset = i.operands
         address = fmap[pc] + offset
         fmap[pc] = fmap[pc]+i.length
-        data = mem(address,i.size)
+        data = __mem(address,i.size)
         if i.signed:
             fmap[Xt] = fmap(data.signextend(64))
         else:
@@ -542,7 +548,7 @@ def i_STR(i,fmap):
         Xt, Xn, offset = i.operands
         address = Xn
         if not i.postindex: address += offset
-        dst = mem(address,i.datasize)
+        dst = __mem(address,i.datasize)
         data = fmap(Xt)
         fmap[dst] = data[0:i.datasize]
         if i.wback:

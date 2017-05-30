@@ -26,6 +26,16 @@ class RawExec(CoreExec):
         from amoco.arch.x86 import cpu_x86
         self.cpu = cpu_x86
 
+    def use_x64(self):
+        from amoco.arch.x64 import cpu_x64
+        self.cpu = cpu_x64
+
+    def initenv(self):
+        try:
+            return self._initmap
+        except AttributeError:
+            return None
+
     def relocate(self,vaddr):
         from amoco.cas.mapper import mapper
         m = mapper()
@@ -34,4 +44,5 @@ class RawExec(CoreExec):
         pc = self.cpu.PC()
         m[pc] = self.cpu.cst(vaddr,pc.size)
         self._initmap = m
-        self.initenv = lambda : self._initmap
+
+

@@ -75,7 +75,6 @@ def st(num):
 fpu_control = reg('fpu_control',16)
 fpu_status  = reg('fpu_status',16)
 
-
 # return R/M register (see ModR/M Byte encoding) :
 def getreg(i,size=32):
     return {8   : (al,cl,dl,bl,ah,ch,dh,bh),

@@ -238,6 +238,8 @@ class _target(object):
                     proceed from parent to the basic block at this address
     '''
     def __init__(self,cst,parent,econd=None):
+        if cst is not None:
+            cst.sf=False
         self.cst = cst
         self.parent = parent
         self.econd = econd
@@ -416,12 +418,14 @@ class fforward(lsweep):
                 emitted at every node added to the cfg.
                 (Default to False.)
         """
-        if debug: import pdb
+        if debug:
+            import pdb
+            pdb.set_trace()
         try:
             for x in self.itercfg(loc):
-                if debug: pdb.set_trace()
+                pass
         except KeyboardInterrupt:
-            if debug: pdb.set_trace()
+            pass
         return self.G
 
     def itercfg(self,loc=None):
@@ -460,6 +464,7 @@ class fforward(lsweep):
                 elif parent.data.misc[code.tag.FUNC_CALL]:
                     vtx = self.add_call_node(vtx,parent,econd)
                 else:
+                    if parent.data.misc['cut']: continue
                     e_ = cfg.link(parent,vtx,data=econd)
                     e  = G.add_edge(e_)
                     if e is e_:

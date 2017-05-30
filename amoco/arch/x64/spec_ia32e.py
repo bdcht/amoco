@@ -786,6 +786,17 @@ def ia32_rdrand(obj,Mod,RM,data):
     obj.operands = [op1]
     obj.type = type_other
 
+@ispec_ia32("*>[ {0f}{c3} /r ]", mnemonic = "MOVNTI")
+def ia32_rdrand(obj,Mod,RM,REG,data):
+    op2,data = getModRM(obj,Mod,RM,data)
+    if not op2._is_mem: raise InstructionError(obj)
+    W,R,X,B = getREX(obj)
+    if W==1:
+        op2.size = 64
+    op1 = env.getregR(REG,op2.size)
+    obj.operands = [op2,op1]
+    obj.type = type_data_processing
+
 @ispec_ia32("*>[ {0f}{c7} /1 ]", mnemonic = "CMPXCHG8B")
 def ia32_cmpxchg(obj,Mod,RM,data):
     op2,data = getModRM(obj,Mod,RM,data)
@@ -802,14 +813,14 @@ def ia32_cmpxchg(obj,Mod,RM,data):
 def ia32_longnop(obj,Mod,RM,data):
     op1, data = getModRM(obj,Mod,RM,data)
 
-@ispec_ia32("*>[ {0f}{ae} /0  ]", mnemonic = "FXSAVE",  type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /1  ]", mnemonic = "FXRSTOR", type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /2  ]", mnemonic = "LDMXCSR", type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /3  ]", mnemonic = "STMXCSR", type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /4  ]", mnemonic = "XSAVE",   type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /5  ]", mnemonic = "XRSTOR",  type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /6  ]", mnemonic = "XSAVEOPT",type=type_cpu_state)
-@ispec_ia32("*>[ {0f}{ae} /7  ]", mnemonic = "CLFLUSH", type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /0  ]", mnemonic = "FXSAVE",   type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /1  ]", mnemonic = "FXRSTOR",  type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /2  ]", mnemonic = "LDMXCSR",  type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /3  ]", mnemonic = "STMXCSR",  type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /4  ]", mnemonic = "XSAVE",    type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /5  ]", mnemonic = "XRSTOR",   type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /6  ]", mnemonic = "XSAVEOPT", type=type_cpu_state)
+@ispec_ia32("*>[ {0f}{ae} /7  ]", mnemonic = "CLFLUSH",  type=type_cpu_state)
 def ia32_xfence(obj,Mod,RM,data):
     op1, data = getModRM(obj,Mod,RM,data)
     if Mod == 0b11:

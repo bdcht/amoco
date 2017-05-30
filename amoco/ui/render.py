@@ -3,7 +3,7 @@
 try:
     from cStringIO import StringIO
 except ImportError:
-    from io import StringIO
+    from io import BytesIO as StringIO
 
 from amoco.logger import Log
 logger = Log(__name__)
@@ -73,12 +73,12 @@ else:
     DefaultStyle = DarkStyle
 
     Formats = {
-      'Null':NullFormatter(),
-      'Terminal':TerminalFormatter(style=DefaultStyle),
-      'Terminal256':Terminal256Formatter(style=DefaultStyle),
-      'TerminalDark':Terminal256Formatter(style=DarkStyle),
-      'TerminalLight':Terminal256Formatter(style=LightStyle),
-      'Html':HtmlFormatter(style=LightStyle,nowrap=True),
+      'Null':NullFormatter(encoding='utf-8'),
+      'Terminal':TerminalFormatter(style=DefaultStyle,encoding='utf-8'),
+      'Terminal256':Terminal256Formatter(style=DefaultStyle,encoding='utf-8'),
+      'TerminalDark':Terminal256Formatter(style=DarkStyle,encoding='utf-8'),
+      'TerminalLight':Terminal256Formatter(style=LightStyle,encoding='utf-8'),
+      'Html':HtmlFormatter(style=LightStyle,encoding='utf-8'),
     }
 
 default_formatter = NullFormatter()
@@ -98,7 +98,7 @@ def highlight(toks,formatter=None,outfile=None):
     if isinstance(formatter,str): formatter = Formats[formatter]
     outfile = outfile or StringIO()
     formatter.format(toks,outfile)
-    return outfile.getvalue()
+    return outfile.getvalue().decode('utf-8')
 
 def TokenListJoin(j,lst):
     if isinstance(j,str):
@@ -128,8 +128,8 @@ class vltable(object):
         self.squash_r  = True
         self.colsize   = self.rowparams['colsize']
         self.update()
-        self.header    = u''
-        self.footer    = u''
+        self.header    = ''
+        self.footer    = ''
 
     def update(self,*rr):
         for c in range(self.ncols):
@@ -218,7 +218,7 @@ class vltable(object):
                 s.append(self.rows[i].show(**self.rowparams))
         if len(s)>self.maxlength:
             s = s[:self.maxlength-1]
-            s.append(highlight([(Token.Literal,u'...')],formatter,outfile))
+            s.append(highlight([(Token.Literal,'...')],formatter,outfile))
         if self.header: s.insert(0,self.header)
         if self.footer: s.append(self.footer)
         return '\n'.join(s)
@@ -227,7 +227,7 @@ class vltable(object):
 class tokenrow(object):
     def __init__(self,toks=None):
         if toks is None: toks = []
-        self.toks      = [(t,str(s)) for (t,s) in toks]
+        self.toks      = [(t,u'%s'%s) for (t,s) in toks]
         self.maxwidth  = float('inf')
         self.align     = u'<'
         self.fill      = u' '
@@ -271,8 +271,8 @@ class tokenrow(object):
         colsz     = params.get('colsize')
         hidden_c  = params.get('hidden_c',set())
         squash_c  = params.get('squash_c',True)
-        head      = params.get('head','')
-        tail      = params.get('tail','')
+        head      = params.get('head',u'')
+        tail      = params.get('tail',u'')
         if raw:
             formatter='Null'
             outfile=None
@@ -288,16 +288,16 @@ class tokenrow(object):
             for tt,tv in c:
                 if tt==Token.Column: break
                 if skip: continue
-                toks.append([tt,tv])
+                toks.append([tt,u'%s'%tv])
                 sz += len(tv)
                 if sz>mz:
-                    q = (sz-mz)
+                    q = (sz-mz)+3
                     toks[-1][1] = tv[0:-q]+u'###'
                     skip = True
             if sz<mz:
                 pad = fill*(mz-sz)
-                if   align==u'<': toks[-1][1] += pad
-                elif align==u'>': toks[0][1] = pad+toks[0][1]
+                if   align=='<': toks[-1][1] += pad
+                elif align=='>': toks[0][1] = pad+toks[0][1]
             if i in hidden_c:
                 if not squash_c:
                     toks = [(TokenHide,highlight(toks,'Null',None))]
@@ -306,4 +306,4 @@ class tokenrow(object):
             r.append(highlight(toks,formatter,outfile))
             if tt==Token.Column and sep: r.append(sep)
         r.append(tail)
-        return u''.join(r)
+        return ''.join(r)

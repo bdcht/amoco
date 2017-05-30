@@ -43,29 +43,23 @@ def test_memory_003(M,sc1,p,y):
     assert z._map[1].data.val==y
 
 def test_memory_004(M,sc1,p,y):
-    M.write(0x0, sc1)
-    M.write(p, b'A'*8)
-    M.write(p+2,cst(0x4243,16))
-    M.write(cst(0x10,32), y)
+    M.write(0x0, sc1, endian=-1)
+    M.write(p, b'A'*8, endian=-1)
+    M.write(p+2,cst(0x4243,16),endian=-1)
+    M.write(cst(0x10,32), y, endian=-1)
     # test big endian cases:
     z = M._zones[p.base]
-    c = z._map[1].data.val
-    c.setendian(-1)
-    exp.setendian(-1)
     assert M.read(p+3,1)[0]==0x43
     res = M.read(cst(0x12,32),4)
     assert res[0] == y[0:16]
     assert res[1] == b'\xc0@'
     res = M.read(p,6)
     assert res[0]==res[2]==b'AA'
-    M.write(cst(0x12,32),p.base)
+    M.write(cst(0x12,32),p.base,endian=-1)
     res = M.read(cst(0x10,32),8)
     assert res[0]==y[16:32]
     assert res[1]==p.base
     assert res[2]==b'\xcd\x80'
-    # return to default
-    c.setendian(+1)
-    exp.setendian(+1)
 
 def test_pickle_memorymap(a,m):
     from pickle import dumps,loads,HIGHEST_PROTOCOL

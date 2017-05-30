@@ -174,8 +174,6 @@ def do_nothing(obj):
 
 def set_opdsz_128(obj):
     obj.misc['opdsz']=128
-def set_opdsz_mm(obj):
-    obj.misc['opdsz']='mm'
 def set_opdsz_64(obj):
     obj.misc['opdsz']=64
 def set_opdsz_32(obj):

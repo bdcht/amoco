@@ -225,7 +225,7 @@ def ia32_bswap(obj,reg):
 @ispec_ia32(" 8>[ {1f}     ]", mnemonic="POP",  _seg=env.ds, type=type_data_processing)
 @ispec_ia32(" 8>[ {06}     ]", mnemonic="PUSH", _seg=env.es, type=type_data_processing)
 @ispec_ia32(" 8>[ {07}     ]", mnemonic="POP",  _seg=env.es, type=type_data_processing)
-@ispec_ia32("16>[ {0f}{0a} ]", mnemonic="PUSH", _seg=env.fs, type=type_data_processing)
+@ispec_ia32("16>[ {0f}{a0} ]", mnemonic="PUSH", _seg=env.fs, type=type_data_processing)
 @ispec_ia32("16>[ {0f}{a1} ]", mnemonic="POP",  _seg=env.fs, type=type_data_processing)
 @ispec_ia32("16>[ {0f}{a8} ]", mnemonic="PUSH", _seg=env.gs, type=type_data_processing)
 @ispec_ia32("16>[ {0f}{a9} ]", mnemonic="POP",  _seg=env.gs, type=type_data_processing)
@@ -760,7 +760,7 @@ def ia32_rdrand(obj,Mod,RM,data):
     obj.type = type_other
 
 @ispec_ia32("*>[ {0f}{c3} /r ]", mnemonic = "MOVNTI")
-def ia32_rdrand(obj,Mod,RM,REG,data):
+def ia32_movnti(obj,Mod,RM,REG,data):
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_mem: raise InstructionError(obj)
     op1 = env.getreg(REG,op2.size)

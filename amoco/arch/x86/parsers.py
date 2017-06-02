@@ -125,6 +125,8 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
         if r == 'st(': return env.st(int(toks[2]))
         if r.startswith('mm'): return env.mmregs[int(r[2:])]
         if r.startswith('xmm'): return env.xmmregs[int(r[3:])]
+        if r.startswith('cr'): return env.cr(int(r[2:]))
+        if r.startswith('dr'): return env.dr(int(r[2:]))
         if r[0] == 'r' and r[-1] == 'b':
             # gcc or clang use 'r8b' instead of 'R8L' from Intel specs
             r = r[:-1]+'l'
@@ -293,6 +295,10 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
             i.operands[0].size = 16
         elif i.mnemonic == 'CMPXCHG':
             if i.operands[0]._is_mem: i.operands[0].size = i.operands[1].size
+        elif i.mnemonic == 'CMPXCHG8B':
+            if i.operands[0]._is_mem: i.operands[0].size = 64
+        elif i.mnemonic == 'CMPXCHG16B':
+            if i.operands[0]._is_mem: i.operands[0].size = 128
         elif i.mnemonic in mmx_with_suffix2 and len(i.operands):
             if i.mnemonic.endswith('SS'):
                 if i.operands[1]._is_mem: i.operands[1].size = 32
@@ -358,6 +364,8 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
                 sz = {'b':8, 'w':16, 'l':32, 'q':64}[mnemo[-1]]
                 if 'q' == mnemo[-1]:
                     i.misc.update({'REX':(1,0,0,0)})
+                if 'w' == mnemo[-1]:
+                    i.misc.update({'opdsz':16, 'pfx':[None, None, 'opdsz', None]})
                 def set_size(e, sz):
                     if e._is_mem: e.size = sz
                     if e._is_cst: e.size = sz; e.v &= e.mask
@@ -395,6 +403,9 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
         elif i.mnemonic in ('SAL','SAR','SHL','SHR','ROR','ROL') \
                 and len(i.operands) == 1:
             i.operands.append(expressions.cst(1,32))
+        elif i.mnemonic in ('SHLD','SHRD') \
+                and len(i.operands) == 2:
+            i.operands.append(env.__dict__['cl'])
         elif i.mnemonic.startswith('CMP') \
                 and i.mnemonic.endswith(('PS','PD','SD','SS')) \
                 and len(i.operands):

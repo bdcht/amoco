@@ -498,6 +498,7 @@ att_mnemo_suffix_one_ptr = [
     'bsf', 'bsr',
     'bt', 'bts', 'btr', 'btc', 'lgdt',
     'cvtsi2sd', 'cvtsi2ss', 'fisttp',
+    'cmpxchg', 'movnti', 'rdrand',
 ]
 att_mnemo_correspondance = {
     # 'movsl': 'movsd', # there is a SSE movsd and a string movsd

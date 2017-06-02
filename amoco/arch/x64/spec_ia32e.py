@@ -80,6 +80,8 @@ def ia32_nop(obj):
 @ispec_ia32(" 8>[ {fd}         ]", mnemonic = "STD",     type=type_data_processing)
 @ispec_ia32(" 8>[ {fa}         ]", mnemonic = "CLI",     type=type_system)
 @ispec_ia32(" 8>[ {fb}         ]", mnemonic = "STI",     type=type_system)
+@ispec_ia32(" 8>[ {9e}         ]", mnemonic = "SAHF",    type=type_data_processing)
+@ispec_ia32(" 8>[ {9f}         ]", mnemonic = "LAHF",    type=type_data_processing)
 @ispec_ia32(" 8>[ {d7}         ]", mnemonic = "XLATB",   type=type_data_processing)
 @ispec_ia32(" 8>[ {9d}         ]", mnemonic = "POPFQ",   type=type_other)
 @ispec_ia32(" 8>[ {9c}         ]", mnemonic = "PUSHFQ",  type=type_other)
@@ -223,7 +225,7 @@ def ia32_bswap(obj,reg):
 
 # implicit register:
 # r16 (segments)
-@ispec_ia32("16>[ {0f}{0a} ]", mnemonic="PUSH", _seg=env.fs, type=type_data_processing)
+@ispec_ia32("16>[ {0f}{a0} ]", mnemonic="PUSH", _seg=env.fs, type=type_data_processing)
 @ispec_ia32("16>[ {0f}{a1} ]", mnemonic="POP",  _seg=env.fs, type=type_data_processing)
 @ispec_ia32("16>[ {0f}{a8} ]", mnemonic="PUSH", _seg=env.gs, type=type_data_processing)
 @ispec_ia32("16>[ {0f}{a9} ]", mnemonic="POP",  _seg=env.gs, type=type_data_processing)
@@ -787,13 +789,13 @@ def ia32_rdrand(obj,Mod,RM,data):
     obj.type = type_other
 
 @ispec_ia32("*>[ {0f}{c3} /r ]", mnemonic = "MOVNTI")
-def ia32_rdrand(obj,Mod,RM,REG,data):
+def ia32_movnti(obj,Mod,RM,REG,data):
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_mem: raise InstructionError(obj)
     W,R,X,B = getREX(obj)
     if W==1:
         op2.size = 64
-    op1 = env.getregR(REG,op2.size)
+    op1 = env.getreg(REG,op2.size)
     obj.operands = [op2,op1]
     obj.type = type_data_processing
 

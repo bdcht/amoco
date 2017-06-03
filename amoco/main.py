@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
+.. _main:
+
 main.py
 =======
 The main module of amoco implements various strategies to perform CFG recovery.
@@ -119,6 +121,7 @@ class lsweep(object):
         ib.close()
         return b
 
+    @property
     def functions(self):
         """provides the list of functions recovered so far.
         """

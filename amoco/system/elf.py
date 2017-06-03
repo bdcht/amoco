@@ -15,7 +15,7 @@ import struct
 import codecs
 from collections import defaultdict
 from amoco.ui.render import Token,highlight
-from amoco.logger import *
+from amoco.logger import Log
 logger = Log(__name__)
 
 try:

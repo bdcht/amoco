@@ -114,7 +114,7 @@ class Log(logging.Logger):
             term.write(u"%s\r"%s)
 
     def setLevel(self,lvl):
-        self.handlers[0].setLevel(lvl)
+        return self.handlers[0].setLevel(lvl)
 
     @classmethod
     def register(cls,name,self):

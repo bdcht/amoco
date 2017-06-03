@@ -7,7 +7,7 @@
 # spec_xxx files are providers for instruction objects.
 # These objects are wrapped and created by disasm.py.
 
-from amoco.logger import *
+from amoco.logger import Log
 logger = Log(__name__)
 
 from amoco.arch.core import *

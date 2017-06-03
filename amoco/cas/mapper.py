@@ -11,7 +11,7 @@ from .expressions import *
 from amoco.cas.tracker import generation
 from amoco.system.core import MemoryMap
 from amoco.arch.core   import Bits
-from amoco.ui.render   import vltable
+from amoco.ui.views import mapView
 
 # a mapper is a symbolic functional representation of the execution
 # of a set of instructions.
@@ -25,7 +25,7 @@ from amoco.ui.render   import vltable
 class mapper(object):
     assume_no_aliasing = False
 
-    __slots__ = ['__map','__Mem','conds', 'csi']
+    __slots__ = ['__map','__Mem','conds', 'csi', 'view']
 
     # a mapper is inited with a list of instructions
     # provided by a disassembler
@@ -45,25 +45,13 @@ class mapper(object):
             else: icache.append(instr)
         for instr in icache:
             instr(self)
+        self.view = mapView(self)
 
     def __len__(self):
         return len(self.__map)
 
     def __str__(self):
         return u'\n'.join([u"%s <- %s"%x for x in self])
-
-    def pp(self,**kargs):
-        t = vltable()
-        t.rowparams['sep'] = ' <- '
-        for (l,v) in self:
-            if l._is_reg: v = v[0:v.size]
-            lv = (l.toks(**kargs)+
-                  [(render.Token.Column,u'')]+
-                  v.toks(**kargs))
-            t.addrow(lv)
-        if t.colsize[0]>18: t.colsize[0]=18
-        if t.colsize[1]>58: t.colsize[1]=58
-        return t.__str__()
 
     # list antecedent locations (used in the mapping)
     def inputs(self):

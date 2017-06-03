@@ -5,11 +5,13 @@ from amoco.config import conf
 from amoco.logger import Log
 logger = Log(__name__)
 
+from amoco.cas.expressions import regtype
 from amoco.ui.graphics import Engine
 from amoco.ui.render import Token,vltable
 
 class View(Engine):
     _is_block = False
+    _is_map   = False
     _is_func  = False
     _is_xfunc = False
 
@@ -71,6 +73,35 @@ class blockView(View):
 
     def __str__(self):
         return str(self._vltable())
+
+class mapView(View):
+    _is_map = True
+
+    def __init__(self,m):
+        super(mapView,self).__init__(of=m)
+
+    def _vltable(self,**kargs):
+        t = vltable(**kargs)
+        t.rowparams['sep'] = ' <- '
+        for (l,v) in self.of:
+            if l._is_reg:
+                if l.type == regtype.FLAGS:
+                    t.addrow(l.toks(**kargs)+[(Token.Literal,':')])
+                    for pos,sz in l._subrefs:
+                        t.addrow([(Token.literal,'| ')]+
+                                 l[pos:pos+sz].toks(**kargs)+
+                                 [(Token.Column,u'')]+
+                                 v[pos:pos+sz].toks(**kargs))
+                    continue
+                v = v[0:v.size]
+            lv = (l.toks(**kargs)+
+                  [(Token.Column,u'')]+
+                  v.toks(**kargs))
+            t.addrow(lv)
+        return t
+
+    def __str__(self):
+        return self._vltable().__str__()
 
 class funcView(View):
     _is_func = True

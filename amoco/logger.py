@@ -141,7 +141,7 @@ def set_log_all(level):
         level (int): level value as an integer.
     """
     default_level = level
-    for l in Log.loggers.itervalues():
+    for l in Log.loggers.values():
         l.setLevel(level)
 
 def set_log_file(filename):
@@ -156,7 +156,7 @@ def set_log_file(filename):
     logfile = logging.FileHandler(logfilename,mode='w')
     logfile.setFormatter(default_format)
     logfile.setLevel(logging.DEBUG)
-    for l in Log.loggers.itervalues():
+    for l in Log.loggers.values():
         l.addHandler(logfile)
 
 Log.loggers = {}

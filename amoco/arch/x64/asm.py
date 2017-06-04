@@ -1557,6 +1557,7 @@ def i_PINSRW(i,fmap):
   op2 = i.operands[1]
   op3 = i.operands[2]
   if op2._is_reg: op2 = op2[0:16]
+  else:           op2.size = 16
   src1 = fmap(op1)
   src2 = fmap(op2)
   if op3._is_cst:

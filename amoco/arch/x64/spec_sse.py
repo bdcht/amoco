@@ -333,7 +333,7 @@ def sse_pd(obj,Mod,REG,RM,data):
     if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if not op2._is_reg: raise InstructionError(obj)
-    op1 = env.getregR(REG,32)
+    op1 = getregR(obj,REG,32)
     obj.operands = [op1,op2]
     obj.type = type_data_processing
 
@@ -716,7 +716,7 @@ def sse_pd(obj,Mod,REG,RM,data):
 @ispec_ia32("*>[ {0f}{38}{34} /r ]", mnemonic="PMOVZXWQ", _op2sz=32)
 @ispec_ia32("*>[ {0f}{38}{35} /r ]", mnemonic="PMOVZXDQ", _op2sz=64)
 def sse_pd(obj,Mod,REG,RM,data, _op2sz):
-    if not check_66(obj,set_opdz_128): raise InstructionError(obj)
+    if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
     if op2._is_mem: op2.size = _op2sz
     op1 = getregR(obj,REG,128)
@@ -798,39 +798,23 @@ def sse_pd(obj,Mod,REG,RM,data):
 # r/m32, xmm, imm8
 @ispec_ia32("*>[ {0f}{3a}{14} /r ]", mnemonic="PEXTRB", _inv=True)
 @ispec_ia32("*>[ {0f}{3a}{15} /r ]", mnemonic="PEXTRW", _inv=True)
+@ispec_ia32("*>[ {0f}{c5}     /r ]", mnemonic="PEXTRW", _inv=True)
 @ispec_ia32("*>[ {0f}{3a}{16} /r ]", mnemonic="PEXTRD", _inv=True)
 @ispec_ia32("*>[ {0f}{3a}{17} /r ]", mnemonic="EXTRACTPS", _inv=True)
 @ispec_ia32("*>[ {0f}{3a}{20} /r ]", mnemonic="PINSRB", _inv=False)
 @ispec_ia32("*>[ {0f}{c4}     /r ]", mnemonic="PINSRW", _inv=False)
 @ispec_ia32("*>[ {0f}{3a}{22} /r ]", mnemonic="PINSRD", _inv=False)
 def sse_pd(obj,Mod,REG,RM,data,_inv):
-    if not check_66(obj,set_opdsz_64): raise InstructionError(obj)
+    if not check_66(obj,set_opdsz_32): raise InstructionError(obj)
     op2,data = getModRM(obj,Mod,RM,data)
+    if op2.size == 64:
+        obj.mnemonic = obj.mnemonic[:-1]+'Q'
     if op2._is_mem:
         if   obj.mnemonic[-1]=='B':
             op2.size=8
         elif obj.mnemonic[-1]=='W':
-            if _inv: raise InstructionError(obj)
-            else: op2.size=16
+            op2.size=16
     op1 = getregR(obj,REG,128)
-    obj.operands = [op1,op2] if not _inv else [op2,op1]
-    if data.size<8: raise InstructionError(obj)
-    imm = data[0:8]
-    obj.operands.append(env.cst(imm.int(),8))
-    obj.bytes += pack(imm)
-    obj.type = type_data_processing
-
-@ispec_ia32("*>[ {0f}{c5}     /r ]", mnemonic="PEXTRW", _inv=False)
-def sse_pd(obj,Mod,REG,RM,data,_inv):
-    if not check_66(obj,set_opdsz_128): raise InstructionError(obj)
-    op2,data = getModRM(obj,Mod,RM,data)
-    if op2._is_mem:
-        if   obj.mnemonic[-1]=='B':
-            op2.size=8
-        elif obj.mnemonic[-1]=='W':
-            if _inv: raise InstructionError(obj)
-            else: op2.size=16
-    op1 = getregR(obj,REG,64)
     obj.operands = [op1,op2] if not _inv else [op2,op1]
     if data.size<8: raise InstructionError(obj)
     imm = data[0:8]

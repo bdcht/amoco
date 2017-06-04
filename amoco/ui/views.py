@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-from builtins import bytes
+try:
+    from builtins import bytes
+except ImportError:
+    pass
 
 from amoco.config import conf
 from amoco.logger import Log

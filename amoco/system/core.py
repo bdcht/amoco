@@ -69,7 +69,10 @@ class datadiv(object):
         return len(self.val)
 
     def __repr__(self):
-        from builtins import bytes
+        try:
+            from builtins import bytes
+        except ImportError:
+            pass
         s = repr(self.val)
         if len(s)>32:
             s=s[:32]+"..."
@@ -447,8 +450,7 @@ class MemoryMap(object):
         return self._zones[r]._map[idx]
 
     def reference(self,address):
-        from builtins import int
-        if isinstance(address,(int)):
+        if isinstance(address,int):
             return (None,address)
         elif isinstance(address,str):
             return (address,0)
@@ -670,7 +672,10 @@ class DataIO(object):
         try:
             return self.f.name
         except AttributeError:
-            from builtins import bytes
+            try:
+                from builtins import bytes
+            except ImportError:
+                pass
             s = bytes(self.f.getvalue())
             return '(sc-%s...)'%(''.join(["%02x"%x for x in s])[:8])
 

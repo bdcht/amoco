@@ -229,6 +229,13 @@ def test_decoder_028():
   op1,op2 = i.operands
   assert op1.size==op2.size==128
 
+# lock incl (%ecx)
+def test_decoder_029():
+  c = b'\xf0\xff\x01'
+  i = cpu.disassemble(c)
+  assert i.mnemonic == 'INC'
+  assert i.misc['pfx'] == ['lock', None, None, None]
+
 def test_pickle_instruction():
   import pickle
   pickler = lambda x: pickle.dumps(x,2)

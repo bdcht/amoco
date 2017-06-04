@@ -17,12 +17,13 @@ try:
 except ImportError:
     logger.info("pygments package not found, no renderer defined")
     has_pygments = False
-    from future.utils import with_metaclass
 
+    # metaclass definition, with a syntax compatible with python2 and python3
     class TokenType(type):
         def __getattr__(cls,key):
             return key
-    class Token(with_metaclass(TokenType)):
+    Token_base = TokenType('Token_base', (), {})
+    class Token(Token_base):
         pass
 
     class NullFormatter(object):
@@ -30,7 +31,7 @@ except ImportError:
             self.options = options
         def format(self,tokensource,outfile):
             for t,v in tokensource:
-                outfile.write(v)
+                outfile.write(v.encode('latin1'))
     Formats = {
       'Null':NullFormatter(),
     }

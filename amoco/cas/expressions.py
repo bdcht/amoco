@@ -3,7 +3,10 @@
 # This code is part of Amoco
 # Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
-from builtins import object
+try:
+    from builtins import object
+except ImportError:
+    pass
 import operator
 from amoco.logger import Log
 logger = Log(__name__)
@@ -129,10 +132,17 @@ class exp(object):
         self = loads(s)
         return self
 
-    def __str__(self):
+    def __unicode__(self):
         if self._is_def is 0: return u'\u22A4%d'%self.size if conf['unicode'] else 'T%d'%self.size
         if self._is_def is False: return u'\u22A5%d'%self.size if conf['unicode'] else '_%d'%self.size
         raise ValueError("void expression")
+
+    def __str__(self):
+        res = self.__unicode__()
+        try:
+            return str(res)
+        except UnicodeEncodeError:
+            return res.encode('utf-8')
 
     def toks(self,**kargs):
         return [(render.Token.Literal,u'%s'%self)]
@@ -204,6 +214,8 @@ class exp(object):
     @_checkarg_numeric
     def __div__(self,n): return oper(OP_DIV,self,n)
     @_checkarg_numeric
+    def __truediv__(self,n): return oper(OP_DIV,self,n)
+    @_checkarg_numeric
     def __mod__(self,n): return oper(OP_MOD,self,n)
     @_checkarg_numeric
     def __floordiv__(self,n): return oper(OP_ASR,self,n)
@@ -241,6 +253,8 @@ class exp(object):
     #def __cmp__(self,n): return cmp(hash(self),hash(n))
 
     # An expression defaults to False, and only bit1 will return True.
+    # __nonzero__ for python2, __bool__ for python3
+    def __nonzero__(self): return self.__bool__()
     def __bool__(self): return False
 
     @_checkarg_numeric
@@ -312,7 +326,7 @@ class cst(exp):
         return self.value
 
     # defaults to signed hex base
-    def __str__(self):
+    def __unicode__(self):
         return u'{:#x}'.format(self.value)
 
     def toks(self,**kargs):
@@ -368,6 +382,10 @@ class cst(exp):
     def __pow__(self,n):
         if n._is_cst: return cst(self.value*n.value,2*self.size)
         else : return exp.__pow__(self,n)
+    @_checkarg_numeric
+    def __div__(self,n):
+        if n._is_cst: return cst(self.value//n.value,self.size)
+        else : return exp.__div__(self,n)
     @_checkarg_numeric
     def __truediv__(self,n):
         if n._is_cst: return cst(self.value//n.value,self.size)
@@ -428,6 +446,8 @@ class cst(exp):
     def __rxor__(self,n): return n^self
 
     # the only atom that is considered True is the cst(1,1) (ie bit1 below)
+    # __nonzero__ for python2, __bool__ for python3
+    def __nonzero__(self): return self.__bool__()
     def __bool__(self):
         if self.size==1 and self.v==1: return True
         else: return False
@@ -467,6 +487,7 @@ class cst(exp):
 
 bit0 = cst(0,1)
 bit1 = cst(1,1)
+assert bool(bit1)
 
 class sym(cst):
     __slots__ = ['ref']
@@ -476,7 +497,7 @@ class sym(cst):
         self.ref = ref
         cst.__init__(self,v,size)
 
-    def __str__(self):
+    def __unicode__(self):
         return u"#%s"%self.ref
 
 #---------------------------------
@@ -501,7 +522,7 @@ class cfp(exp):
     def __int__(self):
         return NotImplementedError
 
-    def __str__(self):
+    def __unicode__(self):
         return u'{:f}'.format(self.value)
 
     def toks(self,**kargs):
@@ -532,6 +553,10 @@ class cfp(exp):
     def __pow__(self,n):
         if n._is_cst: return cfp(self.v**n.value,self.size)
         else : return exp.__pow__(self,n)
+    @_checkarg_numeric
+    def __div__(self,n):
+        if n._is_cst: return cfp(self.v/n.value,self.size)
+        else : return exp.__div__(self,n)
     @_checkarg_numeric
     def __truediv__(self,n):
         if n._is_cst: return cfp(self.v/n.value,self.size)
@@ -599,7 +624,7 @@ class reg(exp):
         self._subrefs = {}
         self.type = regtype.STD
 
-    def __str__(self):
+    def __unicode__(self):
         return u"%s"%self.ref
 
     def toks(self,**kargs):
@@ -671,7 +696,7 @@ class ext(reg):
         self._reg__protect = False
         self.type = regtype.OTHER
 
-    def __str__(self):
+    def __unicode__(self):
         return u'@%s'%self.ref
 
     def toks(self,**kargs):
@@ -744,7 +769,7 @@ class comp(exp):
         self.parts = {}
         # the symp is only obtained after a restruct !
 
-    def __str__(self):
+    def __unicode__(self):
         s = u'{ |'
         cur = 0
         for nv in self:
@@ -936,7 +961,7 @@ class mem(exp):
         self.mods = mods or []
         self.endian = endian
 
-    def __str__(self):
+    def __unicode__(self):
         n = len(self.mods)
         n = u'$%d'%n if n>0 else u''
         return u'M%d%s%s'%(self.size,n,self.a)
@@ -1011,7 +1036,7 @@ class ptr(exp):
         self.size = base.size
         self.sf   = False
 
-    def __str__(self):
+    def __unicode__(self):
         d = self.disp_tostring()
         return u'%s(%s%s)'%(self.seg,self.base,d)
 
@@ -1109,7 +1134,7 @@ class slc(exp):
             raise AttributeError('protected attribute')
         exp.__setattr__(self,a,v)
 
-    def __str__(self):
+    def __unicode__(self):
         return self.ref or self.raw()
 
     def toks(self,**kargs):
@@ -1200,7 +1225,7 @@ class tst(exp):
         self.size = self.l.size
         self.sf   = False
     ##
-    def __str__(self):
+    def __unicode__(self):
         return '(%s ? %s : %s)'%(self.tst,self.l,self.r)
 
     def toks(self,**kargs):
@@ -1296,7 +1321,7 @@ class op(exp):
         return res
     ##
 
-    def __str__(self):
+    def __unicode__(self):
         return u'(%s%s%s)'%(self.l,self.op.symbol,self.r)
 
     def toks(self,**kargs):
@@ -1369,7 +1394,7 @@ class uop(exp):
     @property
     def l(self): return None
 
-    def __str__(self):
+    def __unicode__(self):
         return '(%s%s)'%(self.op.symbol,self.r)
 
     def toks(self,**kargs):
@@ -1710,7 +1735,7 @@ class vec(exp):
         self.size = size
         self.sf = any([e.sf for e in self.l])
 
-    def __str__(self):
+    def __unicode__(self):
         s = u','.join([u'%s'%x for x in self.l])
         return u'[%s]'%(s)
 
@@ -1767,6 +1792,8 @@ class vec(exp):
     def __contains__(self,x):
         return (x in self.l)
 
+    # __nonzero__ for python2, __bool__ for python3
+    def __nonzero__(self): return self.__bool__()
     def __bool__(self):
         return all([e.__bool__() for e in self.l])
 
@@ -1781,7 +1808,7 @@ class vecw(top):
         self.size = v.size
         self.sf = False
 
-    def __str__(self):
+    def __unicode__(self):
         s = u','.join([u'%s'%x for x in self.l])
         return u'[%s, ...]'%(s)
 

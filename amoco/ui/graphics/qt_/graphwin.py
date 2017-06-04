@@ -43,7 +43,7 @@ class GraphView(QGraphicsView):
     def __init__(self,scene):
         super(GraphView,self).__init__(scene)
         self.setRenderHints(QPainter.Antialiasing)
-        self.setBackgroundBrush(QBrush(QColor('#dff')))
+        self.setBackgroundBrush(QBrush(QColor('#fff')))
         #self.setViewportUpdateMode(QGraphicsView.BoundingRectViewportUpdate)
         #self.setDragMode(QGraphicsView.ScrollHandDrag)
         #self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)

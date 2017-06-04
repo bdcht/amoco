@@ -1,3 +1,5 @@
+.. _cas:
+
 The computer algebra system package
 ===================================
 

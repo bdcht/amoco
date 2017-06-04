@@ -50,7 +50,7 @@ class mapper(object):
         return len(self.__map)
 
     def __str__(self):
-        return '\n'.join(["%s <- %s"%x for x in self])
+        return u'\n'.join([u"%s <- %s"%x for x in self])
 
     def pp(self,**kargs):
         t = vltable()
@@ -58,12 +58,12 @@ class mapper(object):
         for (l,v) in self:
             if l._is_reg: v = v[0:v.size]
             lv = (l.toks(**kargs)+
-                  [(render.Token.Column,'')]+
+                  [(render.Token.Column,u'')]+
                   v.toks(**kargs))
             t.addrow(lv)
         if t.colsize[0]>18: t.colsize[0]=18
         if t.colsize[1]>58: t.colsize[1]=58
-        return str(t)
+        return t.__str__()
 
     # list antecedent locations (used in the mapping)
     def inputs(self):
@@ -108,6 +108,8 @@ class mapper(object):
 
     def memory(self):
         return self.__Mem
+    def setmemory(self,mmap):
+        self.__Mem = mmap
 
     def generation(self):
         return self.__map
@@ -142,9 +144,9 @@ class mapper(object):
         if n>0:
             f = lambda e:e[0]._is_ptr
             items = filter(f,list(self.__map.items())[0:n])
-            res = mem(k.a,k.size,mods=list(items))
+            res = mem(k.a,k.size,mods=list(items),endian=k.endian)
         else:
-            res = self._Mem_read(k.a,k.length)
+            res = self._Mem_read(k.a,k.length,k.endian)
             res.sf = k.sf
         return res
 
@@ -165,35 +167,35 @@ class mapper(object):
         return 0
 
     # read MemoryMap and return the result as an expression:
-    def _Mem_read(self,a,l):
+    def _Mem_read(self,a,l,endian=1):
         try:
             res = self.__Mem.read(a,l)
         except MemoryError: # no zone for location a;
             res = [exp(l*8)]
-        if exp._endian==-1: res.reverse()
+        if endian==-1: res.reverse()
         P = []
         cur = 0
         for p in res:
             plen = len(p)
             if isinstance(p,exp) and (p._is_def is False):
                 if self.csi:
-                    p = self.csi(mem(a,p.size,disp=cur))
+                    p = self.csi(mem(a,p.size,disp=cur,endian=endian))
                 else:
                     p = mem(a,p.size,disp=cur)
-            if isinstance(p,str):
-                p = cst(Bits(p[::exp._endian],bitorder=1).int(),plen*8)
+            if isinstance(p,bytes):
+                p = cst(Bits(p[::endian],bitorder=1).int(),plen*8)
             P.append(p)
             cur += plen
         return composer(P)
 
-    def _Mem_write(self,a,v):
+    def _Mem_write(self,a,v,endian=1):
         if a.base._is_vec:
             locs = (ptr(l,a.seg,a.disp) for l in a.base.l)
         else:
             locs = (a,)
         iswide = not a.base._is_def
         for l in locs:
-            self.__Mem.write(l,v,deadzone=iswide)
+            self.__Mem.write(l,v,endian,deadzone=iswide)
             if (l in self.__map): del self.__map[l]
 
     # just a convenient wrapper around M/R:
@@ -221,7 +223,11 @@ class mapper(object):
             oldr = self.__map.get(loc,None)
             if oldr is not None and oldr.size>r.size:
                 r = composer([r,oldr[r.size:oldr.size]])
-            self._Mem_write(loc,r)
+            if k._is_mem:
+                endian = k.endian
+            else:
+                endian = 1
+            self._Mem_write(loc,r,endian)
             self.__map.lastw = len(self.__map)+1
         else:
             r = self.R(loc)
@@ -323,13 +329,22 @@ class mapper(object):
                 m[reg(k,argsz)] = cst(v,argsz)
         return self.eval(m)
 
+    def usemmap(self,mmap):
+        m = mapper()
+        m.setmemory(mmap)
+        for xx in set(self.inputs()):
+            if xx._is_mem:
+                v = m.M(xx)
+                m[xx] = v
+        return self.eval(m)
+
     # attach/apply conditions to the output mapper
     def assume(self,conds):
         m = mapper(csi=self.csi)
         if conds is None: conds=[]
         for c in conds:
             if not c._is_eqn: continue
-            if c.op.symbol == '==' and c.r._is_cst:
+            if c.op.symbol == OP_EQ and c.r._is_cst:
                 if c.l._is_reg:
                     m[c.l] = c.r
         m.conds = conds

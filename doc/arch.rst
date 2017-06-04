@@ -34,5 +34,3 @@ the v8 subpackage.
 
 .. automodule:: arch.arm.cpu_armv8
    :members:
-
-.. _arch: `The architecture package`_

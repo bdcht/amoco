@@ -13,7 +13,7 @@ in module :mod:`cas/expressions`:
 - Pointer   :class:`ptr`, a memory *location* in a segment, with possible displacement,
 - Memory    :class:`mem`, a Pointer to represent a value of fixed size in memory,
 - Slice     :class:`slc`, a bitvector slice of any element,
-- Test      :class:`tst`, a conditional expression, (see Tests_ below.)
+- Test      :class:`tst`, a conditional expression, (see below.)
 - Operator  :class:`uop`, an unary operator expression,
 - Operator  :class:`op`, a binary operator expression. The list of supported operations is
   not fixed althrough several predefined operators allow to build expressions directly from
@@ -25,7 +25,7 @@ in module :mod:`cas/expressions`:
   + ``==``, ``!=``, ``<=``, ``>=``, ``<``, ``>``
   + ``>>``, ``<<``, ``//`` (arithmetic shift right), ``>>>`` and ``<<<`` (rotations).
 
-  See Operators_ for more details.
+  See `cas.expressions._operator` for more details.
 
 All elements inherit from the :class:`exp` class which defines all default methods/properties.
 Common attributes and methods for all elements are:
@@ -35,12 +35,10 @@ Common attributes and methods for all elements are:
 - ``length`` (size/8)
 - ``mask``   (1<<size)-1
 - extend methods (``signextend(newsize)``, ``zeroextend(newsize)``)
-- ``_endian`` the (global class attribute) endianess for writing expression in memory can
-  be set to 1 (default little endian) or -1 (big endian) with setendian() method.
-- ``bytes(sta,sto)`` method to retreive the expression of extracted bytes from sta to sto indices.
+- ``bytes(sta,sto,endian=1)`` method to retreive the expression of extracted bytes from sta to sto indices.
 
 All manipulation of an expression object usually result in a new expression object except for
-``simplify()`` which performs in-place elementary simplifications.
+``simplify()`` which performs a few in-place elementary simplifications.
 
 .. automodule:: cas.expressions
    :members:

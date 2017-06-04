@@ -21,7 +21,8 @@ Attributes:
 
         - 'cas' which deals with parameters of the algebra system:
 
-            - 'complexity' threshold for expressions (default 100). See expressions_ for details.
+            - 'complexity' threshold for expressions (default 100). See `cas.expressions` for details.
+            - 'unicode' will use math unicode symbols for expressions operators if True (default False).
 
         - 'db' which deals with database backend options:
 
@@ -61,6 +62,7 @@ conf.set('block', 'padding'  , '4'   )
 
 conf.add_section('cas')
 conf.set('cas', 'complexity' , '100'  )
+conf.set('cas', 'unicode'    , 'False')
 
 # db section
 conf.add_section('db')
@@ -69,7 +71,7 @@ conf.set('db', 'log', 'False')
 
 # log section
 conf.add_section('log')
-conf.set('log', 'level', 'ERROR')
+conf.set('log', 'level', 'WARNING')
 conf.set('log', 'tempfile', 'True')
 
 # ui section
@@ -98,13 +100,13 @@ def get_module_conf(module_name):
     D = defaultdict(lambda:None)
     if conf.has_section(module_name):
         for k,v in conf.items(module_name):
-            if  v.lower() == 'true':
+            if v.lower() == u'true':
                 D[k]=True
-            if  v.lower() == 'false':
+            elif v.lower() == u'false':
                 D[k]=False
             else:
                 try:
                     v = int(v,0)
                 except ValueError: pass
-            D[k] = v
+                D[k] = v
     return D

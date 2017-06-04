@@ -22,7 +22,7 @@ instruction_armv7.set_formatter(ARM_V7_full)
 
 
 mode   = (lambda : internals['isetstate'])
-endian = (lambda : 1 if internals['endianstate']==0 else -1)
+endian = (lambda : 1 if internals['ibigend']==0 else -1)
 
 disassemble = disassembler([spec_armv7,spec_thumb],instruction_armv7,mode,endian)
 

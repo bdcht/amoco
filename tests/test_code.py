@@ -26,7 +26,7 @@ def test_func(ploop):
     z.getcfg(code.cst(0x804849d,32))
     f = z.functions()[0]
     s = cfg.signature(f.cfg)
-    sig = '{[(+Fcejv)] [(?Facjlv)(?Facjv)(-Fclr)]}'
+    sig = '{[(+Fcejv)] [(?Facjlv)(Fc)(-Fclr)]}'
     assert s == sig
     # test pickle func:
     x = pickler(f)

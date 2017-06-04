@@ -5,6 +5,14 @@
 # Copyright (C) 2014 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
+"""
+system/pe.py
+============
+
+The system pe module implements the PE class which support both 32 and 64 bits
+executable formats.
+"""
+
 import struct
 from datetime import datetime
 from amoco.system.core import DataIO
@@ -729,6 +737,10 @@ class PE(PEcore):
             if raw: return bytes
             else  : return {self.basemap: bytes}
         return None
+
+    def getfileoffset(self,addr):
+        s,offset = self.locate(addr,absolute=True)
+        return s.PointerToRawData+offset
 
     def __functions(self):
         D = {}

@@ -21,10 +21,15 @@ except ImportError:
 else:
     logger.info('z3 package imported')
     class solver(object):
-        def __init__(self,eqns=None):
+        def __init__(self,eqns=None,tactics=None,timeout=None):
             self.eqns = []
             self.locs = []
-            self.solver = z3.Solver()
+            if tactics:
+                s = z3.TryFor(z3.Then(*tactics),1000).solver()
+            else:
+                s = z3.Solver()
+            if timeout: s.set(timeout=1000)
+            self.solver = s
             if eqns: self.add(eqns)
             self._ctr = 0
 
@@ -96,7 +101,7 @@ def mem_to_z3(e,slv=None):
     b = []
     for i in range(0,e.length):
         b.insert(0,M[p+i])
-    if e._endian==-1: b.reverse() # big-endian case
+    if e.endian==-1: b.reverse() # big-endian case
     if len(b) > 1: return z3.Concat(*b)
     return b[0]
 
@@ -122,21 +127,21 @@ def tst_to_z3(e,slv=None):
 
 def tst_verify(e,env):
     t = e.tst.eval(env).simplify()
-    s = solver()
+    s = solver(tactics=['simplify', 'elim-term-ite', 'solve-eqs', 'smt'])
     zt = cast_z3_bool(t,s)
     for c in env.conds:
         s.solver.add(cast_z3_bool(c,s))
     s.solver.push()
     s.solver.add(zt)
-    rtrue = (s.solver.check()==z3.sat)
+    rtrue = s.solver.check()
     s.solver.pop()
     s.solver.add(z3.Not(zt))
-    rfalse = (s.solver.check()==z3.sat)
-    if rtrue and rfalse: return t
-    if rtrue: return bit1
-    if rfalse: return bit0
-    # mapper conds are unsatisfiable:
-    raise ValueError(e)
+    rfalse = s.solver.check()
+    if rtrue==z3.sat and rfalse==z3.unsat: return bit1
+    if rtrue==z3.unsat and rfalse==z3.sat: return bit0
+    if rtrue==z3.sat and rfalse==z3.sat  : return t
+    logger.verbose('undecidable tst expression')
+    return t
 
 def op_to_z3(e,slv=None):
     e.simplify()
@@ -224,11 +229,19 @@ def to_smtlib(e,slv=None):
 def model_to_mapper(r,locs):
     m = mapper()
     mlocs = []
-    for l in locs:
+    for l in set(locs):
         if l._is_mem:
             mlocs.append(l)
         else:
-            m[l] = cst(r.eval(l.to_smtlib()).as_long(),l.size)
+            x = r.eval(l.to_smtlib())
+            try:
+                m[l] = cst(x.as_long(),l.size)
+            except AttributeError:
+                pass
     for l in mlocs:
-        m[l] = cst(r.eval(l.to_smtlib()).as_long(),l.size)
+        x = r.eval(l.to_smtlib())
+        try:
+            m[l] = cst(x.as_long(),l.size)
+        except AttributeError:
+            pass
     return m

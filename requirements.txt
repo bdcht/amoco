@@ -1,0 +1,6 @@
+future
+configparser
+pygments
+pyparsing
+grandalf
+crysp

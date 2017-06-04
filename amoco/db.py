@@ -91,7 +91,7 @@ if has_sql:
             self.name = name or splitext(basename(self.source))[0]
             self.binfmt = z.prog.bin.__class__.__name__
             self.arch = z.prog.cpu.__name__
-            self.msize = z.prog.bin.getsize()
+            self.msize = len(z.prog.mmap)
             self.method = z.__class__.__name__
             if z.G.order()>0:
                 self.score = z.score()

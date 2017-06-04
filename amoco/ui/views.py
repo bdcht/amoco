@@ -88,7 +88,7 @@ class mapView(View):
                 if l.type == regtype.FLAGS:
                     t.addrow(l.toks(**kargs)+[(Token.Literal,':')])
                     for pos,sz in l._subrefs:
-                        t.addrow([(Token.literal,'| ')]+
+                        t.addrow([(Token.Literal,'| ')]+
                                  l[pos:pos+sz].toks(**kargs)+
                                  [(Token.Column,u'')]+
                                  v[pos:pos+sz].toks(**kargs))

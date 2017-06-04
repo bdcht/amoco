@@ -386,8 +386,20 @@ The collected functions created during the analysis are listed in::
    | pf    <- ⊤1
 
 A function's CFG can be walked and studied by accessing its graph component. The ``sV`` attribute
-is the list of unique nodes (vertices) and ``sE`` the list of *links* (edges.)
+is the list of unique nodes (vertices) and ``sE`` the list of *links* (edges) of the CFG.
+The CFG can be rendered for example in a Qt GUI with::
 
+   In [13]: from amoco.ui.graphics.qt_.engine import *
+   In [14]: amoco.ui.graphics.configure(graphics="qt")
+   In [15]: f = z.functions[2]
+   In [16]: gs = GraphScene(f.view.layout)
+   In [17]: gv = GraphView(gs)
+   In [18]: gs.Draw()
+   In [19]: gv.show()
 
+As shown below, once the "qt" ui is selected we can build a *QGraphicsScene* and *QGraphicsView*
+to display the CFG of ``#main``:
+
+.. image:: amoco-flow-1.png
 
 

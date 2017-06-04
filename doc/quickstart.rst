@@ -402,4 +402,48 @@ to display the CFG of ``#main``:
 
 .. image:: amoco-flow-1.png
 
+Of course, in real life things are not so simple...
+We can see however that amoco can handle simple loops::
+
+   In [1]: import amoco
+   In [2]: p = amoco.system.loader.load_program('samples/x86/loop_simple.elf')
+   In [3]: z = amoco.lbackward(p)
+   In [4]: z.getcfg()
+   Out[4]: <amoco.cfg.graph at 0x7fc271c16b10>
+   In [5]: f = z.functions[4]
+   In [6]: print(f.cfg.sV)
+   0.| <node [0x804849d] at 0x7f7260e15cc0>
+   1.| <node [0x80484d0] at 0x7f7260e15438>
+   2.| <node [0x80484ac] at 0x7f725efd4c50>
+   3.| <node [0x80484d8] at 0x7f725efdcbe0>
+   In [7]: print(f.cfg.sE)
+   0.| <link [0x804849d -> 0x80484d0] at 0x7f7260e15400>
+   1.| <link [0x80484d0 -> 0x80484ac] at 0x7f725efd4b38>
+   2.| <link [0x80484d0 -> 0x80484d8] at 0x7f725efdcc18>
+   3.| <link [0x80484ac -> 0x80484d0] at 0x7f725efdcc88>
+   In [8]: print(f.map.view)
+   eip                                          <- M32(esp)
+   esp                                          <- (esp+0x4)
+   (esp-4)                                      <- ebp
+   ebp                                          <- ebp
+   eflags:
+   | cf                                         <- [(M8(esp+7)[7:8]∨((-M32(esp+4))[31:32]∧(M8(esp+7)[7:8]∨0x1))), (M8(esp+7)[7:8]∨(((-M32(esp+4))+0x1)[31:32]∧(M8(esp+7)[7:8]∨0x1))), ⊤1, ...]
+   | of                                         <- [(M8(esp+7)[7:8]∧(-M32(esp+4))[31:32]), (M8(esp+7)[7:8]∧((-M32(esp+4))+0x1)[31:32]), ⊤1, ...]
+   | df                                         <- [df, df, ⊤1, ...]
+   | sf                                         <- [((-M32(esp+4))<0x0), (((-M32(esp+4))+0x1)<0x0), ⊤1, ...]
+   | tf                                         <- [tf, tf, ⊤1, ...]
+   | zf                                         <- [((-M32(esp+4))==0x0), (((-M32(esp+4))+0x1)==0x0), ⊤1, ...]
+   | af                                         <- [⊤1, ⊤1, ⊤1, ...]
+   | pf                                         <- [⊤1, ⊤1, ⊤1, ...]
+   (esp-8)                                      <- [0x0, 0x1, ...]
+   eax                                          <- ⊤32
+   edx                                          <- [edx, ({[ 0: 8] -> M8(M32(0x804a02c)), [ 8:32] -> 0x0}+0x1), ⊤32, ...]
+   (0x804a02c)                                  <- [M32(0x804a02c), (M32(0x804a02c)+0x1), ...]
+   ([M32(0x804a02c),(M32(0x804a02c)+0x1), ...]) <- [M8(M32(0x804a02c)), M8(M32(0x804a02c)+1), ⊤8, ...]
+
+Here the studied function has 4 blocks and a loop. By looking directly at the
+computed function's mapper we can see that the counter is probably located at
+``(esp-8)`` and incremented starting from 0. The global location 0x804a02c is
+accessed and dereferenced sucessively so it is likely to hold a pointer to a
+char.
 

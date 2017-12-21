@@ -38,7 +38,7 @@ from amoco.arch.x86.formats import \
     att_mnemo_correspondance
 from amoco.cas import expressions
 def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
-    pfx = pp.oneOf([ 'data16', 'addr16', 'data32', 'addr32', 'lock', 'wait',
+    pfx = pp.oneOf([ 'data16', 'addr16', 'data32', 'addr32', 'lock',
                      'rep', 'repz', 'repe', 'repne', 'repnz'])
 
     # Putting everything in one regex is faster than having pyparsing
@@ -453,7 +453,7 @@ class intel_syntax:
     divide = False
     noprefix = False
 
-    pfx     = pp.oneOf([ 'data16', 'addr16', 'data32', 'addr32', 'lock', 'wait',
+    pfx     = pp.oneOf([ 'data16', 'addr16', 'data32', 'addr32', 'lock',
                      'rep', 'repe', 'repne'])
     spfx    = pp.oneOf([ 'dword', 'word', 'byte'], caseless=True)
     mpfx    = spfx+pp.oneOf([ 'ptr' ], caseless=True)

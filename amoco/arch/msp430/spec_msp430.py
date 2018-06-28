@@ -18,13 +18,13 @@ from amoco.arch.core import *
 # get operand type/value based on addressing mode:
 def getopd(obj,mode,reg,data,CGR=False):
     r = env.R[reg]
-    size = 8 if obj.BW else 16
-    if CGR and reg==2:
-        r = [r,0,env.cst(0x4,16),env.cst(0x8,16)][mode]
-        return r[0:size],data
-    if CGR and reg==3:
-        r = env.cst([0,1,2,-1][mode],16)
-        return r[0:size],data
+    if obj.BW: size=8
+    else     : size=16
+    if CGR:
+        if reg==2:
+            r = [r,env.cst(0,16),env.cst(0x4,16),env.cst(0x8,16)][mode]
+        elif reg==3:
+            r = env.cst([0,1,2,-1][mode],16)
     if mode==0: # register mode
         return r[0:size],data
     if mode==1: # indexed/symbolic/absolute modes
@@ -36,10 +36,13 @@ def getopd(obj,mode,reg,data,CGR=False):
             return env.mem(imm,size),data
         if r is env.pc:
             return env.mem(env.pc+imm,size),data
+        if r._is_cst: imm.sf = False
         return env.mem(r+imm,size),data
     if mode==2: # indirect register mode
+        if r._is_cst: return r[0:size],data
         return env.mem(r,size),data
     if mode==3: # immediate & indirect autoincrement
+        if r._is_cst: return r[0:size],data
         if r is env.pc:
             addr,data = data[0:16],data[16:]
             imm = env.cst(addr.int(),16)
@@ -71,7 +74,10 @@ def msp430_doubleop(obj,data,Sreg,Ad,As,Dreg):
     src,data = getopd(obj,As,Sreg,data,CGR=True)
     dst,data = getopd(obj,Ad,Dreg,data)
     obj.operands = [src,dst]
-    obj.type = type_data_processing
+    if dst is env.pc:
+        obj.type = type_control_flow
+    else:
+        obj.type = type_data_processing
 
 # single-operand format
 #----------------------
@@ -99,6 +105,7 @@ def msp430_singleop(obj,data,Ad,DSreg):
 @ispec("16<[ 001 .cond(3) offset(10) ]", mnemonic="Jcc", BW=0)
 def msp430_jumps(obj,offset):
     if obj.cond == 0b111: obj.mnemonic = "JMP"
-    obj.operands = [env.cst(offset,10).signextend(16)]
+    off = env.cst(offset*2,11).signextend(16)
+    obj.operands = [off]
     obj.type = type_control_flow
 

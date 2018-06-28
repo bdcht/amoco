@@ -18,15 +18,13 @@ from amoco.arch.core import *
 # get operand type/value based on addressing mode:
 def getopd(obj,mode,reg,data,CGR=False):
     r = env.R[reg]
-    size = 8 if obj.BW else 16
-    if CGR and reg==2:
-        r = [r,env.cst(0x0,16),
-               env.cst(0x4,16),
-               env.cst(0x8,16)][mode]
-        return r[0:size],data
-    if CGR and reg==3:
-        r = env.cst([0,1,2,-1][mode],16)
-        return r[0:size],data
+    if obj.BW: size=8
+    else     : size=16
+    if CGR:
+        if reg==2:
+            r = [r,env.cst(0,16),env.cst(0x4,16),env.cst(0x8,16)][mode]
+        elif reg==3:
+            r = env.cst([0,1,2,-1][mode],16)
     if mode==0: # register mode
         return r[0:size],data
     if mode==1: # indexed/symbolic/absolute modes

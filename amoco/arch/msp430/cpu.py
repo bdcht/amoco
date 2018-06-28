@@ -12,7 +12,7 @@ instruction_msp430.set_uarch(uarch)
 
 from amoco.arch.msp430.formats import MSP430_full
 from amoco.arch.msp430.formats import MSP430_synthetic
-instruction_msp430.set_formatter(MSP430_full)
+instruction_msp430.set_formatter(MSP430_synthetic)
 
 #define disassembler:
 from amoco.arch.msp430 import spec_msp430

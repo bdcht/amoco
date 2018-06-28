@@ -1,17 +1,26 @@
 # -*- coding: utf-8 -*-
 from .env import *
 from amoco.arch.core import Formatter
-from amoco.ui.render import Token, TokenListJoin
+from amoco.ui.render import Token, TokenListJoin, highlight
+
+def mn(m,pad=8):
+    return [(Token.Mnemonic, m.lower().ljust(pad))]
 
 def mnemo(i,pad=8):
     m = i.mnemonic
     if i.BW: m+='.B'
-    return [(Token.Mnemonic,m.lower().ljust(pad))]
+    return mn(m)
 
 def jump(i):
     m = i.mnemonic.lower().replace('jcc','j')
     s = COND[i.cond][0].split('/')[0]
-    return [(Token.Mnemonic, (m+s).lower().ljust(8))]
+    l = mn(m+s)
+    adr = i.operands[0].value
+    if i.address is None:
+        l.append((Token.Constant,'.%+'%adr))
+    else:
+        l.append((Token.Address,'*%s'%(i.address+adr+2)))
+    return l
 
 def ops(i):
     s = []
@@ -33,7 +42,8 @@ def ops(i):
                 else:
                     s.append((Token.Memory,'@%s'%a))
             elif a._is_cst:
-                s.append((Token.Address,'&%s'%a))
+                a.sf = False
+                s.append((Token.Memory,'&%s'%a))
             else:
                 if a._is_eqn:
                     l,r = a.l,a.r

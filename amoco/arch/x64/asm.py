@@ -763,10 +763,12 @@ def i_LEA(i,fmap):
   op2 = i.operands[1]
   adr = op2.addr(fmap)
   if op1.size==32:
-      adr = adr.zeroextend(64)
+      adr = adr[0:32].zeroextend(64)
       op1 = op1.x
   elif op1.size==16:
-      adr = adr[0:op1.size]
+      adr = adr[0:16]
+  else:
+      adr = adr.zeroextend(64)
   fmap[op1] = adr
 
 def i_XCHG(i,fmap):

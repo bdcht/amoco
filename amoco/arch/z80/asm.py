@@ -106,14 +106,14 @@ def i_LDI(i_,fmap):
   fmap[de] = fmap[de]+1
   fmap[hl] = fmap[hl]+1
   fmap[bc] = fmap[bc]-1
-  fmap[hf] = 0
-  fmap[nf] = 0
+  fmap[hf] = bit0
+  fmap[nf] = bit0
   fmap[pf] = tst(fmap[bc]!=0,bit1,bit0)
 
 def i_LDIR(i_,fmap):
   i_ldi(i_,fmap)
-  fmap[pf] = 0
-  if fmap[bc]!=0:
+  fmap[pf] = bit0
+  if fmap[bc]!=bit0:
     fmap[pc] = fmap[pc]-i_.length
 
 def i_LDD(i_,fmap):
@@ -123,14 +123,14 @@ def i_LDD(i_,fmap):
   fmap[de] = fmap[de]-1
   fmap[hl] = fmap[hl]-1
   fmap[bc] = fmap[bc]-1
-  fmap[hf] = 0
-  fmap[nf] = 0
+  fmap[hf] = bit0
+  fmap[nf] = bit0
   fmap[pf] = tst(fmap[bc]!=0,bit1,bit0)
 
 def i_LDDR(i_,fmap):
   i_ldd(i_,fmap)
-  fmap[pf] = 0
-  if fmap[bc]!=0:
+  fmap[pf] = bit0
+  if fmap[bc]!=bit0:
     fmap[pc] = fmap[pc]-i_.length
 
 def i_CPI(i_,fmap):
@@ -144,7 +144,7 @@ def i_CPI(i_,fmap):
   fmap[zf] = tst(_x==0,bit1,bit0)
   fmap[hf] = __halfcarry__(_a,_b)
   fmap[pf] = tst(fmap[bc]!=0,bit1,bit0)
-  fmap[nf] = 1
+  fmap[nf] = bit1
 
 def i_CPIR(i_,fmap):
   i_cpi(i_,fmap)
@@ -162,7 +162,7 @@ def i_CPD(i_,fmap):
   fmap[zf] = tst(_x==0,bit1,bit0)
   fmap[hf] = __halfcarry__(_a,_b)
   fmap[pf] = tst(fmap[bc]!=0,bit1,bit0)
-  fmap[nf] = 1
+  fmap[nf] = bit1
 
 def i_CPDR(i_,fmap):
   i_cpd(i_,fmap)

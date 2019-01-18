@@ -3,6 +3,11 @@
 The system package
 ==================
 
+Modules of this package implement all classes that relate
+to operating system specific operations as well as userland
+stubs or high-level language structures.
+
+.. contents::
 
 .. automodule:: system.loader
    :members:
@@ -11,6 +16,12 @@ The system package
    :members:
 
 .. automodule:: system.pe
+   :members:
+
+.. automodule:: system.utils
+   :members:
+
+.. automodule:: system.structs
    :members:
 
 .. automodule:: system.core

@@ -106,6 +106,26 @@ def test_compose2(m,x,y,z,w):
     assert cm(my) == 0x4567babe
     assert cm(w)==cm(my)
 
+def test_signpropagate(m,x,y):
+    m[x] = cst(0xfffffffe,32)
+    assert (x*2).eval(m) == cst(0xfffffffc,32)
+    assert (reg('x').signed()*2).eval(m) == cst(-4,32)
+    m[y] = cst(-2,32)
+    assert m[y]==cst(-2,32)
+    assert (y*2).eval(m) == cst(-4,32)
+    assert (reg('y').signed()*5).eval(m) == cst(-2*5,32)
+    y8 = y[0:8]
+    assert m(y8) == cst(0xfe,8)
+    assert (y8**2).eval(m) == cst(0x1fc,16)
+    y8.sf = True
+    assert m(y8) == cst(-2,8)
+    z = y8*2
+    zz = y8**2
+    assert z.sf == zz.sf == True
+    assert (z).eval(m) == cst(-4,8)
+    assert (zz).eval(m) == cst(-4,16)
+
+
 def test_vec(m,x,y,z,w,a,b):
     mx = mem(x,32)
     m[z] = vec([mx,y,w,cst(0x1000,32)])

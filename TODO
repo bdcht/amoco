@@ -1,0 +1,11 @@
+* rework the mapper.conds to allow setitem calls to be afected by the (last?) condition
+* add support for with statement (@contextmanager) for mapper to implement condition-enabled setitem on the mapper
+* change config module to use traitlets to have configuration changes to take effect immediately
+* create a dbg branch to add support for using a debugger to allow concretization of mappers via the cti attribute.
+* improve the overall "helpers" interface in order to have a more dynamic behavior (retreiving symbols on-the-fly rather than through a call to a helper func)
+* add support for structures helpers via the new structs module
+* improve the overall "stubs" interface to store/fetch stubs from a database table.
+* add support for system-dependent calling convention (ABI)
+* [DONE] implement interface between mappers and the CoreExec.MemoryMap
+* [DONE] implement an C-to-structs parser that can take a C header file and define an amoco-structure and amoco-stubs from it
+* [DONE] `-> create a database table for known structures and stubs => extracted as 'crawl' tool based on libclang

@@ -148,7 +148,7 @@ def ebpf_ld_(obj,sz,dreg,sreg,off,imm,_abs):
     dst = env.R[0]
     adr = env.reg('#skb',64)
     if not _abs: adr += env.R[sreg]
-    src = env.mem(adr,disp=imm.int(-1))
+    src = env.mem(adr,size,disp=imm.int(-1))
     obj.operands = [dst,src]
     obj.mnemonic += {8:'b',16:'h',32:'w',64:'dw'}[size]
     obj.type = type_data_processing

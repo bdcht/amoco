@@ -3,11 +3,15 @@
 from .env import *
 from .utils import *
 from amoco.arch.core import Formatter
+from amoco.ui.render import Token, TokenListJoin
 
 whitespace = '  '
 
 def regs(i):
-    return ['%{0}'.format(r) for r in i.operands]
+    return [(Token.Register,'%{0}'.format(r)) for r in i.operands]
+
+def regn(i,n):
+    return [(Token.Register,'%{0}'.format(i.operands[n]))]
 
 def address(a):
     if not a._is_eqn:
@@ -18,18 +22,18 @@ def address(a):
     return '{0}{1}{2}'.format(l,op,r)
 
 def deref(a):
-    return '[%s]%s'%(address(a.base+a.disp),a.seg)
+    return [(Token.Memory,'[%s]%s'%(address(a.base+a.disp),a.seg))]
 
 def mnemo_icc(i):
     s = i.mnemonic
     if i.misc['icc']: s += 'cc'
-    return s+whitespace
+    return [(Token.Mnemonic, s)]
 
 def mnemo_cond(i):
     s = CONDxB[i.mnemonic][i.cond]
     if i.misc['annul']:
         s+=',a'
-    return s+whitespace
+    return [(Token.Mnemonic, s)]
 
 def reg_or_imm(x,t='%d'):
     # Special detections for %hi or %lo
@@ -47,18 +51,19 @@ def reg_or_imm(x,t='%d'):
              hilo = ['%lo', x.x]
     # Other cases
     elif x._is_ext:
-        return x.ref
+        return [(Token.Address, x.ref)]
     elif x._is_reg:
-        return '%'+x.ref
+        return [(Token.Register,'%'+x.ref)]
     elif x._is_cst:
-        return t%x.value
+        return [(Token.Constant,t%x.value)]
     elif x._is_eqn:
         if x.r is None:
-            return ("%s"+t)%(x.op.symbol,x.l)
+            res = ("%s"+t)%(x.op.symbol,x.l)
         elif x.l is None:
-            return ("%s"+t)%(x.op.symbol,x.r)
+            res = ("%s"+t)%(x.op.symbol,x.r)
         else:
-            return (t+"%s"+t)%(x.l,x.op.symbol,x.r)
+            res = (t+"%s"+t)%(x.l,x.op.symbol,x.r)
+        return [(Token.Constant, res)]
     # Now dealing with hilo
     if hilo is None:
         return str(x)
@@ -68,19 +73,19 @@ def reg_or_imm(x,t='%d'):
         pass
     else:
         hilo[1] = hilo[1].ref
-    return '%s(%s)'%tuple(hilo)
+    return [(Token.Constant,'%s(%s)'%tuple(hilo))]
 
 def label(i):
     _pc = i.address
     if _pc is None: _pc=pc
     if i.operands[0]._is_ext:
-        return str(i.operands[0].ref)
+        return [(Token.Address, str(i.operands[0].ref))]
     if i.operands[0]._is_reg:
-        return "%"+str(i.operands[0].ref)
+        return [(Token.Register,"%"+str(i.operands[0].ref))]
     if i.operands[0]._is_cst:
-        return "%s"%i.misc['dst']
+        return [(Token.Address,"%s"%i.misc['dst'])]
     offset = i.operands[0].signextend(32)*4
-    return str(_pc+offset)
+    return [(Token.Address,str(_pc+offset))]
 
 
 CONDB = {
@@ -158,23 +163,23 @@ CONDT = {
 
 CONDxB = {'b': CONDB, 'fb': CONDFB, 'cb': CONDCB}
 
-mnemo = '{i.mnemonic}'+whitespace
+mnemo = lambda i: [(Token.Mnemonic,'{i.mnemonic}'.format(i=i))]
 format_mn     = [mnemo]
-format_regs   = [mnemo, lambda i: ', '.join(regs(i))]
-format_ld     = [mnemo, lambda i: deref(i.operands[0]), ', %{i.operands[1]}']
-format_st     = [mnemo, '%{i.operands[0]}, ', lambda i: deref(i.operands[1])]
-format_logic  = [mnemo_icc, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'%#x'), ', %{i.operands[2]}']
-format_sethi  = [mnemo, lambda i: reg_or_imm(i.operands[0]), ', %{i.operands[1]}']
-format_arith  = [mnemo_icc, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'%d'), ', %{i.operands[2]}']
+format_regs   = [mnemo,     lambda i: TokenListJoin(', ', regs(i))]
+format_ld     = [mnemo,     lambda i: TokenListJoin(', ', deref(i.operands[0])+regn(i,1))]
+format_st     = [mnemo,     lambda i: TokenListJoin(', ', regn(i,0)+deref(i.operands[1]))]
+format_logic  = [mnemo_icc, lambda i: TokenListJoin(', ', regn(i,0)+reg_or_imm(i.operands[1],'%#x')+regn(i,2))]
+format_sethi  = [mnemo,     lambda i: TokenListJoin(', ', reg_or_imm(i.operands[0])+regn(i,1))]
+format_arith  = [mnemo_icc, lambda i: TokenListJoin('n ', regn(i,0)+reg_or_imm(i.operands[1],'%d')+regn(i,2))]
 format_xb     = [mnemo_cond, label]
-format_call   = [mnemo, label, ', 0']
-format_jmpl   = [mnemo, lambda i: address(i.operands[0]), ', %{i.operands[1]}']
-format_addr   = [mnemo, lambda i: address(i.operands[0])]
-format_t      = [lambda i: CONDT[i.cond]+whitespace, lambda i: reg_or_imm(i.operands[0])]
+format_call   = [mnemo,     lambda i: TokenListJoin(', ', label(i)+[(Token.Constant,'0')])]
+format_jmpl   = [mnemo,     lambda i: TokenListJoin(', ', address(i.operands[0]), regn(i,1))]
+format_addr   = [mnemo,     lambda i: address(i.operands[0])]
+format_t      = [lambda i: [(Token.Mnemonic, CONDT[i.cond])]+reg_or_imm(i.operands[0])]
 format_rd     = format_regs
-format_wr     = [mnemo, '%{i.operands[0]}, ', lambda i: reg_or_imm(i.operands[1],'%#x'), ', %{i.operands[2]}']
+format_wr     = [mnemo, lambda i: regn(i,0)+reg_or_imm(i.operands[1],'%#x')+regn(i,2)]
 format_fpop   = format_regs
-format_cpop   = [mnemo, '{i.operands[0]:d}', lambda i: ', '.join(regs(i)[1:])]
+format_cpop   = [mnemo, lambda i: [(Token.Constant,'{i.operands[0]:d}')]+TokenListJoin(', ',regs(i)[1:])]
 
 SPARC_V8_full_formats = {
     'sparc_ld_'         : format_ld,

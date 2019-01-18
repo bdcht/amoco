@@ -16,7 +16,8 @@ pickled objects.
 
 """
 
-from amoco.config import conf
+from amoco.config import conf_proxy
+conf = conf_proxy(__name__)
 
 from amoco.logger import Log,logging
 logger = Log(__name__)
@@ -28,37 +29,31 @@ try:
     has_sql = True
     Session = orm.scoped_session(orm.sessionmaker())
     Base = declarative_base()
-    logflag = conf.getboolean('db','log')
-    if logflag:
+    if conf['log']:
         for l in ('sqlalchemy.engine','sqlalchemy.orm'):
             alog = logging.getLogger(l)
-            for h in logger.handlers: alog.addHandler(h)
-            alog.setLevel(logger.level)
+            for h in logger.handlers:
+                alog.addHandler(h)
 except ImportError:
     logger.warning(u"package sqlalchemy not found.")
     has_sql = False
 
-def create(filename=None):
+def createdb(url=None):
     """creates the database engine and bind it to the scoped Session class.
     The database URL (see :mod:`config.py`) is opened and the
     schema is created if necessary. The default URL uses *sqlite* dialect and
     opens a temporary file for storage.
     """
-    import tempfile
-    url = conf.get('db','url')
-    if not url.endswith('.db'):
-        if conf.has_option('log','file'):
-            case = conf.get('log','file').rpartition('.')[0]
-        else:
-            case = tempfile.mktemp(prefix='amoco-')
-        url += case+'.db'
-    logflag = conf.getboolean('db','log')
+    if url is None:
+        url = conf['url']
     if has_sql:
-        engine = sql.create_engine(url,echo=False,logging_name=__name__)
+        logflag = conf['log']
+        engine = sql.create_engine(url,echo=logflag,echo_pool=logflag,logging_name=__name__)
         Session.configure(bind=engine)
-        Case.metadata.create_all(bind=engine,checkfirst=True)
+        Case.metadata.create_all(bind=engine)
+        logger.info(u'SQL Session available')
     else:
-        logger.error(u'No Session defined')
+        logger.info(u'no Session defined')
         engine = None
     return engine
 
@@ -67,7 +62,7 @@ if has_sql:
         """A Case instance describes the analysis of some binary program.
         It allows to query stored results by date, source, format or
         architecture for example, and provides relations to associated
-        functions that have been discovered or saved traces. 
+        functions that have been discovered or saved traces.
         """
         __tablename__ = 'cases_info'
         id     = sql.Column(sql.Integer, primary_key=True)
@@ -95,7 +90,7 @@ if has_sql:
             self.method = z.__class__.__name__
             if z.G.order()>0:
                 self.score = z.score()
-                F = z.functions()
+                F = z.functions
                 for f in F: self.funcs.append(FuncData(f))
                 F = [f.cfg for f in F]
                 for g in z.G.C:
@@ -123,6 +118,10 @@ if has_sql:
             self.fmap = f.map
             self.obj  = f
             self.info = FuncInfo(f,self)
+
+        def __repr__(self):
+            s = (self.id, self.info.name, self.case_id)
+            return u"<FuncData #{}: {:<.016} of Case #{}>".format(*s)
 
     class FuncInfo(Base):
         """This class gathers useful informations about a function, allowing
@@ -153,12 +152,17 @@ if has_sql:
             self.blocks = f.cfg.order()
             self.argsin = f.misc['func_in']
             self.argsout = f.misc['func_out']
-            self.stksz = min([x.a.disp for x in f.misc['func_var']],0)
+            self.stksz = min([0]+[x.a.disp for x in f.misc['func_var']])
             self.vaddr = str(f.address)
             self.bsize = sum([b.length for b in f.blocks],0)
             self.nbinst = sum([len(b.instr) for b in f.blocks],0)
             self.calls = ' '.join(filter(None,[x.name if hasattr(x,'cfg') else None for x in f.blocks]))
             self.xrefs = ' '.join([str(x.data.support[1]) for x in f.cfg.sV[0].data.misc['callers']])
+
+        def __repr__(self):
+            s = (self.id, self.name, self.data.id)
+            return u"<FuncInfo #{}: {:<.016} with FuncData #{}>".format(*s)
+
 
     class CfgData(Base):
         """The CfgData class is intented to pickle data that has not yet been
@@ -169,6 +173,11 @@ if has_sql:
         obj    = orm.deferred(sql.Column(sql.PickleType))
         case_id= sql.Column(sql.Integer, sql.ForeignKey('cases_info.id'))
         case   = orm.relationship('Case', back_populates='other')
+
+        def __repr__(self):
+            s = (self.id, self.case_id)
+            return u"<CfgData #{}: object related to Case #{}>".format(*s)
+
 
     class Trace(Base):
         """The Trace class allows to pickle abstract memory states (:class:`mapper` objects)
@@ -184,3 +193,30 @@ if has_sql:
         case_id= sql.Column(sql.Integer, sql.ForeignKey('cases_info.id'))
         case   = orm.relationship('Case', back_populates='traces')
 
+        def __repr__(self):
+            s = (self.id, self.start, self.stop, self.case_id)
+            return u"<Trace #{}: ({}->{}) in Case #{}>".format(*s)
+
+    class StructData(Base):
+        """This class holds description of C structures in a format suitable
+        for StructFactory(name,fmt).
+        """
+        __tablename__ = 'structs_data'
+        id     = sql.Column(sql.Integer, primary_key=True)
+        name   = sql.Column(sql.String, nullable=False)
+        sz     = sql.Column(sql.Integer)
+        fields = sql.Column(sql.String)
+        types  = sql.Column(sql.String)
+
+        def __init__(self,S):
+            self.name = S[0]
+            self.sz   = len(S[1])
+            self.fields  = '\n'.join(y for (x,y) in S[1])
+            self.types   = '\n'.join(x for (x,y) in S[1])
+
+        def __repr__(self):
+            s = (self.id, self.name)
+            return u"<StructData #{}: {:<.016}>".format(*s)
+
+    createdb()
+    session = Session()

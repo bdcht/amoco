@@ -3,6 +3,14 @@
 # This code is part of Amoco
 # Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
+"""
+cas/expressions.py
+==================
+
+The expressions module implements all above :class:`exp` classes.
+All symbolic representation of data in amoco rely on these expressions.
+"""
+
 try:
     from builtins import object
 except ImportError:
@@ -10,10 +18,11 @@ except ImportError:
 import operator
 from amoco.logger import Log
 logger = Log(__name__)
-from amoco.config import get_module_conf
-from amoco.ui import render
 
-conf = get_module_conf('cas')
+from amoco.config import conf_proxy
+conf = conf_proxy('cas')
+
+from amoco.ui import render
 
 try:
     IntType = (int,long)
@@ -100,6 +109,14 @@ class exp(object):
 
     def __len__(self): return self.length
 
+    def signed(self):
+        self.sf = True
+        return self
+
+    def unsigned(self):
+        self.sf = False
+        return self
+
     @property
     def length(self): # length value is in bytes
         return self.size//8
@@ -155,7 +172,7 @@ class exp(object):
         return self[i:i+1]
 
     # return the expression slice located at bytes
-    # (sta,sto) depending on provided endianess.
+    # (sta,sto) depending on provided endianess (1:little, -1:big).
     def bytes(self,sta=0,sto=None,endian=1):
         s = slice(sta,sto)
         l = self.length
@@ -551,7 +568,7 @@ class cfp(exp):
     @_checkarg_numeric
     @_checkarg_sizes
     def __pow__(self,n):
-        if n._is_cst: return cfp(self.v**n.value,self.size)
+        if n._is_cst: return cfp(self.v*n.value,self.size)
         else : return exp.__pow__(self,n)
     @_checkarg_numeric
     def __div__(self,n):
@@ -631,7 +648,9 @@ class reg(exp):
         return [(render.Token.Register,u'%s'%self)]
 
     def eval(self,env):
-        return env[self]
+        r = env[self]
+        r.sf = self.sf
+        return r
 
     def addr(self,env):
         return self
@@ -801,6 +820,7 @@ class comp(exp):
 
     def eval(self,env):
         res = comp(self.size)
+        res.sf = self.sf
         res.smask = self.smask[:]
         for nk,nv in iter(self.parts.items()):
             res.parts[nk] = nv.eval(env)
@@ -838,6 +858,7 @@ class comp(exp):
         if start==0 and stop==self.size: return self.copy()
         l = stop-start
         res = comp(l)
+        res.sf = self.sf
         b   = 0
         while b < l:
             # select symbol index and object:
@@ -975,7 +996,9 @@ class mem(exp):
         for loc,v in self.mods:
             if loc._is_ptr: loc = env(loc)
             m[loc] = env(v)
-        return m[mem(a,self.size,endian=self.endian)]
+        res = m[mem(a,self.size,endian=self.endian)]
+        res.sf = self.sf
+        return res
 
     def simplify(self,**kargs):
         self.a.simplify(**kargs)
@@ -1011,6 +1034,7 @@ class mem(exp):
         a = self.a
         size = (b2-b1)*8
         x = mem(a,size,disp=b1,mods=self.mods,endian=self.endian)
+        x.sf = self.sf
         if r1>0 or r2>0:
             x = slc(x,r1,(sto-sta))
         return x
@@ -1088,7 +1112,9 @@ def slicer(x,pos,size):
         return x
     else:
         if x._is_mem or x._is_cmp:
-            return x[pos:pos+size]
+            res = x[pos:pos+size]
+            res.sf = x.sf
+            return res
         return slc(x,pos,size)
 
 #------------------------------------------------------------------------------
@@ -1101,13 +1127,13 @@ class slc(exp):
 
     def __init__(self,x,pos,size,ref=None):
         if not isinstance(pos,IntType): raise TypeError(pos)
+        self.__protect = False
+        self.size = size
+        self.sf   = x.sf
         if isinstance(x,slc):
             res = x[pos:pos+size]
             x,pos = res.x,res.pos
         self.x = x
-        self.__protect = False
-        self.size = size
-        self.sf   = False
         self.pos  = pos
         self.setref(ref)
 
@@ -1148,7 +1174,9 @@ class slc(exp):
 
     def eval(self,env):
         n = self.x.eval(env)
-        return n[self.pos:self.pos+self.size]
+        res = n[self.pos:self.pos+self.size]
+        res.sf = self.sf
+        return res
 
     # slc of mem objects are simplified by adjusting the disp offset of
     # the sliced mem object.
@@ -1156,12 +1184,16 @@ class slc(exp):
         self.x = self.x.simplify(**kargs)
         if not self.x._is_def: return top(self.size)
         if self.x._is_cmp or self.x._is_cst:
-            return self.x[self.pos:self.pos+self.size]
+            res = self.x[self.pos:self.pos+self.size]
+            res.sf = self.sf
+            return res
         if self.x._is_mem and self.size%8==0:
             off,rst = divmod(self.pos,8)
             if rst==0:
                 a = ptr(self.x.a.base,self.x.a.seg,self.x.a.disp+off)
-                return mem(a,self.size)
+                res = mem(a,self.size)
+                res.sf = self.sf
+                return res
         if self.x._is_eqn and (self.x.op.type==2 or
                               (self.x.op.symbol in (OP_ADD,OP_MIN) and self.pos==0)):
             r = self.x.r[self.pos:self.pos+self.size]
@@ -1261,14 +1293,15 @@ class tst(exp):
         else          : return r
 
     def simplify(self,**kargs):
-        if self.l == self.r: return self.l
         self.tst = self.tst.simplify(**kargs)
+        widening = kargs.get('widening',False)
+        if widening or not self.tst._is_def:
+            return vec([self.l,self.r]).simplify()
         self.l   = self.l.simplify(**kargs)
+        if self.tst==bit1: return self.l
         self.r   = self.r.simplify(**kargs)
-        if   self.tst==bit1: return self.l
-        elif self.tst==bit0: return self.r
-        if not self.tst._is_def:
-            return vec([self.l,self.r]).simplify(**kargs)
+        if self.tst==bit0: return self.r
+        if self.l == self.r: return self.l
         return self
 
     def depth(self):
@@ -1308,9 +1341,13 @@ class op(exp):
         if self.l._is_eqn: self.prop |= self.l.prop
         if self.r._is_eqn : self.prop |= self.r.prop
 
-    @classmethod
-    def limit(cls,v):
-        cls.threshold = v
+    @staticmethod
+    def threshold():
+        return conf['complexity']
+
+    @staticmethod
+    def limit(v):
+        conf['complexity'] = v
 
     def eval(self,env):
         # single-operand :
@@ -1521,7 +1558,7 @@ class _operator(object):
         self.symbol = op
         self.unary = unary
         self.unsigned = False
-        if   op in OP_ARITH:
+        if op in OP_ARITH:
             self.type = 1
             if self.unary:
                 self.impl = {OP_ADD: operator.pos, OP_MIN: operator.neg}[op]
@@ -1593,7 +1630,7 @@ def locations_of(e):
 
 def complexity(e):
     factor = e.prop if e._is_eqn else 1
-    return (e.depth()+len(locations_of(e)))*factor
+    return (e.depth()+len(symbols_of(e)))*factor
 
 # helpers for unary expressions:
 def eqn1_helpers(e,**kargs):
@@ -1624,9 +1661,9 @@ def eqn1_helpers(e,**kargs):
 # reminder: be careful not to modify the internal structure of
 # e.l or e.r because these objects might be used also in other
 # expressions. See tests/test_cas_exp.py for details.
-def eqn2_helpers(e,bitslice=False):
-    if complexity(e.r)>e.threshold: e.r = top(e.r.size)
-    if complexity(e.l)>e.threshold: e.l = top(e.l.size)
+def eqn2_helpers(e,bitslice=False,widening=False):
+    if complexity(e.r)>e.threshold(): e.r = top(e.r.size)
+    if complexity(e.l)>e.threshold(): e.l = top(e.l.size)
     if not (e.r._is_def and e.l._is_def): return top(e.size)
     if e.l._is_eqn and e.l.r._is_cst and e.l.op.unary==0:
         xop = e.op*e.l.op
@@ -1688,9 +1725,9 @@ def eqn2_helpers(e,bitslice=False):
         elif e.l._is_cst:
             return e.op(e.l,e.r)
     if e.l._is_vec:
-        return vec([e.op(x,e.r) for x in e.l.l]).simplify()
+        return vec([e.op(x,e.r) for x in e.l.l]).simplify(widening=widening)
     if e.r._is_vec:
-        return vec([e.op(e.l,x) for x in e.r.l]).simplify()
+        return vec([e.op(e.l,x) for x in e.r.l]).simplify(widening=widening)
     if u'%s'%(e.l)==u'%s'%(e.r):
         if e.op.symbol in (OP_NEQ,OP_LT,OP_GT): return bit0
         if e.op.symbol in (OP_EQ,OP_LE,OP_GE): return bit1
@@ -1753,6 +1790,8 @@ class vec(exp):
         l = []
         for e in self.l:
             ee = e.simplify()
+            if not ee._is_def:
+                return ee
             if ee._is_vec:
                 l.extend(ee.l)
                 if isinstance(ee,vecw):
@@ -1767,7 +1806,7 @@ class vec(exp):
         if widening:
             return vecw(self)
         cl = [complexity(x) for x in self.l]
-        if sum(cl,0.)>op.threshold:
+        if sum(cl,0.)>op.threshold():
             return top(self.size)
         return self
 
@@ -1779,7 +1818,7 @@ class vec(exp):
 
     def depth(self):
         if self.size==0: return 0.
-        return max([e.depth() for e in self.l])
+        return max([e.depth() for e in self.l])*len(self.l)
 
     @_checkarg_slice
     def __getitem__(self,i):

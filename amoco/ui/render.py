@@ -5,6 +5,9 @@ try:
 except ImportError:
     from io import BytesIO as StringIO
 
+from amoco.config import conf_proxy
+conf = conf_proxy('ui')
+
 from amoco.logger import Log
 logger = Log(__name__)
 
@@ -81,20 +84,8 @@ else:
       'Html':HtmlFormatter(style=LightStyle,encoding='utf-8'),
     }
 
-default_formatter = NullFormatter()
-
-def configure(**kargs):
-    from amoco.config import get_module_conf
-    conf = get_module_conf('ui')
-    conf.update(kargs)
-    f = conf['formatter']
-    global default_formatter
-    default_formatter = Formats.get(f,default_formatter)
-
-configure()
-
 def highlight(toks,formatter=None,outfile=None):
-    formatter = formatter or default_formatter
+    formatter = formatter or Formats.get(conf['formatter'])
     if isinstance(formatter,str): formatter = Formats[formatter]
     outfile = outfile or StringIO()
     formatter.format(toks,outfile)

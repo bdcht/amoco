@@ -6,6 +6,9 @@
 
 from amoco.cas.expressions import *
 
+def stst(*args,**kargs):
+    return tst(*args,**kargs).simplify()
+
 def LSL_C(x,shift):
     assert shift>=0
     carry_out = x.bit(-shift) if shift>0 else None

@@ -1,12 +1,36 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QPainter
-from PyQt5.Qt import *
+try:
+    from PyQt5.QtCore import pyqtSignal, Qt
+    from PyQt5.QtWidgets import *
+    from PyQt5.QtGui import QPainter
+except ImportError:
+    from PySide2.QtCore import Signal, QPointF, Qt
+    from PySide2.QtWidgets import *
+    from PySide2.QtGui import *
 
 from math import sin,cos,pi,radians
 
+#------------------------------------------------------------------------------
+
 class Node_basic(QGraphicsItem):
+    """Node_basic is a QGraphicsItem that represents a function node, used as
+       a view for a cfg.node of code.func or code.xfunc object.
+
+       The object is movable, focusable and accepts mouse-over events.
+       It is composed of a shadowed circle of radius *r* colored in white,
+       and a blue label set as the function's name.
+
+       Arguments:
+
+           name (string): string used as label for the Node_basic.label.
+           r (int): radius of the Node_basic.el circle.
+
+       Attributes:
+       
+           el (QGraphicsEllipseItem): the cicle object
+           label (QGraphicsTextItem): the label object
+           cx (list[Edge_basic]): list of edges views associated with the node 
+    """
 
     def __init__(self,name='?',r=10):
         super(Node_basic,self).__init__()
@@ -81,6 +105,25 @@ class Node_basic(QGraphicsItem):
 #------------------------------------------------------------------------------
 
 class Node_codeblock(QGraphicsItem):
+    """Node_codeblock is a QGraphicsItem that represents a block node, used as a
+       view for a cfg.node of code.block object.
+
+       The object is movable, focusable and accepts mouse-over events.
+       It is composed of a shadowed rectangle (QGraphicsRectItem) that contains
+       a text block (QGraphicsTextItem) with the assembly instructions formatted
+       as an Html source for pretty printing.
+
+       Arguments:
+
+           block (code.block): the block object
+
+       Attributes:
+       
+           codebox (QGraphicsRectItem): the shadowed rectangular background
+           code (QGraphicsTextItem): the assembly text of the input block
+           cx (list[Edge_basic]): list of edges views associated with the node 
+    """
+
     def __init__(self,block):
         super(Node_codeblock,self).__init__()
         self.setFlag(QGraphicsItem.ItemIsMovable)
@@ -143,13 +186,37 @@ class Node_codeblock(QGraphicsItem):
         return super(Node_codeblock, self).itemChange(change, value)
 
 #------------------------------------------------------------------------------
+
 class Edge_basic(QGraphicsItem):
+    """Edge_basic is a QGraphicsItem that represents an edge, used as a
+       view for a cfg.Edge object.
+
+       The object is not movable or focusable but should accept mouse
+       events to highlight or tag the nodes of this edge.
+       It is composed of a QGraphicsPathItem build from self.points
+       and a triangular arrow head positioned at the border of the node's
+       view. It should react to nodes n0/n1 displacements.
+
+       Arguments:
+
+           n0 (Node_codeblock|Node_basic): first node (from).
+           n1 (Node_codeblock|Node_basic): second node (to).
+
+        Attributes:
+
+            n (list): the list of node views.
+            points (list[QPointF]): list of points for routing the edge.
+            head (QPolygonF): the arrow head polygon.
+    """
+
     def __init__(self,n0,n1):
         super(Edge_basic,self).__init__()
+        self.setFlag(QGraphicsItem.ItemSendsGeometryChanges)
         self.n = [n0,n1]
         n0.cx.append(self)
         n1.cx.append(self)
         self.points = [None,None]
+        self.head = None
         self.update_points()
 
     def setpath(self,l):
@@ -170,17 +237,24 @@ class Edge_basic(QGraphicsItem):
         self.points[-1] = x.pointAtPercent(1.)
 
     def boundingRect(self):
-        return self.getqgp().boundingRect()
+        br = self.getqgp().boundingRect()
+        if self.head:
+            br = br.united(self.head.boundingRect())
+        return br
 
     def getqgp(self):
+        """Compute the QGraphicsPathItem that represents the open
+           polygonal line going through all self.points.
+        """
         qpp = QPainterPath(self.points[0])
         for p in self.points[1:]:
             qpp.lineTo(p)
         return QGraphicsPathItem(qpp)
-        return qgp
 
     def shape(self):
-        return self.getqgp().shape()
+        s = self.getqgp().shape()
+        if self.head: s.addPolygon(self.head)
+        return s
 
     def paint(self,painter,option,widget=None):
         qgp = self.getqgp()
@@ -188,6 +262,7 @@ class Edge_basic(QGraphicsItem):
         pen.setWidth(2)
         qgp.setPen(pen)
         qgp.setBrush(QBrush(Qt.NoBrush))
+        painter.setClipRect(option.exposedRect)
         qgp.paint(painter,option,widget)
         lastp = self.points[-1]
         angle = radians(qgp.path().angleAtPercent(1.))
@@ -195,5 +270,6 @@ class Edge_basic(QGraphicsItem):
         p = lastp+QPointF(cos(angle-pi/6.)*10,-sin(angle-pi/6.)*10)
         q = lastp+QPointF(cos(angle+pi/6.)*10,-sin(angle+pi/6.)*10)
         painter.setBrush(QBrush(QColor('black')))
-        painter.drawPolygon(QPolygonF([lastp,p,q]))
+        self.head = QPolygonF([lastp,p,q])
+        painter.drawPolygon(self.head)
 

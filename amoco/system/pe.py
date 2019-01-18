@@ -666,12 +666,7 @@ class PE(PEcore):
     def filename(self):
         return self.data.name
 
-    def __init__(self,filename):
-        try:
-            f = open(filename,'rb')
-        except (TypeError,IOError):
-            f = bytes(filename)
-        data = DataIO(f)
+    def __init__(self,data):
         self.data = data
         # parse DOS header:
         self.DOS  = DOSHdr(data)

@@ -3,20 +3,20 @@ Installation
 
 Amoco is a pure python package which depends on the following packages:
 
-- grandalf_ used for building CFG (and eventually rendering it)
+- grandalf_ used for building, walking and rendering Control Flow Graphs
 - crysp_    used by the generic intruction decoder (:mod:`arch.core`)
-- z3_       used to simplify expressions and solve constraints
-- pygments_ used for pretty printing of assembly code and expressions
-- pyparsing_ for parsing instruction decoder formats
+- crawl_    (optional) used to define and import data structures
+- z3_       (optional) used to simplify expressions and solve constraints
+- pygments_ (optional) used for pretty printing of assembly code and expressions
 - ply_ (optional), for parsing *GNU as* files
 - sqlalchemy_ (optional), provides analysis results as well as persistence of amoco objects in a database
-- pyqt5_ (optional), for the graphical user interface
+- pyqt5_ or pyside2_ (optional), for the graphical user interface
 
 Installation is straightforward for most packages using pip_/pip3.
 Note that for python2, the future_ package is now required to support new
 python3 *bytes* when needed.
 
-Grandalf, crysp, and pyparsing are mandatory, while others are optional.
+Grandalf and crysp are mandatory, while most others are optional.
 The z3_ SMT solver is highly recommended (follow instructions from z3_ doc,
 to build the python3 package just replace ``python scripts/mk_make.py`` by
 ``python3 scripts/mk_make.py``).
@@ -26,6 +26,7 @@ If you want to use the graphical interface you will need **all** packages.
 
 .. _grandalf: https://github.com/bdcht/grandalf
 .. _crysp: https://github.com/bdcht/crysp
+.. _crawl: https://github.com/bdcht/crawl
 .. _minisat: http://minisat.se/
 .. _z3: http://z3.codeplex.com/
 .. _pygments: http://pygments.org/
@@ -34,5 +35,6 @@ If you want to use the graphical interface you will need **all** packages.
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org/
 .. _pyqt5: https://www.riverbankcomputing.com/software/pyqt/download5
+.. _pyside2: https://wiki.qt.io/Qt_for_Python
 .. _pip: https://pypi.python.org/pypi/pip
 .. _future: http://python-future.org/

@@ -36,7 +36,10 @@ class GraphScene(QGraphicsScene):
             e.view.update_points()
 
 from math import pow
-from PyQt5.QtCore import Qt,QRectF
+try:
+    from PyQt5.QtCore import Qt,QRectF
+except ImportError:
+    from PySide2.QtCore import Qt,QRectF
 
 class GraphView(QGraphicsView):
 

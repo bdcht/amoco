@@ -38,10 +38,23 @@ def opers_adr(i):
         s[-1] = (Token.Address,u'#%s'%(imm_ref))
     return s
 
+def opers_adr2(i):
+    s = opers(i)
+    if i.address is None:
+        s[-3] = (Token.Address,u'.%+d'%i.operands[-2])
+        s[-1] = (Token.Address,u'.%+d'%i.operands[-1])
+    else:
+        imm_ref1 = i.address+i.length*(i.operands[-2]+1)
+        imm_ref2 = i.address+i.length*(i.operands[-1]+1)
+        s[-3] = (Token.Address,u'#%s'%(imm_ref1))
+        s[-1] = (Token.Address,u'#%s'%(imm_ref2))
+    return s
+
 format_default = (mnemo,opers)
 
 eBPF_full_formats = {
         'ebpf_jmp_': (mnemo,opers_adr),
+        'bpf_jmp_' : (mnemo,opers_adr2),
 }
 
 eBPF_full = Formatter(eBPF_full_formats)

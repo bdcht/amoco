@@ -2,24 +2,22 @@
 Amoco
 =====
 
-|bdcht travis| (bdcht main repo) |LRGH travis| (LRGH fork)
-
 .. |bdcht travis| image:: https://travis-ci.org/bdcht/amoco.svg?branch=release
     :target: https://travis-ci.org/bdcht/amoco
-.. |LRGH travis| image:: https://travis-ci.org/LRGH/amoco.svg?branch=release
-    :target: https://travis-ci.org/LRGH/amoco
 
 .. image:: http://readthedocs.org/projects/amoco/badge/?version=latest
     :target: http://amoco.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
-+-----------+-----------------------------------+
-| Status:   | Under Development                 |
-+-----------+-----------------------------------+
-| Location: | https://github.com/bdcht/amoco    |
-+-----------+-----------------------------------+
-| Version:  | 2.5                               |
-+-----------+-----------------------------------+
++-----------+--------------------------------------------------+
+| Status:   | Under Development                                |
++-----------+--------------------------------------------------+
+| Location: | https://github.com/bdcht/amoco                   |
++-----------+--------------------------------------------------+
+| Version:  | 2.6                                              |
++-----------+--------------------------------------------------+
+|  Doc:     | http://amoco.readthedocs.io/en/latest/index.html |
++-----------+--------------------------------------------------+
 
 Description
 ===========
@@ -79,6 +77,40 @@ Please see `LICENSE`_.
 
 Changelog
 =========
+
+- `v2.6.0`_
+
+  * add V850(E2S) architecture
+  * add SH2-A architecture
+  * add support for analysing i.MX6 HAB structures
+  * merge AVR architecture
+  * add system/structs classes
+  * export 'crawl' out of amoco tree (libclang C-to-structs)
+  * add eBPF instructions semantics
+  * add support for (old)BPF instructions specs
+  * add support for HEX/SREC binary format
+  * add MemoryMap 'merge' method
+  * add 'step_instruction' method in CoreExec (emulator)
+  * add support for UFS structures
+  * merge signals dispatcher for ui
+  * improve setuptools support
+  * remove tox and rely on travis only
+  * improve armv7 instructions semantics and code helpers
+  * improve armv7 instructions specs and formats
+  * add spec tree debug level logging
+  * fix decoder for archs with bigendian variable length instruction
+  * improve decoder efficency with indicator of extended fetcher
+  * add pygments support for sparc, msp430 instruction formatter
+  * improve expressions widening
+  * improve config module
+
+- `v2.5.3`_
+
+  * complete fix of issue #77 (typical x64 madness)
+
+- `v2.5.2`_
+
+  * partial fix of issue #77 (github) related to LEA instruction semantics on x64 arch.
 
 - `v2.5.1`_
 
@@ -244,6 +276,9 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.6.0: https://github.com/bdcht/amoco/releases/tag/v2.6.0
+.. _v2.5.3: https://github.com/bdcht/amoco/releases/tag/v2.5.3
+.. _v2.5.2: https://github.com/bdcht/amoco/releases/tag/v2.5.2
 .. _v2.5.1: https://github.com/bdcht/amoco/releases/tag/v2.5.1
 .. _v2.5.0: https://github.com/bdcht/amoco/releases/tag/v2.5.0
 .. _v2.4.6: https://github.com/bdcht/amoco/releases/tag/v2.4.6

@@ -35,39 +35,30 @@ and to a temporary file with ``'DEBUG'`` level.
 
 import logging
 
-
 VERBOSE = 15
 logging.addLevelName(VERBOSE,u'VERBOSE')
 #logging.captureWarnings(True)
 
-default_format = logging.Formatter(u"%(name)s: %(levelname)s: %(message)s")
+default_format = logging.Formatter(u"[%(levelname)s] %(name)s: %(message)s")
 
-try:
-    from amoco import conf
-    def get_log_level():
-        try:
-            level = conf.getint('log','level')
-            if level is None: level = 30
-        except ValueError:
-            level = logging.__dict__.get(conf.get('log','level'),30)
-        return level
-    default_level = get_log_level()
-    if conf.has_option('log','file'):
-        logfilename  = conf.get('log','file')
-    elif conf.getboolean('log','tempfile'):
-        import tempfile
-        logfilename  = tempfile.mkstemp('.log',prefix="amoco-")[1]
-    else:
-        logfilename  = None
-except ImportError:
-    default_level  = logging.WARNING
-    logfilename = None
+from amoco.config import conf_proxy
+conf = conf_proxy('log')
+
+default_level = conf['level']
+
+if conf['file']:
+    logfilename  = conf['file']
+elif conf['tempfile']:
+    import tempfile
+    logfilename  = tempfile.mkstemp('.log',prefix="amoco-")[1]
+else:
+    logfilename  = None
 
 if logfilename:
     logfile = logging.FileHandler(logfilename,mode='w')
     logfile.setFormatter(default_format)
-    logfile.setLevel(logging.DEBUG)
-    conf.set('log','file',logfilename)
+    logfile.setLevel(VERBOSE)
+    conf['file'] = logfilename
 else:
     logfile = None
 

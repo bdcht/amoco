@@ -44,6 +44,10 @@ C = slc(apsr,29,1,ref='C')   # carry flag
 V = slc(apsr,28,1,ref='V')   # overflow flag
 Q = slc(apsr,27,1,ref='Q')   # overflow/saturation (DSP)
 
+is_reg_flags(apsr)
+is_reg_pc(pc)
+is_reg_stack(sp)
+
 CONDITION_EQ        = 0x0  # ==
 CONDITION_NE        = 0x1  # !=
 CONDITION_CS        = 0x2  # >= (unsigned)
@@ -93,5 +97,8 @@ internals = {    # states MUST be in a mutable object !
 # NOT IMPLEMENTED
 
 # Coprocessor (CPxx) support:
-# NOT IMPLEMENTED
 
+cpname = ['p%02d'%x for x in range(16)]
+
+cpregs = {}
+cpregs['p15'] = [reg('c%02d'%x,32) for x in range(16)]

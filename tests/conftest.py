@@ -17,6 +17,7 @@ def map():
 #------------------------------------------------------------------------------
 
 from amoco.cas.expressions import reg
+
 @pytest.fixture
 def a():
     '''return 'a' register with default size (32)'''
@@ -72,6 +73,7 @@ samples_all = []
 for R,D,F in os.walk(samples_dir):
     for f in F:
         filename = os.path.join(R,f)
+        if filename.endswith('.s'): continue
         samples_all.append(filename)
 
 @pytest.fixture(scope='session')
@@ -81,6 +83,10 @@ def samples():
 @pytest.fixture(scope='session')
 def x86samples(samples):
     return filter(lambda s: 'x86/' in s, samples)
+
+@pytest.fixture(scope='session')
+def cheaders(samples):
+    return filter(lambda s: s.endswith('.h'), samples)
 
 @pytest.fixture(scope='session')
 def ploop(x86samples):

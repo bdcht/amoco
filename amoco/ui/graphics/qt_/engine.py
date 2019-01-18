@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import QApplication
+try:
+    from PyQt5.QtWidgets import QApplication
+except ImportError:
+    from PySide2.QtWidgets import QApplication
+    from PySide2.QtCore import QPointF
 
 from amoco.ui.render import Formats
-
 from .graphwin import *
 from .mainwin import *
 

@@ -4,6 +4,15 @@
 # Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
+"""
+cas/mapper.py
+=============
+
+The mapper module essentially implements the :class:`mapper` class
+and the associated :func:`merge` function which allows to get a
+symbolic representation of the *union* of two mappers.
+"""
+
 from amoco.logger import Log
 logger = Log(__name__)
 
@@ -13,22 +22,30 @@ from amoco.system.core import MemoryMap
 from amoco.arch.core   import Bits
 from amoco.ui.views import mapView
 
-# a mapper is a symbolic functional representation of the execution
-# of a set of instructions.
-# __map  : is an ordered list of mappings of expressions associated with a
-# location (a register or a memory pointer). The order is relevant only
-# to reflect the order of write-to-memory instructions.
-# __Mem  : is a memory model where symbolic memory pointers are using
-# individual separated zones.
-# conds  : is the list of conditions that must be True for the mapper
-# csi    : is the optional interface to a "concrete" state
 class mapper(object):
-    assume_no_aliasing = False
+    """A mapper is a symbolic functional representation of the execution
+    of a set of instructions.
+
+    Args:
+        instrlist (list[instruction]): a list of instructions that are
+                  symbolically executed within the mapper.
+        csi (Optional[object]): the optional csi attribute that provide
+                  a *concrete* initial state
+
+    Attributes:
+        __map  : is an ordered list of mappings of expressions associated with a
+                 location (register or memory pointer). The order is relevant
+                 only to reflect the order of write-to-memory instructions in
+                 case of pointer aliasing.
+        __Mem  : is a memory model where symbolic memory pointers are addressing
+                 separated memory zones. See MemoryMap and MemoryZone classes.
+        conds  : is the list of conditions that must be True for the mapper
+        csi    : is the optional interface to a *concrete* state
+    """
+    assume_no_aliasing = conf['noaliasing']
 
     __slots__ = ['__map','__Mem','conds', 'csi', 'view']
 
-    # a mapper is inited with a list of instructions
-    # provided by a disassembler
     def __init__(self,instrlist=None,csi=None):
         self.__map = generation()
         self.__map.lastw = 0
@@ -53,8 +70,8 @@ class mapper(object):
     def __str__(self):
         return u'\n'.join([u"%s <- %s"%x for x in self])
 
-    # list antecedent locations (used in the mapping)
     def inputs(self):
+        "list antecedent locations (used in the mapping)"
         r = []
         for l,v in iter(self.__map.items()):
             for lv in locations_of(v):
@@ -64,17 +81,18 @@ class mapper(object):
                 r.append(lv)
         return r
 
-    # list image locations (modified in the mapping)
     def outputs(self):
+        "list image locations (modified in the mapping)"
         L = []
         for l in sum([locations_of(e) for e in self.__map],[]):
             if l._is_reg and l.type in (regtype.PC,regtype.FLAGS): continue
             if l._is_ptr: l = mem(l,self.__map[l].size)
-            if self.__map[l]==l: continue
+            if self[l]==l: continue
             L.append(l)
         return L
 
     def has(self,loc):
+        "check if the given location expression is touched by the mapper"
         for l in self.__map.keys():
             if loc==l: return True
         return False
@@ -83,6 +101,7 @@ class mapper(object):
         return self.__map._generation__getall(loc)
 
     def rw(self):
+        "get the read sizes and written sizes tuple"
         r = filter(lambda x:x._is_mem, self.inputs())
         w = filter(lambda x:x._is_mem, self.outputs())
         sr = [x.size for x in r]
@@ -90,19 +109,21 @@ class mapper(object):
         return (sr,sw)
 
     def clear(self):
+        "clear the current mapper, reducing it to the identity transform"
         self.__map.clear()
         self.__Mem = MemoryMap()
         self.conds = []
 
     def memory(self):
+        "get the local :class:`MemoryMap` associated to the mapper"
         return self.__Mem
     def setmemory(self,mmap):
+        "set the local :class:`MemoryMap` associated to the mapper"
         self.__Mem = mmap
 
     def generation(self):
         return self.__map
 
-    # compare self with mapper m:
     def __cmp__(self,m):
         d = cmp(self.__map.lastdict(),m.__map.lastdict())
         return d
@@ -116,16 +137,15 @@ class mapper(object):
         for (loc,v) in iter(self.__map.items()):
             yield (loc,v)
 
-    # get a (plain) register value:
     def R(self,x):
+        "get the expression of register x"
         if self.csi:
             return self.__map.get(x,self.csi(x))
         else:
             return self.__map.get(x,x)
 
-    # get a memory location value (fetch) :
-    # k must be mem expressions
     def M(self,k):
+        """get the expression of a memory location expression k"""
         if k.a.base._is_lab: return k
         if k.a.base._is_ext: return k.a.base
         n = self.aliasing(k)
@@ -139,6 +159,9 @@ class mapper(object):
         return res
 
     def aliasing(self,k):
+        """check if location k is possibly aliased by the mapper:
+        i.e. the mapper writes to some other location expression
+        after writing to k"""
         if self.assume_no_aliasing: return 0
         K = list(self.__map.keys())
         n = self.__map.lastw
@@ -154,8 +177,8 @@ class mapper(object):
             return n
         return 0
 
-    # read MemoryMap and return the result as an expression:
     def _Mem_read(self,a,l,endian=1):
+        "read l bytes from memory address a and return an expression"
         try:
             res = self.__Mem.read(a,l)
         except MemoryError: # no zone for location a;
@@ -177,6 +200,7 @@ class mapper(object):
         return composer(P)
 
     def _Mem_write(self,a,v,endian=1):
+        "write expression v at memory address a with given endianness"
         if a.base._is_vec:
             locs = (ptr(l,a.seg,a.disp) for l in a.base.l)
         else:
@@ -186,8 +210,8 @@ class mapper(object):
             self.__Mem.write(l,v,endian,deadzone=iswide)
             if (l in self.__map): del self.__map[l]
 
-    # just a convenient wrapper around M/R:
     def __getitem__(self,k):
+        "just a convenient wrapper around M/R"
         r = self.M(k) if k._is_mem else self.R(k)
         if k.size!=r.size: raise ValueError('size mismatch')
         return r[0:k.size]
@@ -227,37 +251,28 @@ class mapper(object):
         self.__map[loc] = r
 
     def update(self,instr):
+        "update the current mapper with the provided instruction"
         instr(self)
 
-    # eval of x in this map:
-    # note the difference between a mapper[mem(p)] and mapper(mem(p)):
-    # in the call form, p is first evaluated so that the target address
-    # is the expression of p "after execution" whereas the indexing form
-    # uses p as an input (i.e "before execution") expression.
-    # example, suppose str(mapper) is:
-    #   (esp)   <- eax
-    #       esp <- { | [0:32]->(esp-0x4) | }
-    #   (esp-4) <- ebx
-    # then:
-    # mapper[mem(esp)] returns eax (what is pointed by "esp before execution")
-    # mapper(mem(esp)) returns ebx (what is pointed by "esp after execution")
     def __call__(self,x):
+        """evaluation of expression x in this map:
+           note the difference between a mapper[mem(p)] and mapper(mem(p)):
+           in the call form, p is first evaluated so that the target address
+           is the expression of p "after execution" whereas the indexing form
+           uses p as an input (i.e "before execution") expression.
+        """
         if len(self)==0: return x
         return x.eval(self)
 
     def restruct(self):
         self.__Mem.restruct()
 
-    # return a new mapper instance where all input locations have
-    # been replaced by there corresponding values in m.
-    # example:
-    # in self: eax <- ebx
-    # in m   : ebx <- 4
-    #          edx <- (ecx+1)
-    # =>
-    # result : eax <- 4
     def eval(self,m):
+        """return a new mapper instance where all input locations have
+           been replaced by there corresponding values in m.
+        """
         mm = mapper(csi=self.csi)
+        mm.setmemory(self.memory())
         for c in self.conds:
             cc = c.eval(m)
             if not cc._is_def: continue
@@ -272,9 +287,10 @@ class mapper(object):
             mm[loc] = m(v)
         return mm
 
-    # composition operator returns a new mapper
-    # corresponding to function x -> self(m(x))
     def rcompose(self,m):
+        """composition operator returns a new mapper
+           corresponding to function x -> self(m(x))
+        """
         mcopy = m.use()
         for c in self.conds:
             cc = c.eval(m)
@@ -291,23 +307,24 @@ class mapper(object):
             mm[loc] = mcopy(v)
         return mm
 
-    # self << m : composition (self(m))
     def __lshift__(self,m):
+        "self << m : composition (self(m))"
         return self.rcompose(m)
 
-    # self >> m : composition (m(self))
     def __rshift__(self,m):
+        "self >> m : composition (m(self))"
         return m.rcompose(self)
 
     def interact(self):
         raise NotImplementedError
 
-    # return a mapper corresponding to the evaluation of the current mapper
-    # where all key symbols found in kargs are replaced by their values in
-    # all expressions. The kargs "size=value" allows for adjusting symbols/values
-    # sizes for all arguments.
-    # if kargs is empty, a copy of the result is just a copy of current mapper.
     def use(self,*args,**kargs):
+        """return a new mapper corresponding to the evaluation of the current mapper
+           where all key symbols found in kargs are replaced by their values in
+           all expressions. The kargs "size=value" allows for adjusting symbols/values
+           sizes for all arguments.
+           if kargs is empty, a copy of the result is just a copy of current mapper.
+        """
         m = mapper(csi=self.csi)
         for loc,v in args:
             m[loc] = v
@@ -318,13 +335,16 @@ class mapper(object):
         return self.eval(m)
 
     def usemmap(self,mmap):
+        """return a new mapper corresponding to the evaluation of the current mapper
+           where all memory locations of the provided mmap are used by the current
+           mapper."""
         m = mapper()
         m.setmemory(mmap)
         for xx in set(self.inputs()):
             if xx._is_mem:
                 v = m.M(xx)
                 m[xx] = v
-        return self.eval(m)
+        return self<<m
 
     # attach/apply conditions to the output mapper
     def assume(self,conds):
@@ -342,29 +362,48 @@ class mapper(object):
 
 from amoco.cas.smt import *
 
-# union of two mappers:
-def merge(m1,m2,widening=None):
+def merge(m1,m2,**kargs):
+    "union of two mappers"
     m1 = m1.assume(m1.conds)
     m2 = m2.assume(m2.conds)
     mm = mapper()
+    # "import" m2 values into m1 locations:
     for loc,v1 in m1:
         if loc._is_ptr:
             seg = loc.seg
             disp = loc.disp
             if loc.base._is_vec:
                 v2 = vec([m2[mem(l,v1.size,seg,disp)] for l in loc.base.l])
+                v2 = v2.simplify(**kargs)
             else:
                 v2 = m2[mem(loc,v1.size)]
         else:
-            v2 = m2[loc]
-        vv = vec([v1,v2]).simplify(widening)
+            if loc._is_reg and loc.type == regtype.FLAGS:
+                v2 = top(loc.size)
+            else:
+                v2 = m2[loc]
+        v1 = v1.simplify(**kargs)
+        v2 = v2.simplify(**kargs)
+        vv = vec([v1,v2]).simplify(**kargs)
         mm[loc] = vv
+    # "import" m1 values into m2 locations:
     for loc,v2 in m2:
         if mm.has(loc): continue
         if loc._is_ptr:
-            v1 = m1[mem(loc,v2.size)]
+            seg = loc.seg
+            disp = loc.disp
+            if loc.base._is_vec:
+                v1 = vec([m1[mem(l,v2.size,seg,disp)] for l in loc.base.l])
+                v1 = v1.simplify(**kargs)
+            else:
+                v1 = m1[mem(loc,v2.size)]
         else:
-            v1 = m1[loc]
-        vv = vec([v1,v2]).simplify(widening)
+            if loc._is_reg and loc.type == regtype.FLAGS:
+                v1 = top(loc.size)
+            else:
+                v1 = m1[loc]
+        v2 = v2.simplify(**kargs)
+        v1 = v1.simplify(**kargs)
+        vv = vec([v1,v2]).simplify(**kargs)
         mm[loc] = vv
     return mm

@@ -10,6 +10,7 @@ from amoco.code import tag
 from amoco.arch.eBPF import cpu
 
 class eBPF(RawExec):
+    "This class allows to analyze new (e)bpf bytecodes"
 
     def __init__(self,p):
         RawExec.__init__(self,p,cpu)
@@ -18,6 +19,7 @@ class eBPF(RawExec):
         from amoco.cas.mapper import mapper
         m = mapper()
         m[cpu.r1] = cpu.reg('#ctx',64)
+        m[cpu.pc] = cpu.cst(0,64)
         return m
 
     # load the program into virtual memory (populate the mmap dict)

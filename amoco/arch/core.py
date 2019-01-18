@@ -171,7 +171,10 @@ class disassembler(object):
         self.iset = iset
         self.endian = endian
         # build ispecs tree for each set:
+        logger.debug('building specs tree for modules %s',specmodules)
+        self.indent = 0
         self.specs = [self.setup(m.ISPECS) for m in specmodules]
+        del self.indent
         # some arch like x86 require a stateful decoding due to optional prefixes,
         # so we keep an __i instruction for decoding until a non prefix ispec is used.
         self.__i  = None
@@ -179,31 +182,55 @@ class disassembler(object):
     def setup(self,ispecs):
         """setup will (recursively) organize the provided ispecs list into an optimal tree so that
         __call__ can efficiently find the matching ispec format for a given bytestring
-        (we don't want to search until a match, so we need to separate formats as much
+        (we don't want to search all specs until a match, so we need to separate formats as much
         as possible). The output tree is (f,l) where f is the submask to check at this level
         and l is a defaultdict such that l[x] is the subtree of formats for which submask is x.
         """
+        self.indent += 2
+        ind = ' '*self.indent
         # sort ispecs from high constrained to low constrained:
+        logger.debug('%scurrent subset count: %d',ind,len(ispecs))
         ispecs.sort(key=(lambda x: x.mask.hw()), reverse=True)
-        if len(ispecs)<2: return (0,ispecs)
+        if len(ispecs)<5:
+            logger.debug('%stoo small to divide',ind)
+            self.indent -= 2
+            return (0,ispecs)
         # find separating mask:
-        localmask = reduce(lambda x,y:x&y, (s.mask for s in ispecs))
+        adjust = lambda x:x.ival
+        if self.endian()==-1:
+            # in bigendian cases (like ARM), bytes are supposed to be MSB-justified
+            # that means that a spec of length = 1 byte long needs to match the MSB of the
+            # encoded instruction.
+            maxsize = self.maxlen*8
+            adjust = (lambda x: x.ival<<(maxsize-x.size))
+        localmask = reduce(lambda x,y:x&y, [adjust(s.mask) for s in ispecs])
         if localmask==0:
+            logger.debug('%sno local mask',ind)
+            self.indent -= 2
             return (0,ispecs)
         # subsetup:
-        f = localmask.ival
+        f = localmask
+        logger.debug('%slocal mask is %X',ind,f)
         l = defaultdict(lambda:list())
         for s in ispecs:
-            l[ s.fix.ival & f ].append(s)
+            l[ adjust(s.fix) & f ].append(s)
         if len(l)==1: # if subtree has only 1 spec, we're done here
+            logger.debug('%sfound 1 branch: done',ind)
+            self.indent -=2
             return (0,list(l.values())[0])
+        logger.debug('%sfound %d branches',ind,len(l))
         for x,S in l.items():
             l[x] = self.setup(S)
+        self.indent -=2
         return (f,l)
 
     def __call__(self,bytestring,**kargs):
         e = self.endian(**kargs)
-        b = Bits(bytestring[::e],bitorder=1)
+        adjust = lambda x:x.ival
+        if e==-1:
+            maxsize = self.maxlen*8
+            adjust = (lambda x: x.ival<<(maxsize-x.size))
+        b = adjust(Bits(bytestring[::e],bitorder=1))
         # get organized/optimized tree of specs:
         fl = self.specs[self.iset(**kargs)]
         while True:
@@ -211,7 +238,7 @@ class disassembler(object):
             if f==0: # we are on a leaf...
                 for s in l: # lets search linearly over this branch
                     try:
-                        i = s.decode(bytestring,e,i=self.__i,ival=b.ival,iclass=self.iclass)
+                        i = s.decode(bytestring,e,i=self.__i,iclass=self.iclass)
                     except (DecodeError,InstructionError):
                         logger.debug(u'exception raised by disassembler:'
                                      u'decoding %s with spec %s'%(codecs.encode(bytestring,'hex'),s.format))
@@ -219,13 +246,15 @@ class disassembler(object):
                     if i.spec.pfx is True:
                         if self.__i is None: self.__i = i
                         return self(bytestring[s.mask.size//8:],**kargs)
+                    elif i.spec.pfx > 0:
+                        i.misc['xsz'] = i.spec.pfx
                     self.__i = None
                     if 'address' in kargs:
                         i.address = kargs['address']
                     return i
                 break
             else: # go deeper in the tree according to submask value of b
-                fl = l.get(b.ival & f, None)
+                fl = l.get(b & f, None)
                 if fl is None: break
         self.__i = None
         return None
@@ -281,25 +310,24 @@ class ispec(object):
 
     Note:
 
-        The ``spec`` argument uses the following patterns:
+        The ``spec`` string format is  ``LEN ('<' or '>') '[' FORMAT ']' ('+' or '&' NUMBER)``
 
-          - ``LEN<[ FORMAT ]`` :
-              ``LEN`` is an integer that defines the bit length of the ``FORMAT``
-              (LEN%8!=0 is not supported.)
-              The ``FORMAT`` is a sequence of *directives* ordered
-              from MSB (bit index LEN-1) to LSB (bit index 0).
-              (This is the default direction if the '<' char is missing.)
-          - ``LEN>[ FORMAT ]`` :
-              same as above but ``FORMAT`` is ordered from LSB to MSB.
+          - ``LEN`` is either an integer that represents the bit length of the instruction or '*'.
+              Length must be a multiple of 8, '*' is used for variable length
+              instruction.
+          - ``FORMAT`` is a series of *directives* (see below.)
+             Each directive represents a sequence of bits ordered according to the spec
+             direction : '<' (default) means that directives are ordered from MSB (bit index LEN-1)
+             to LSB (bit index 0) whereas '>' means LSB to MSB.
 
-        If ``LEN`` is the special char ``*``, the ``FORMAT`` has a variable length,
-        which removes some verifications and allows to terminate the ``FORMAT`` with
-        a variable length directive.
-
-        The spec string is possibly terminated with an optional ``+`` char to indicate that it
-        represents an instruction *prefix*. In this case, the bytestring prefix matching the
-        ispec format is stacked temporarily until the rest of the bytestring matches a non
-        prefix ispec.
+        The spec string is optionally terminated with  '+' to indicate that it
+        represents an instruction *prefix*, or by '&' NUMBER to indicate that the instruction
+        has a *suffix* of NUMBER more bytes to decode some of its operands. 
+        In the *prefix* case, the bytestring matching the ispec format is stacked temporarily
+        until the rest of the bytestring matches a non prefix ispec.
+        In the *suffix* case, only the spec bytestring is used to define the instruction
+        but the :meth:`read_instruction` fetcher will provide NUMBER more bytes to the
+        :meth:`xdata` method of the instruction.
 
         The directives defining the ``FORMAT`` string are used to associate symbols to bits
         located at dedicated offsets within the bitstring to be decoded. A directive has the
@@ -312,23 +340,23 @@ class ispec(object):
         or
         
         * ``type SYMBOL location`` where:
-           
+
            * ``type`` is an *optional* modifier char with possible values:
-             
+
              * ``.`` indicates that the ``SYMBOL`` will be an *attribute* of the :class:`instruction`.
              * ``~`` indicates that the decoded value will be returned as a Bits instance.
              * ``#`` indicates that the decoded value will be returned as a string of [01] chars.
              * ``=`` indicates that decoding should *end* at current position (overlapping)
-             
+
              if not present, the ``SYMBOL`` will be passed as a keyword argument to the function with
              value decoded as an integer.
-
            * ``SYMBOL``: is a mandatory string matching regex ``[A-Za-z_][0-9A-Za-z_]*``
            * ``location``: is an optional string matching the following expressions:
-             
+
              * ``( len )``    : indicates that the value is decoded from the next len bits starting from the current position of the directive within the ``FORMAT`` string.
              * ``(*)``        : indicates a *variable length directive* for which the value is decoded from the current position with all remaining bits in the ``FORMAT``.\
                                 If the ``LEN`` is also variable then all remaining bits from the instruction buffer input string are used.
+
              default location value is ``(1)``.
              
         The special directive ``{byte}`` is a shortcut for 8 fixed bits. For example
@@ -379,6 +407,9 @@ class ispec(object):
         self.size = size
         fmt  = ast[1]
         self.pfx = ast[2]
+        xsz = ast[3]
+        if self.pfx and xsz:
+            self.pfx = xsz
         go = +1
         chklen = True
         if direction=='<': # format goes from high bits to low bits
@@ -454,13 +485,13 @@ class ispec(object):
         return ast
 
     # decode always receive input bytes in ascending memory order
-    def decode(self,istr,endian=1,i=None,ival=None,iclass=instruction):
+    def decode(self,istr,endian=1,i=None,iclass=instruction):
         # check spec :
         blen = self.fix.size//8
         if len(istr)<blen: raise DecodeError
         bs = istr[0:blen]
         # Bits object created with LSB to MSB byte string:
-        if ival is None: ival = bs[::endian]
+        ival = bs[::endian]
         b = Bits(ival,self.fix.size,bitorder=1)
         if b&self.mask != self.fix: raise DecodeError
         if self.size==0: # variable length spec:
@@ -573,7 +604,8 @@ directive  = pp.Group(pp.Optional(option,default='')+symbol+pp.Optional(location
 speclen    = pp.Group(length+pp.Optional(indxdir,default='<'))
 specformat = pp.Group(pp.Suppress('[')+pp.OneOrMore(directive|fixed)+pp.Suppress(']'))
 specoption = pp.Optional(pp.Literal('+').setParseAction(lambda r:True),default=False)
-specdecode = speclen+specformat+specoption
+specmore   = pp.Optional(pp.Suppress('&')+number,default=0)
+specdecode = speclen+specformat+specoption+specmore
 
 def ispec_register(x,module):
     F = []
@@ -582,7 +614,6 @@ def ispec_register(x,module):
     except AttributeError:
         logger.error("spec modules must declare ISPECS=[] before @ispec decorators")
         raise AttributeError
-    logger.progress(len(S),pfx='loading %s instructions '%module.__name__)
     f = x.fixed()
     if f in F:
         logger.error('ispec conflict for %s (vs. %s)'%(x.format,S[F.index(f)].format))

@@ -10,6 +10,7 @@ logger = Log(__name__)
 from amoco.system.core import DataIO
 from amoco.system import elf
 from amoco.system import pe
+from amoco.system import utils
 
 #------------------------------------------------------------------------------
 def read_program(filename):
@@ -24,30 +25,52 @@ def read_program(filename):
         an instance of currently supported program format (ELF, PE)
 
     '''
-    obj = None
-    try:
-        # open file as a ELF object:
-        p = elf.Elf(filename)
-        logger.info("ELF format detected")
-        return p
-    except elf.ElfError:
-        pass
 
-    try:
-        # open file as a PE object:
-        p = pe.PE(filename)
-        logger.info("PE format detected")
-        return p
-    except pe.PEError:
-        pass
-
-    logger.warning('unknown format')
     try:
         data = open(filename,'rb')
     except (TypeError,IOError):
-        data = filename
-    return DataIO(data)
-    ##
+        data = bytes(filename)
+
+    f = DataIO(data)
+
+    try:
+        # open file as a ELF object:
+        p = elf.Elf(f)
+        logger.info("ELF format detected")
+        return p
+    except elf.ElfError:
+        f.seek(0)
+        logger.debug('ElfError raised for %s'%f.name)
+
+    try:
+        # open file as a PE object:
+        p = pe.PE(f)
+        logger.info("PE format detected")
+        return p
+    except pe.PEError:
+        f.seek(0)
+        logger.debug('PEError raised for %s'%f.name)
+
+    try:
+        # open file as a HEX object:
+        p = utils.HEX(f)
+        logger.info("HEX format detected")
+        return p
+    except utils.FormatError:
+        f.seek(0)
+        logger.debug(' HEX FormatError raised for %s'%f.name)
+
+    try:
+        # open file as a SREC object:
+        p = utils.SREC(f)
+        logger.info("SREC format detected")
+        return p
+    except utils.FormatError:
+        f.seek(0)
+        logger.debug(' SREC FormatError raised for %s'%f.name)
+
+    logger.warning('unknown format')
+    return f
 ##
 
 #------------------------------------------------------------------------------
@@ -58,10 +81,10 @@ def load_program(f,cpu=None):
     based header informations.
 
     Arguments:
-        f (str):
+        f (str): the program filename or string of bytes.
 
     Returns:
-        an ELF, PE or RawExec system instance
+        an ELF/CoreExec, PE/CoreExec or RawExec system instance
     '''
 
     p = read_program(f)
@@ -88,9 +111,25 @@ def load_program(f,cpu=None):
             from amoco.system.leon2 import ELF
             logger.info("leon2 program created")
             return ELF(p)
+        elif p.Ehdr.e_machine==elf.EM_AVR:
+            from amoco.system.avr import ELF
+            logger.info("AVR program created")
+            return ELF(p)
+        elif p.Ehdr.e_machine==elf.EM_RISCV:
+            from amoco.system.riscv import ELF
+            logger.info("RISC-V program created")
+            return ELF(p)
+        elif p.Ehdr.e_machine==elf.EM_BPF:
+            from amoco.system.ebpf import ELF
+            logger.info("EBPF program created")
+            return ELF(p)
+        elif p.Ehdr.e_machine==elf.EM_SH:
+            from amoco.system.linux_j2core import ELF
+            logger.info("J2 core (SH-2A) program created")
+            return ELF(p)
         else:
             logger.error(u'machine type not supported:\n%s'%p.Ehdr)
-            raise ValueError
+            return None
 
     elif isinstance(p,pe.PE):
 
@@ -104,9 +143,9 @@ def load_program(f,cpu=None):
             return PE(p)
         else:
             logger.error('machine type not supported')
-            raise ValueError
+            return None
 
     else:
-        assert isinstance(p,DataIO)
+        assert isinstance(p,(utils.HEX,DataIO))
         from amoco.system.raw import RawExec
         return RawExec(p,cpu)

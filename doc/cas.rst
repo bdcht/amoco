@@ -3,6 +3,8 @@
 The computer algebra system package
 ===================================
 
+.. contents::
+
 The *computer algebra system* of Amoco is built with the following elements implemented
 in module :mod:`cas/expressions`:
 
@@ -45,8 +47,9 @@ All manipulation of an expression object usually result in a new expression obje
 .. automodule:: cas.expressions
    :members:
 
-.. automodule:: cas.mapper
-   :members:
-
 .. automodule:: cas.smt
    :members:
+
+.. automodule:: cas.mapper
+   :members: mapper, merge
+   :undoc-members:

@@ -42,71 +42,89 @@ Attributes:
 
 """
 
-try:
-    from configparser import SafeConfigParser
-except ImportError:
-    from ConfigParser import SafeConfigParser
+from os.path import expanduser
+from os import access, F_OK, R_OK
+from io import StringIO
 from collections import defaultdict
 
-conf = SafeConfigParser()
+try:
+    from configparser import ConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser
+
+#-----------------------
+
+_locations = ['~/.amoco/config', '~/.amocorc']
+
+_default = u"""
+[block]
+header   = True
+footer   = False
+bytecode = True
+padding  = 4
+
+[cas]
+complexity = 10000
+unicode    = False
+noaliasing = True
+
+[db]
+url = sqlite://
+log = False
+
+[log]
+level    = WARNING
+tempfile = True
+
+[ui]
+formatter = Null
+graphics  = term
+
+[x86]
+format = Intel
+"""
+
+class confdict(defaultdict):
+
+    def __setitem__(self,key,value):
+        super(confdict,self).__setitem__(key,value)
+
+class Conf(object):
+    def __init__(self,default):
+        self.cp = ConfigParser()
+        self.cp.readfp(StringIO(default))
+        for f in _locations:
+            f = expanduser(f)
+            if access(f,F_OK|R_OK):
+                self.cp.read([f])
+                break
+        self.setup()
+
+    def setup(self):
+        self.sections = defaultdict(lambda:None)
+        for s in self.cp.sections():
+            self.sections[s] = defaultdict(lambda:None)
+            for (k,v) in self.cp.items(s):
+                self.sections[s][k] = self.converter(v)
+
+    def converter(self,value):
+        if value in ('True','true'): return True
+        if value in ('False','false'): return False
+        try:
+            return int(value,0)
+        except ValueError:
+            pass
+        try:
+            return float(value)
+        except ValueError:
+            pass
+        return value
 
 # define default config:
 #-----------------------
 
-# basic block section
-conf.add_section('block')
-conf.set('block', 'header'   , 'True')
-conf.set('block', 'footer'   , 'False')
-conf.set('block', 'bytecode' , 'True')
-conf.set('block', 'padding'  , '4'   )
+conf = Conf(_default)
 
-conf.add_section('cas')
-conf.set('cas', 'complexity' , '100'  )
-conf.set('cas', 'unicode'    , 'False')
+def conf_proxy(module_name):
+    return conf.sections[module_name.split('.')[-1]]
 
-# db section
-conf.add_section('db')
-conf.set('db', 'url', 'sqlite:///')
-conf.set('db', 'log', 'False')
-
-# log section
-conf.add_section('log')
-conf.set('log', 'level', 'WARNING')
-conf.set('log', 'tempfile', 'True')
-
-# ui section
-conf.add_section('ui')
-conf.set('ui', 'formatter', 'Null')
-conf.set('ui', 'graphics', 'term')
-
-# overwrite with config file:
-import os
-conf.read([os.path.expanduser(u'~/.amocorc')])
-
-#-----------------------
-
-
-def get_module_conf(module_name):
-    """utility function that will return the dict of options related to a section name.
-
-    Args:
-        module_name (str): a section of the conf object, usually the name of the module (__name__).
-
-    Returns:
-        dict: The options associated to the section module_name, with values casted to their
-        natural python types (lowercase strings, booleans, or integers).
-
-    """
-    D = defaultdict(lambda:None)
-    if conf.has_section(module_name):
-        for k,v in conf.items(module_name):
-            if v.lower() == u'true':
-                D[k]=True
-            elif v.lower() == u'false':
-                D[k]=False
-            else:
-                try:
-                    v = int(v,0)
-                except ValueError: pass
-                D[k] = v
-    return D

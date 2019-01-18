@@ -10,15 +10,16 @@ system/core.py
 
 This module defines all Memory related classes as well as the task/process
 execution core class inherited by all system specific execution classes of
-the `amoco.system_` package.
+the :mod:`amoco.system` package.
 
-The main class of amoco's Memory model is ``MemoryMap``. It provides a way
-to represent both concrete and abstract symbolic values located in the
-virtual memory space of a process. In order to allow addresses to be
-symbolic as well, the MemoryMap is organised as a collection of `zones`.
-A MemoryZone holds values located at addresses that are integer offsets
+The main class of amoco's Memory model is :class:`MemoryMap`.
+It provides a way to represent both concrete and abstract symbolic values
+located in the virtual memory space of a process.
+In order to allow addresses to be symbolic as well, the MemoryMap is
+organised as a collection of :class:`MemoryZone`.
+A zone holds values located at addresses that are integer offsets
 related to a symbolic expression. A default zone with related address set
-to ``None`` holds values at concrete addresses in every MemoryMap.
+to ``None`` holds values at concrete (virtual) addresses in every MemoryMap.
 """
 
 
@@ -27,19 +28,21 @@ logger = Log(__name__)
 
 
 from bisect import bisect_left
-from amoco.cas.expressions import exp,top
+from amoco.cas.expressions import exp,top,composer
 
 #------------------------------------------------------------------------------
 class datadiv(object):
     """
-    A datadiv represents any data within Memory, including symbolic expressions.
+    A datadiv represents any data within memory, including symbolic expressions.
 
     Args:
-        data : either a byte string or an amoco expression.
+        data   : either a string of bytes or an amoco expression.
+        endian : either [-1,1], used when data is any symbolic expression.
+                 1 is for little-endian, -1 for big-endian.
 
     Attributes:
         val : the reference to the data object.
-        _is_raw : a flag indicating that the data object is a raw byte string.
+        _is_raw : a flag indicating that the data object is a string of bytes.
 
     Methods:
         cut(l): cut out the first l bytes of the current data, keeping only
@@ -62,7 +65,6 @@ class datadiv(object):
 
     @property
     def _is_raw(self):
-        #return isinstance(self.val,str)
         return not hasattr(self.val,'_is_def')
 
     def __len__(self):
@@ -120,7 +122,7 @@ class datadiv(object):
 
 #------------------------------------------------------------------------------
 def mergeparts(P):
-    """This function will detect every contigous raw datadiv objects in the
+    """This function will detect every contiguous raw datadiv objects in the
     input list P, and will return a new list where these objects have been
     merged into a single raw datadiv object.
 
@@ -144,28 +146,28 @@ def mergeparts(P):
 
 #------------------------------------------------------------------------------
 class mo(object):
-    """A mo object essentially associates a datadiv with a Memory address, and
+    """A mo object essentially associates a datadiv with a memory offset, and
     provides methods to detect if an address is located within this object,
-    to read or write bytes at a given address. Such Memory address is a integer
-    relative to the Memory zone ``rel`` expression.
+    to read or write bytes at a given address. The offset is relative to the
+    start of the :class:`MemoryZone` in which the mo object is stored.
 
     Attributes:
-        vaddr : a python integer that represents the address within the Memory
+        vaddr : a python integer that represents the offset within the memory
             zone that contains this memory object (mo).
-        data : the datadiv object located at this address.
+        data : the datadiv object located at this offset.
 
     Methods:
-        trim(vaddr): if this mo contains data at given address, cut out this
-            data and points current object to this address. Note that a trim is
+        trim(vaddr): if this mo contains data at given offset, cut out this
+            data and points current object to this offset. Note that a trim is
             generally the result of data being overwritten by another mo.
 
-        read(vaddr,l): returns the list of datadiv objects at given address so
+        read(vaddr,l): returns the list of datadiv objects at given offset so
             that the total length is at most l, and the number of bytes missing
             if the total length is less than l.
 
         write(vaddr,data): updates current mo to reflect the writing of data at
-            given address and returns the list of possibly new mo objects to be
-            inserted in the Memory zone.
+            given offset and returns the list of possibly new mo objects to be
+            inserted in the zone.
     """
     __slots__ = ['vaddr','data']
 
@@ -216,7 +218,7 @@ class mo(object):
 class MemoryZone(object):
     """A MemoryZone contains mo objects at addresses that are integer offsets
     related to a symbolic expression. A default zone with related address set
-    to ``None`` holds values at concrete addresses in every MemoryMap.
+    to None holds values at concrete addresses in every :class:`MemoryMap`.
 
     Args:
         rel (exp): the relative symbolic expression, defaults to None.
@@ -224,8 +226,8 @@ class MemoryZone(object):
     Attributes:
         rel : the relative symbolic expression, or None.
         _map : the ordered list of mo objects of this zone.
-        __dead : this internal flag indicates that unmapped `void` data is
-            set to ``top`` if set.
+        __dead : this internal flag indicates that unmapped *void* data is
+            set to :class:`cas.expressions.top` if set.
 
     Methods:
         range(): returns the lowest and highest addresses currently used by
@@ -236,15 +238,15 @@ class MemoryZone(object):
             return None.
 
         read(vaddr,l): reads l bytes starting at vaddr. returns a list of
-            datadiv values, unmapped areas are returned as 'void' expressions
-            (top if zone is marked as 'dead' or bottom otherwise.)
+            datadiv values, unmapped areas are returned as *void* expressions
+            (top if zone is marked as *dead* or bottom otherwise.)
 
         write(vaddr,data,res=False,dead=False): writes data expression or
             bytes at given (concrete) address. Calls a restruct operation
             if res is True, and optionally sets the zone dead flag.
 
-        addtomap(z): add (possibly overlapping) mo object z to the _map,
-            eventually adjusting other mo objects.
+        addtomap(z): add (possibly overlapping) :class:`mo` object z to the
+            _map, eventually adjusting other objects.
 
         restruct(): optimize the zone to merge contiguous raw bytes into single
             mo objects.
@@ -263,7 +265,10 @@ class MemoryZone(object):
         self.__dead = False
 
     def range(self):
-        return (self._map[0].vaddr,self._map[-1].end)
+        try:
+            return (self._map[0].vaddr,self._map[-1].end)
+        except IndexError:
+            return (0,0)
 
     def __str__(self):
         l=['<MemoryZone rel=%s :'%str(self.rel)]
@@ -274,7 +279,6 @@ class MemoryZone(object):
     def __update_cache(self):
         self.__cache = [z.vaddr for z in self._map]
 
-    # locate the index that contains the given address in the mmap:
     def locate(self,vaddr):
         p = self.__cache
         if vaddr in p: return p.index(vaddr)
@@ -318,7 +322,6 @@ class MemoryZone(object):
         assert ll==0
         return res
 
-    # write data at address vaddr in map
     def write(self,vaddr,data,endian=1,res=False,dead=False):
         if dead:
             self._map = []
@@ -327,7 +330,6 @@ class MemoryZone(object):
         self.addtomap(mo(vaddr,data,endian))
         if res is True: self.restruct()
 
-    # add (possibly overlapping) object z (mo) to the map
     def addtomap(self,z):
         i = self.locate(z.vaddr)
         j = self.locate(z.end)
@@ -401,12 +403,12 @@ class MemoryZone(object):
 
 #------------------------------------------------------------------------------
 class MemoryMap(object):
-    """It provides a way to represent concrete and abstract symbolic values
+    """Provides a way to represent concrete and abstract symbolic values
     located in the virtual memory space of a process.
-    The MemoryMap is organised as a collection of `zones`.
+    A MemoryMap is organised as a collection of :class:`MemoryZone`.
 
     Attributes:
-        _zones : dict of zones, keys are the related address expressions.
+        _zones : dictionary of zones, keys are the related address expressions.
 
     Methods:
         newzone(label): creates a new memory zone with the given label related
@@ -431,6 +433,9 @@ class MemoryMap(object):
 
         grep(pattern): find all occurences of the given regular expression in
             the raw bytes objects of all memory zones.
+
+        merge(other): update this MemoryMap with a new MemoryMap, merging
+            overlapping zones with values from the new map. 
     """
     __slots__ = ['_zones','perms']
 
@@ -484,6 +489,15 @@ class MemoryMap(object):
             self.newzone(r)
         self._zones[r].write(o,expr,endian,dead=deadzone)
 
+    def __getitem__(self,i):
+        sta,sto = self._zones[None].range()
+        address,sto,_ = i.indices(sto)
+        res = self.read(address,sto-address)
+        try:
+            return ''.join(res)
+        except:
+            return res
+
     def restruct(self):
         for z in iter(self._zones.values()): z.restruct()
 
@@ -495,8 +509,40 @@ class MemoryMap(object):
             res.extend(zres)
         return res
 
+    def merge(self,other):
+        for r,z in other._zones.items():
+            if r in self._zones:
+                for o in z._map:
+                    self._zones[r].addtomap(o)
+            else:
+                self._zones[r] = z
+
 #------------------------------------------------------------------------------
+
 class CoreExec(object):
+    """The CoreExec class implements the base class for a memory mapped binary
+    executable program, providing the generic instruction or data fetchers and
+    the mandatory API used by :mod:`amoco.main` analysis classes.
+    Most of the :mod:`amoco.system` modules use this base class and redefine
+    the :meth:`initenv`, :meth`load_binary` and helpers methods according to
+    a dedicated system and architecture (Linux/x86, Win32/x86, etc).
+
+    Attributes:
+        bin: the program executable format object. Currently supported formats
+             are provided in :mod:`system.elf` (Elf32/64), :mod:`system.pe` (PE)
+             and :mod:`system.utils` (HEX/SREC). 
+
+        cpu: the architecture cpu module, which implements the disassembler and
+             provides all registers.
+
+        mmap: the :class:`MemoryMap` instance that represents the dedicated
+             memory of the executable program.
+
+        symbols: a dictionary of value:symbol items used by helpers methods to
+             change dedicated value by their matching symbol (as provided by
+             the executable format or interactively by the user).
+
+    """
     __slots__ = ['bin','cpu','mmap','symbols']
 
     def __init__(self,p,cpu=None):
@@ -509,15 +555,20 @@ class CoreExec(object):
         self.symbols = {}
 
     def initenv(self):
-        return None
+        from amoco.cas.mapper import mapper
+        m = mapper()
+        m.setmemory(self.mmap)
+        return m
 
     def load_binary(self):
-        pass
+        logger.warning('CoreExec.load_binary should be implemented by parent class')
 
     def read_data(self,vaddr,size):
+        'fetch size data bytes at virtual address vaddr'
         return self.mmap.read(vaddr,size)
 
     def read_instruction(self,vaddr,**kargs):
+        'fetch instruction at virtual address vaddr'
         if self.cpu is None:
             logger.error('no cpu imported')
             raise ValueError
@@ -536,11 +587,25 @@ class CoreExec(object):
             logger.warning("disassemble failed at vaddr %s"%vaddr)
             return None
         else:
-            i.address = vaddr
+            if i.address is None: i.address = vaddr
+            xsz = i.misc['xsz'] or 0
+            if xsz>0:
+                xdata = self.mmap.read(vaddr+i.length,xsz)
+                i.xdata(i,xdata)
             return i
 
-    # lookup in bin if v is associated with a function or variable name:
+    def step_instruction(self,vaddr,**kargs):
+        """execute instruction at virtual address, updating the
+         mmap memory state and returning the instruction's mapper"""
+        i = self.read_instruction(vaddr,**kargs)
+        m = mapper().use(**kargs)
+        m.setmemory(self.mmap)
+        i(m)
+        self.mmap.merge(m.memory())
+        return m
+
     def check_sym(self,v):
+        'lookup in bin if v is associated with a function or variable name'
         if v._is_cst:
             x = self.symbols.get(v.value,None)
             if x is not None:
@@ -551,17 +616,16 @@ class CoreExec(object):
                 return x
         return None
 
-    # optional codehelper method allows platform-specific analysis of
-    # either a (raw) list of instruction, a block/func object (see amoco.code)
-    # the default helper is a no-op:
     def codehelper(self,**kargs):
+        """optional codehelper method allows platform-specific analysis of
+        either a list of instruction, a block/func object
+        (see :mod:`amoco.code`). The default helper is a no-op"""
         if 'seq' in kargs: return self.seqhelper(kargs['seq'])
         if 'block' in kargs: return self.blockhelper(kargs['block'])
         if 'func' in kargs: return self.funchelper(kargs['func'])
 
     def seqhelper(self,seq):
         return seq
-    # default blockhelper calls seqhelper, updates block.misc and
     def blockhelper(self,block):
         for i in self.seqhelper(block.instr):
             block.misc.update(i.misc)
@@ -598,6 +662,9 @@ def stub_default(f):
 from io import BytesIO
 
 class DataIO(object):
+    """This class wraps a binary file or a string of bytes and provides both
+    the file and bytes API.
+    """
 
     def __init__(self, f):
         if isinstance(f,bytes):
@@ -606,8 +673,11 @@ class DataIO(object):
             self.f=f
 
     def __getitem__(self,i):
+        stay = self.f.tell()
         self.f.seek(i.start,0)
-        return self.f.read(i.stop-i.start)
+        data = self.f.read(i.stop-i.start)
+        self.f.seek(stay,0)
+        return data
 
     def read(self,size=-1):
         return self.f.read(size)

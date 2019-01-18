@@ -4,6 +4,17 @@
 # Copyright (C) 2015 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
+"""
+cas/smt.py
+==========
+
+The smt module defines the amoco interface to the SMT solver.
+Currently, only z3 is supported. This module allows to translate
+any amoco expression into its z3 equivalent formula, as well as
+getting the z3 solver results back as :class:`cas.mapper.mapper`
+instances.
+"""
+
 from amoco.logger import Log
 logger = Log(__name__)
 

@@ -24,19 +24,23 @@ def Sign(x):
 def AddWithCarry(x,y,c=None):
     if c is None: c = bit0
     c = c.zeroextend(y.size)
+    x.sf = y.sf = True
     result = x+y+c
     sx,sy,sz = Sign(x), Sign(y), Sign(result)
     carry = (sx & sy) | ( ~sz & (sx | sy))
     overflow  = (sz^sx) & (sz^sy)
+    result.sf = True
     return (result,carry,overflow)
 
 def SubWithBorrow(x,y,c=None):
     if c is None: c = bit0
     c = c.zeroextend(y.size)
+    x.sf = y.sf = True
     result = x-y-c
     sx,sy,sz = Sign(x), Sign(y), Sign(result)
     carry = (~sx & sy) | ( sz & (~sx | sy))
     overflow  = (sx^sy) & (sz^sx)
+    result.sf = True
     return (result,carry,overflow)
 
 def ROR(x,n):

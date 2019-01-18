@@ -10,14 +10,38 @@ The main module of amoco implements various strategies to perform CFG recovery.
 .. inheritance-diagram:: main
    :parts: 1
 
+The *linear sweep* method (:class:`main.lsweep`) works basically like *objdump*.
+It produces instructions by disassembling bytes one after the other, ignoring the
+effective control flow. For standard x86/x64 binaries, the result is not so bad
+because code and data are rarely interlaced, but for many other architectures
+the result is incorrect.
+Still, it provides - at almost no cost - an overapproximation of the set of all
+*basic blocks* for architectures with strict fixed-length instruction alignment.
+
+The *fast forward* method (:class:`main.fforward`) strictly follows the instruction
+flow. It relies on *linear sweep* to produce a block of instructions but proceeds to
+the next block by disassembling instructions located at the program's
+counter address *iff* this address is a :class:`cas.expressions.cst`.
+Even if for most functions's *inner* blocks this address is indeed a constant, this
+method generally discovers only very small parts of the control flow due to its
+inhability to deal with interprocedural flow.
+This class however provides the generic method :meth:`itercfg` to its parent classes
+and introduces the use of :class:`main._target` objects as locations of next blocks.
+
+The *link forward* method (:class:`main.lforward`) extends *fast forward* in order
+to assume that function calls always return to the *link address* of the call.
 """
 
 # This code is part of Amoco
 # Copyright (C) 2006-2014 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
+from amoco.config import conf
+
 from amoco.logger import Log, set_debug,set_quiet,set_log_all
 logger = Log(__name__)
+
+from amoco.signals import Signal
 
 from amoco import cfg
 from amoco import code
@@ -25,27 +49,39 @@ from amoco import system
 
 from amoco.arch.core import INSTRUCTION_TYPES
 
+SIG_TRGT = Signal("#TRGT")
+SIG_NODE = Signal("#NODE")
+SIG_EDGE = Signal("#EDGE")
+SIG_BLCK = Signal("#BLCK")
+SIG_FUNC = Signal("#FUNC")
+
+
 # -----------------------------------------------------------------------------
 class lsweep(object):
-    """linear sweep based analysis: fast & dumb way of disassembling prog,
-    but provides :meth:`iterblocks` for all parent classes.
+    """Linear sweep based analysis: a fast but somehow dumb way of
+    disassembling a program. Other strategies usually inherit from this class
+    which provides generic methods :meth:`sequence` and :meth:`iterblocks`
+    as instruction and basic block iterators.
 
     Arguments:
-        prog: the :class:`system.core.CoreExec` inherited program's instance
-              to analyze.
+        prog: the program object to analyze. This object needs to inherit from
+              :class:`system.core.CoreExec` or to provide access to a cpu module
+              and methods :meth:`initenv`, :meth:`read_instruction`,
+              and :meth:`codehelper`.
 
     Attributes:
-        prog: the :class:`system.core.CoreExec` inherited program's instance
-              to analyze.
+        prog: (see arguments.)
         G (graph): the placeholder for the recovered :class:`cfg.graph`.
     """
     __slots__ = ['prog','G']
     def __init__(self,prog):
         self.prog = prog
         self.G = cfg.graph()
+        SIG_NODE.sender(self.G.add_vertex)
+        SIG_EDGE.sender(self.G.add_edge)
 
     def sequence(self,loc=None):
-        """iterator over linearly sweeped instructions.
+        """Iterator over linearly sweeped instructions.
 
         Arguments:
             loc (Optional[cst]): the address to start disassembling
@@ -69,7 +105,7 @@ class lsweep(object):
             yield i
 
     def iterblocks(self,loc=None):
-        """iterator over basic blocks. The :attr:`instruction.type`
+        """Iterator over basic blocks. The :attr:`instruction.type`
         attribute is used to detect the end of a block (type_control_flow).
         The returned :class:`block` object is enhanced with plateform-specific
         informations (see :attr:`block.misc`).
@@ -104,10 +140,12 @@ class lsweep(object):
                 l = []
                 # return block with additional platform-specific misc infos
                 b=self.prog.codehelper(block=b)
+                SIG_BLCK.emit(args=b)
                 yield b
         if len(l)>0:
             b = code.block(l)
             b=self.prog.codehelper(block=b)
+            SIG_BLCK.emit(args=b)
             yield b
 
     def getblock(self,val):
@@ -227,7 +265,7 @@ class lsweep(object):
 # -----------------------------------------------------------------------------
 
 class _target(object):
-    ''' Candidate for extending a :class:`cfg.graph` under construction.
+    '''Candidate for extending a :class:`cfg.graph` under construction.
 
     A :class:`_target` is an internal object used during cfg recovery to point
     to addresses that are candidates for extending the cfg with a new link or
@@ -254,8 +292,10 @@ class _target(object):
         """
         x=self.cst
         if x._is_ext:
+            SIG_TRGT.emit(args=self)
             return [self]
         if x._is_cst:
+            SIG_TRGT.emit(args=self)
             return [self]
         if x._is_vec:
             l = []
@@ -386,13 +426,13 @@ class fforward(lsweep):
         return vtx
 
     def check_func(self,vtx):
-        """check if vtx node creates a function. In the fforward method
-        this method does nothing.
+        """check if vtx node creates a function. (In the fforward method
+        this method does nothing.)
         """
         pass
 
     def check_ext_target(self,t):
-        """check if the target is the address of an external function.
+        """Check if the :class:`target` is the address of an external function.
         If True, the :class:`code.xfunc` node is linked to the parent
         and the spool is updated with this node.
 
@@ -415,7 +455,7 @@ class fforward(lsweep):
         class.
 
         Arguments:
-            loc (Optional[cst]): the address to start the cfg recovery
+            loc (Optional[cst]): the address expression of the cfg root node
                 (defaults to the program's entrypoint).
             debug (bool): A python debugger :func:`set_trace()` call is
                 emitted at every node added to the cfg.
@@ -444,7 +484,7 @@ class fforward(lsweep):
             :class:`cfg.node`: every nodes added to the graph.
         """
         G = self.G
-        # spool is the list of (target,parent) addresses to be analysed
+        # spool is the list of targets (target_ instances) to be analysed
         self.init_spool(loc)
         # order is the index to pop elements from spool
         order = -1 if self.policy['depth-first'] else 0
@@ -486,7 +526,7 @@ class fforward(lsweep):
 # -----------------------------------------------------------------------------
 
 class lforward(fforward):
-    """link forward based analysis:
+    """Link forward based analysis:
     follows PC expression evaluated with parent block mapping.
     Exploration goes forward until expressions are not cst.
     """
@@ -519,8 +559,9 @@ class lforward(fforward):
 
 
 # -----------------------------------------------------------------------------
+
 class fbackward(lforward):
-    """fast backward based analysis:
+    """Fast backward based analysis:
     a generalisation of *link forward* where pc is evaluated backwardly by taking
     the *first-parent-node* path until no parent exists (entry of a function).
     *fbackward* is the first class to instanciate :class:`code.func` objects.
@@ -591,7 +632,7 @@ class fbackward(lforward):
 
 # -----------------------------------------------------------------------------
 class lbackward(fforward):
-    """link backward based analysis:
+    """Link backward based analysis:
     a generalisation of *fast forward* where pc is evaluated by considering
     **all** paths that link to the current node.
 
@@ -600,10 +641,10 @@ class lbackward(fforward):
       in amoco.
     """
     policy = {'depth-first': False, 'branch-lazy': False, 'frame-aliasing':False,
-              'complexity': 30}
+              'complexity': 100}
 
     def check_func(self,node):
-        """check if vtx node creates a function. In the fforward method
+        """Check if vtx node creates a function. In the fforward method
         this method does nothing.
         """
         if node is None: return
@@ -614,6 +655,9 @@ class lbackward(fforward):
         f = code.func(node.c)
         alf = code.mapper.assume_no_aliasing
         code.mapper.assume_no_aliasing = not self.policy['frame-aliasing']
+        cxl = code.op.threshold()
+        code.op.limit(self.policy['complexity'])
+        SIG_FUNC.emit(args=f)
         m = f.makemap()
         # get pc @ node:
         pc = self.prog.cpu.PC()
@@ -648,6 +692,7 @@ class lbackward(fforward):
                 logger.verbose('edge %s added'%str(e))
                 T.extend(_target(cnpc,e.v[1]).expand())
         code.mapper.assume_no_aliasing = alf
+        code.op.limit(cxl)
         self.spool.extend(T)
 
     def get_targets(self,node,parent):
@@ -666,7 +711,7 @@ class lbackward(fforward):
         """
         pc = self.prog.cpu.PC()
         alf = code.mapper.assume_no_aliasing
-        cxl = code.op.threshold
+        cxl = code.op.threshold()
         code.op.limit(self.policy['complexity'])
         code.mapper.assume_no_aliasing = not self.policy['frame-aliasing']
         # make pc value explicit in every block:

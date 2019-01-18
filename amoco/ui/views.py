@@ -4,7 +4,9 @@ try:
 except ImportError:
     pass
 
-from amoco.config import conf
+from amoco.config import conf_proxy
+conf = conf_proxy('block')
+
 from amoco.logger import Log
 logger = Log(__name__)
 
@@ -65,12 +67,12 @@ class blockView(View):
                     (Token.Literal,u"'%s'"%(u''.join([u"%02x"%x for x in bytes(i.bytes)]))),
                     (Token.Column,u'') ]
             T.addrow(ins+ins2)
-        if conf.getboolean('block','bytecode'):
-            pad = conf.getint('block','padding') or 0
+        if conf['bytecode']:
+            pad = conf['padding']
             T.colsize[1] += pad
-        if conf.getboolean('block','header'):
+        if conf['header']:
             T.header = (u'# --- block %s ---' % self.of.name).ljust(T.width,'-')
-        if conf.getboolean('block','footer'):
+        if conf['footer']:
             T.footer = u'-'*T.width
         return T
 

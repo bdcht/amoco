@@ -23,11 +23,12 @@ try:
 except NameError:
     IntType = (int,)
 
-def Elf(filename):
+def Elf(f):
     try:
-        return Elf32(filename)
+        return Elf32(f)
     except ElfError:
-        return Elf64(filename)
+        f.seek(0)
+    return Elf64(f)
 
 # our exception handler:
 class ElfError(Exception):
@@ -295,8 +296,12 @@ with Consts('e_machine'):
     EM_ARC_A5=93
     EM_XTENSA=94
     EM_NUM=95
+    EM_AMDGPU=224
+    EM_RISCV=243
+    EM_BPF=247
     # unofficial values should pick large index:
     EM_ALPHA=0x9026
+    EM_WEBASSEMBLY=0x4157
 
 # legal values for e_version (version):
 with Consts('e_version'):
@@ -727,14 +732,14 @@ class Elf32(object):
     def filename(self):
         return self.__file.name
 
-    def __init__(self,filename):
-        try:
-            f = open(filename,'rb')
-        except (TypeError,IOError):
-            from amoco.system.core import DataIO
-            f = DataIO(bytes(filename))
+    def __init__(self,f):
         self.__file = f
-        data = self.__file.read(52)
+        try:
+            data = self.__file.read(52)
+        except AttributeError:
+            logger.error(u'input ignored (not a file or DataIO ?)')
+            data = ''
+
         if len(data)<52: data = data.ljust(52,b'\x00')
         self.Ehdr   = Elf32_Ehdr(data)
 
@@ -747,7 +752,6 @@ class Elf32(object):
             n,l = self.Ehdr.e_phnum,self.Ehdr.e_phentsize
             data = self.__file.read(n*l)
             for pht in range(n):
-                logger.progress(pht,n,u'parsing Phdrs ')
                 self.Phdr.append(Elf32_Phdr(data[pht*l:]))
                 if self.Phdr[-1].p_type == PT_LOAD:
                     if not self.basemap: self.basemap = self.Phdr[-1].p_vaddr
@@ -765,7 +769,6 @@ class Elf32(object):
                 n,l = self.Ehdr.e_shnum,self.Ehdr.e_shentsize
                 data = self.__file.read(n*l)
                 for sht in range(n):
-                    logger.progress(sht,n,'parsing Shdrs ')
                     S = Elf32_Shdr(data[sht*l:])
                     if S.sh_type in ELF_CONSTS['sh_type'].keys():
                         self.Shdr.append(S)
@@ -1286,14 +1289,14 @@ class Elf64(object):
     def filename(self):
         return self.__file.name
 
-    def __init__(self,filename):
-        try:
-            f = open(filename,'rb')
-        except (TypeError,IOError):
-            from amoco.system.core import DataIO
-            f = DataIO(bytes(filename))
+    def __init__(self,f):
         self.__file = f
-        data = self.__file.read(64)
+        try:
+            data = self.__file.read(64)
+        except AttributeError:
+            logger.error(u'input ignored (not a file or DataIO ?)')
+            data = ''
+
         if len(data)<64: data = data.ljust(64,b'\x00')
         self.Ehdr   = Elf64_Ehdr(data)
 
@@ -1306,7 +1309,6 @@ class Elf64(object):
             n,l = self.Ehdr.e_phnum,self.Ehdr.e_phentsize
             data = self.__file.read(n*l)
             for pht in range(n):
-                logger.progress(pht,n,u'parsing Phdrs ')
                 self.Phdr.append(Elf64_Phdr(data[pht*l:]))
                 if self.Phdr[-1].p_type == PT_LOAD:
                     if not self.basemap: self.basemap = self.Phdr[-1].p_vaddr
@@ -1324,7 +1326,6 @@ class Elf64(object):
                 n,l = self.Ehdr.e_shnum,self.Ehdr.e_shentsize
                 data = self.__file.read(n*l)
                 for sht in range(n):
-                    logger.progress(sht,n,u'parsing Shdrs ')
                     S = Elf64_Shdr(data[sht*l:])
                     if S.sh_type in ELF_CONSTS['sh_type'].keys():
                         self.Shdr.append(S)

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 from amoco.arch.x86.asm import *
 # expose "microarchitecture" (instructions semantics)
 uarch = dict(filter(lambda kv:kv[0].startswith('i_'),locals().items()))
@@ -19,11 +18,11 @@ def PC():
     return eip
 
 def configure(**kargs):
-    from amoco.config import get_module_conf
-    conf = get_module_conf('x86')
+    from amoco.config import conf_proxy
+    conf = conf_proxy('x86') or dict()
     conf.update(kargs)
     # asm format:
-    if conf['format'] in ('AT&T','at&t','ATT','att'):
+    if conf.get('format',None) in ('AT&T','at&t','ATT','att'):
         instruction_x86.set_formatter(IA32_ATT)
     else:
         instruction_x86.set_formatter(IA32_Intel)

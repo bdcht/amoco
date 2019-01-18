@@ -22,13 +22,11 @@ all provide a common API with:
 
 """
 
-import pdb
-import heapq
+from heapq import heappush,heappop
 from collections import defaultdict
 from functools import reduce
 from amoco.cas.mapper import *
 
-from amoco.config import conf
 from amoco.logger import Log
 logger = Log(__name__)
 
@@ -187,10 +185,24 @@ class block(object):
     def __hash__(self):
         return hash(self.address)
 
+    def __getstate__(self):
+        if self.misc['func']:
+            misc  = defaultdict(_code_misc_default)
+            misc.update(self.misc)
+            misc['func'] = self.misc['func'].name
+        else:
+            misc = self.misc
+        return (self.instr,self._name,self._helper,misc)
+
+    def __setstate__(self,state):
+        self._map = None
+        self.instr,self._name,self._helper,self.misc = state
+        self.view = blockView(self)
+
     def sig(self):
         """returns the :meth:`cfg.signature` of the block.
         """
-        misc = defaultdict(lambda :None)
+        misc = defaultdict(_code_misc_default)
         misc.update(self.misc)
         if len(misc)==0:
             for i in self.instr: misc.update(i.misc)
@@ -262,7 +274,7 @@ class func(block):
         spool = []
         heads = {}
         for t in gr.layers[0]:
-            heapq.heappush(spool,(0,t))
+            heappush(spool,(0,t))
             tmap = t.data._map
             if withmap is not None:
                 tmap <<= withmap
@@ -273,7 +285,7 @@ class func(block):
             count += 1
             logger.progress(count,pfx=u'in %s makemap: '%self.name)
             # take lowest ranked node from spool:
-            l,n = heapq.heappop(spool)
+            l,n = heappop(spool)
             m = heads.pop(n)
             # keep head for exit or merging points:
             if len(n.e_out())==0 or len(n.e_in())>1: heads[n] = m
@@ -286,6 +298,7 @@ class func(block):
                     econd = [m(c) for c in e.data]
                 # increment loop index for widening:
                 if e in gr.alt_e:
+                    logger.verbose(u'loop at %s'%tn.name)
                     n.data.misc[tag.LOOP_END]+=1
                     tn.data.misc[tag.LOOP_START]+=1
                 # compute new mapper state:
@@ -299,9 +312,9 @@ class func(block):
                 # and update heads and spool...
                 if tn in heads:
                     # check for widening:
-                    if widening and tn.data.misc[tag.LOOP_START]==1:
+                    if widening and tn.data.misc[tag.LOOP_START]>=1:
                         logger.verbose(u'widening at %s'%tn.name)
-                        mm = merge(heads[tn],mtn,widening)
+                        mm = merge(heads[tn],mtn,widening=widening)
                     else:
                         mm = merge(heads[tn],mtn)
                     fixpoint = (mm==heads[tn])
@@ -314,7 +327,7 @@ class func(block):
                 if not fixpoint:
                     r = gr.grx[tn].rank
                     if not (r,tn) in spool:
-                        heapq.heappush(spool,(r,tn))
+                        heappush(spool,(r,tn))
                 else:
                     logger.verbose(u'fixpoint at %s'%tn.name)
         out = [heads[x] for x in self.cfg.leaves()]
@@ -323,6 +336,14 @@ class func(block):
 
     def __str__(self):
         return u"%s{%d}"%(self.name,len(self.blocks))
+
+    def __getstate__(self):
+        return (self._map,self._name,self._helper,self.cfg,self.misc)
+
+    def __setstate__(self,state):
+        self._map,self._name,self._helper,self.cfg,self.misc = state
+        self.instr = []
+        self.view = funcView(self)
 
 #------------------------------------------------------------------------------
 # xfunc represents external functions. It is associated with an ext expression.
@@ -372,6 +393,14 @@ class xfunc(object):
     def sig(self):
         s = [tag.sig(k) for k in self.misc]
         return u'(x:%s)'%(u''.join(s))
+
+    def __getstate__(self):
+        return (self.map,self.name,self.address,self.misc)
+
+    def __setstate__(self,state):
+        self._map,self.name,self.address,self.misc = state
+        self.instr = []
+        self.view = xfuncView(self)
 
 #------------------------------------------------------------------------------
 

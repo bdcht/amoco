@@ -786,3 +786,23 @@ def A_default(obj,Rd,rotate,Rm):
   if env.pc in obj.operands: raise InstructionError(obj)
   obj.type = type_data_processing
 
+@ispec("32[ .cond(4) 1110 cpop1(3) 0 Cd(4) src(4) cpnum(4) cpop2(3) 1 cpreg(4) ]", mnemonic="MCR")
+@ispec("32[ 1111     1110 cpop1(3) 0 Cd(4) src(4) cpnum(4) cpop2(3) 1 cpreg(4) ]", mnemonic="MCR2")
+def A_cp(obj,cpop1,Cd,src,cpnum,cpop2,cpreg):
+  obj.p  = env.cpname[cpnum]
+  obj.s  = env.regs[src]
+  obj.d  = env.cpregs[obj.p][Cd]
+  obj.a  = env.cpregs[obj.p][cpreg]
+  obj.operands = [obj.p,cpop1,obj.s,obj.d,obj.a,cpop2]
+  obj.type = type_system
+
+@ispec("32[ .cond(4) 1110 cpop1(3) 1 Cs(4) dst(4) cpnum(4) cpop2(3) 1 cpreg(4) ]", mnemonic="MRC")
+@ispec("32[ 1111     1110 cpop1(3) 1 Cs(4) dst(4) cpnum(4) cpop2(3) 1 cpreg(4) ]", mnemonic="MRC2")
+def A_cp(obj,cpop1,Cs,dst,cpnum,cpop2,cpreg):
+  obj.p  = env.cpname[cpnum]
+  obj.d  = env.regs[dst]
+  obj.s  = env.cpregs[obj.p][Cs]
+  obj.a  = env.cpregs[obj.p][cpreg]
+  obj.operands = [obj.p,cpop1,obj.d,obj.s,obj.a,cpop2]
+  obj.type = type_system
+

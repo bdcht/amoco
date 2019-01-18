@@ -93,6 +93,7 @@ ARM_V7_full_formats = {
     'instr_PLx'         : format_plx,
     'instr_MSR'         : format_msr,
     'instr_SETEND'      : format_setend,
+    'A_cp'              : format_default,
 }
 
 ARM_V7_full = Formatter(ARM_V7_full_formats)

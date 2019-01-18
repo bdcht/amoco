@@ -1,24 +1,19 @@
-os:
-  - linux
 language: python
+python:
+  - '2.7'
+  - '3.5'
+  - 'pypy3.5'
 branches:
   only:
   - release
-addons:
-  apt:
-    packages:
-    - unzip
 before_install:
-  - wget -q -O /tmp/z3.zip https://github.com/Z3Prover/bin/raw/master/releases/z3-4.4.0-x64-ubuntu-14.04.zip
-  - mkdir /tmp/z3
-  - unzip -q -d /tmp/z3 -j /tmp/z3.zip
-  - export PYTHONPATH=$PYTHONPATH:/tmp/z3
+  - pip install -r requirements.txt
+  - pip install z3-solver
+  - pip install sqlite3
+  - pip install SQLAlchemy
+  - pip install PySide2
+  - pip install Click
 install:
   - python setup.py install
-  - pip install tox
 script:
-  - tox
-env:
-  - TOXENV=py27
-  - TOXENV=py27-full
-  - TOXENV=py3
+  - python setup.py pytest

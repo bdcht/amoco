@@ -3,11 +3,11 @@ Getting started
 ===============
 
 
-The "end-user" documentation is intended for reversers or pentesters
+This part of the documentation is intended for reversers or pentesters
 who want to get valuable informations about a binary blob without writting
 complicated python scripts.
 We give here a quick introduction to amoco without covering any of the
-details.
+implementation details.
 
 **Content**
 
@@ -18,12 +18,12 @@ details.
 Loading binary data
 ===================
 
-The recommended way to load binary data is to use the ``load_program``
-function, providing an input file or string.
-For example, from the directory ``amoco/tests``, do::
+The recommended way to load binary data is to use the :meth:`load_program <system.loader.load_program>`
+function, providing an input filename or a bytestring.
+For example, from directory ``amoco/tests``, do::
 
    In [1]: import amoco
-   In [2]: p = amoco.system.loader.load_program('samples/x86/flow.elf')
+   In [2]: p = amoco.system.loader.load_program(u'samples/x86/flow.elf')
    In [3]: print(p)
    <amoco.system.linux_x86.ELF object at 0x7f834b4187d0>
    In [4]: print(p.bin.Ehdr)
@@ -44,9 +44,9 @@ For example, from the directory ``amoco/tests``, do::
    	e_shnum     :30
    	e_shstrndx  :27
 
-If the file uses a supported executable format (currently ``PE`` of ``ELF``) and
-targets a supported plateform (see :ref:`system <system>` and :ref:`arch <arch>` packages),
-the returned object is an *abstraction* of the memory mapped program::
+If the binary data uses a supported executable format (currently :mod:`system.pe`, :mod:`system.elf` or an
+HEX/SREC format in :mod:`system.utils`) and targets a supported plateform (see :ref:`system <system>` and
+:ref:`arch <arch>` packages), the returned object is an *abstraction* of the memory mapped program::
 
    In [5]: print(p.mmap)
    <MemoryZone rel=None :
@@ -62,12 +62,12 @@ the returned object is an *abstraction* of the memory mapped program::
    <MemoryZone rel=esp :>
 
 Note that it is also possible to provide a *raw* bytes
-string as input and then manually load the suited architecture::
+string as input and then manually load the architecture::
 
    In [1]: import amoco
-   In [2]: shellcode = ("\xeb\x16\x5e\x31\xd2\x52\x56\x89\xe1\x89\xf3\x31\xc0\xb0\x0b\xcd"
-                        "\x80\x31\xdb\x31\xc0\x40\xcd\x80\xe8\xe5\xff\xff\xff\x2f\x62\x69"
-                        "\x6e\x2f\x73\x68")
+   In [2]: shellcode = (b"\xeb\x16\x5e\x31\xd2\x52\x56\x89\xe1\x89\xf3\x31\xc0\xb0\x0b\xcd"
+                        b"\x80\x31\xdb\x31\xc0\x40\xcd\x80\xe8\xe5\xff\xff\xff\x2f\x62\x69"
+                        b"\x6e\x2f\x73\x68")
    In [3]: p = amoco.system.loader.load_program(shellcode)
    amoco.system.loader: WARNING: unknown format
    amoco.system.raw: WARNING: a cpu module must be imported
@@ -79,7 +79,7 @@ string as input and then manually load the suited architecture::
    <MemoryZone rel=None :
          <mo [00000000,00000024] data:'\xeb\x16^1\xd2RV\x89\xe1\x89\xf...'>>
 
-The shellcode is loaded at address 0 by default, but can be relocated with::
+The *shellcode* is mapped at address 0 by default, but can be relocated::
 
    In [8]: p.relocate(0x4000)
    In [9]: print(p.mmap)
@@ -90,28 +90,28 @@ The shellcode is loaded at address 0 by default, but can be relocated with::
 Decoding blocks of instructions
 ===============================
 
-Decoding a bytes stream as instruction needs only to load the desired cpu module, for
+Decoding some bytes as an :class:`arch.core.instruction` needs only to load the desired cpu module, for
 example::
 
-   In [10]: cpu_x86.disassemble('\xeb\x16')
+   In [10]: cpu_x86.disassemble(b'\xeb\x16')
    Out[10]: <amoco.arch.x86.spec_ia32 JMP ( length=2 type=2 )>
    In [11]: print(_)
    jmp         .+22
 
-But when a mapped binary program is available, we can start disassembling instructions
-or *data* located at virtual addresses::
+If a mapped binary program has been instanciated, we can start disassembling instructions
+or *data* located at some virtual address::
 
    In [12]: print(p.read_instruction(p.cpu.cst(0x4000,32)))
    jmp         *0x4018
    In [13]: p.read_data(p.cpu.cst(0x4000,32),2)
    Out[13]: ['\xeb\x16']
 
-However, rather than manually adjusting the address to fetch the next instruction, we
+Now, rather than manually adjusting the address to fetch the next instruction, we
 can use any of the code analysis strategies implemented in amoco to disassemble
 *basic blocks* directly::
 
    In [1]: import amoco
-   In [2]: p = amoco.system.loader.load_program('samples/x86/flow.elf')
+   In [2]: p = amoco.system.loader.load_program(u'samples/x86/flow.elf')
    In [3]: z = amoco.lsweep(p)
    In [4]: z.getblock(0x8048380)
    Out[4]: <block object (0x8048380) at 0x7f1decec4c50>
@@ -132,14 +132,14 @@ can use any of the code analysis strategies implemented in amoco to disassemble
    0x8048397           '68fd840408'    push        #main
    0x804839c           'e8cfffffff'    call        *0x8048370
 
-Note that when a block is constructed from a mapped binary program instance,
+Note that when a :class:`block <code.block>` is constructed from a mapped binary program instance,
 instructions operands will possibly be represented as a symbol (provided by the program's
 symbol table) or an absolute virtual address for branching instructions.
 
 Symbolic representations of blocks
 ==================================
 
-A block object provides instructions of the program located at some address in memory,
+A :class:`block <code.block>` object provides instructions of the program located at some address in memory,
 but also allows to get a symbolic functional representation of what this sequence
 of instructions is doing::
 
@@ -169,16 +169,16 @@ of instructions is doing::
    (((esp+0x4)&0xfffffff0)-36) <- (eip+0x21)
 
 Here we are with the *map* of the previous block.
-Now what this mapper object says is for example that once the block is executed ``esi`` register
+Now what this :class:`mapper <cas.mapper.mapper>` object says is for example that once the block is executed ``esi`` register
 will be set to the 32 bits value pointed by ``esp``, that the carry flag will be 0, or
 that the top of the stack will hold value ``eip+0x21``.
-Rather than extracting the entire view of the mapper we can query any expression out if it::
+Rather than extracting the entire view of the mapper we can query any :mod:`expression <cas.expressions>` out if it::
 
    In [8]: print(b.map(p.cpu.ecx))
    (esp+0x4)
 
 There are some caveats when it comes to query memory expressions but we will leave this
-for later (see :class:`mapper` class).
+for later (see :class:`cas.mapper.mapper`).
 
 The ``b.map`` object also provides a better way to see how the memory is modified by the block::
 
@@ -195,13 +195,13 @@ The ``b.map`` object also provides a better way to see how the memory is modifie
          <mo [-0000008,-0000004] data:(((esp+0x4)&0xfffffff0)-0x4)>
          <mo [-0000004,00000000] data:eax>>
 
-The :class:`mapper` is an essential element of amoco that captures the semantics of the block by
-interpreting the block's instructions in a symbolic way. Note that it takes no input state
+The :class:`cas.mapper.mapper` class is an essential part of amoco that captures the semantics
+of the block by interpreting its' instructions in a symbolic way. Note that it takes no input state
 or whatever but just expresses what the block would do independently of what has been done
 before and even where the block is actually located.
 
-For any mapper object, we can get the lists of input and output expressions, and replace
-any inputs by another chosen expression::
+For any mapper object, we can get the lists of *input* and *output* expressions, and replace
+inputs by any chosen expression::
 
    In [10]: for x in set(b.map.inputs()): print(x)
    eip
@@ -248,8 +248,8 @@ This is provided by the mapper's shifts operators::
    0x80484fd
 
 Here, taking a new mapper as if it came either from a block or a stub, and assuming
-that there is no memory aliasing, the execution of m followed by mm would branch to
-address 0x80484fd (#main).
+that there is no memory aliasing, the sequential execution of ``m`` followed by ``mm``
+would branch to address ``0x80484fd`` (``#main``).
 
 Starting some analysis
 ======================
@@ -259,14 +259,14 @@ registers or memory locations along a chosen path. This kind of evaluation howev
 known *control flow graph* (CFG) of the studied function path.
 
 There are several strategies to build the control flow graph of a program
-(i.e. the CFG's of all its functions) but none is perfect.
-Some strategies are implemented in module :ref:`main <main>`, ranging from the simple
-:class:`lsweep` linear sweep method to a *link backward* method (see :class:`lbackward`)
+(i.e. the CFGs of all its functions) but none is perfect.
+Some strategies are implemented in module :mod:`main`, ranging from the simple
+:class:`main.lsweep` linear sweep method to a *link backward* method (see :class:`main.lbackward`)
 that evaluates the program's counter in backward until either a concrete value is obtained or
 the root node of the current CFG is reached::
 
    In [1]: import amoco
-   In [2]: p = amoco.system.loader.load_program('samples/x86/flow.elf')
+   In [2]: p = amoco.system.loader.load_program(u'samples/x86/flow.elf')
    In [3]: amoco.set_log_all('VERBOSE')
    In [4]: z = amoco.lbackward(p)
    In [5]: z.getcfg()
@@ -329,17 +329,16 @@ the root node of the current CFG is reached::
    amoco.main: INFO: lbackward: function 0x8048380{4} done
    Out[5]: <amoco.cfg.graph at 0x7f587a815080>
 
+Here we've used the :class:`lbackward` strategy to build the CFGs of functions of the very simple ``flow.elf``
+x86 sample program. This strategy does *not* assume that a call will always return and
+thus follows strictly the program's instruction pointer value. The CFG is build as a :class:`cfg.graph`
+instance (which inherits from the :class:`grandalf.graphs.Graph` class.)
 
-Here we use the :class:`lbackward` strategy to build the CFG of the very simple ``flow.elf``
-x86 sample program. This strategy does *not* assume that a call will return and
-thus follows strictly the program's counter value. The CFG is build as a :class:`cfg.graph`
-instance (which inherits from the :ref:`grandalf.graphs.Graph` class.)
-
-As shown by adjusting log messages to a more verbose level, the ``getcfg`` method starts from
-the entrypoint (here 0x8048370) and creates new cfg components whenever a function call is made.
-Each new graph component is a candidate for a :class:`code.func` object once
-all paths have reached a function's *end*.
-The collected functions created during the analysis are listed in::
+As shown by adjusting log messages to a more verbose level, method :meth:`getcfg <main.fforward.getcfg>`
+starts by default from the entrypoint (here ``0x8048370``) and creates new CFG components whenever a call is performed.
+Each one of these new :class:`graph component <grandalf.graphs.graph_core>` is a candidate for a :class:`code.func`
+object once all paths have reached an *end*.
+The collected functions created during the analysis are listed in attribute::
 
    In [6]: z.functions
    Out[6]:
@@ -385,9 +384,9 @@ The collected functions created during the analysis are listed in::
    | af    <- ⊤1
    | pf    <- ⊤1
 
-A function's CFG can be walked and studied by accessing its graph component. The ``sV`` attribute
-is the list of unique nodes (vertices) and ``sE`` the list of *links* (edges) of the CFG.
-The CFG can be rendered for example in a Qt GUI with::
+A function's CFG can be walked and studied by accessing its nodes. The :attr:`sV <grandalf.graphs.graph_core.sV>` attribute
+is the list of unique nodes (vertices) and :attr:`sE <grandalf.graphs.graph_core.sE>` the list of *links* (edges) of the CFG.
+A function's CFG can be rendered for example in a Qt GUI with::
 
    In [13]: from amoco.ui.graphics.qt_.engine import *
    In [14]: amoco.ui.graphics.configure(graphics="qt")
@@ -398,15 +397,16 @@ The CFG can be rendered for example in a Qt GUI with::
    In [19]: gv.show()
 
 As shown below, once the "qt" ui is selected we can build a *QGraphicsScene* and *QGraphicsView*
-to display the CFG of ``#main``:
+to display the CFG of function ``#main``:
 
 .. image:: amoco-flow-1.png
 
 Of course, in real life things are not so simple...
-We can see however that amoco can handle simple loops::
+
+Still, We can see that amoco can deal with simple loops::
 
    In [1]: import amoco
-   In [2]: p = amoco.system.loader.load_program('samples/x86/loop_simple.elf')
+   In [2]: p = amoco.system.loader.load_program(u'samples/x86/loop_simple.elf')
    In [3]: z = amoco.lbackward(p)
    In [4]: z.getcfg()
    Out[4]: <amoco.cfg.graph at 0x7fc271c16b10>
@@ -441,9 +441,8 @@ We can see however that amoco can handle simple loops::
    (0x804a02c)                                  <- [M32(0x804a02c), (M32(0x804a02c)+0x1), ...]
    ([M32(0x804a02c),(M32(0x804a02c)+0x1), ...]) <- [M8(M32(0x804a02c)), M8(M32(0x804a02c)+1), ⊤8, ...]
 
-Here the studied function has 4 blocks and a loop. By looking directly at the
-computed function's mapper we can see that the counter is probably located at
-``(esp-8)`` and incremented starting from 0. The global location 0x804a02c is
-accessed and dereferenced sucessively so it is likely to hold a pointer to a
-char.
+Here the function has 4 blocks and a *loop*. By looking directly at the
+computed :class:`mapper <cas.mapper.mapper>` we can see that the loop counter variable is probably located at
+``(esp-8)`` and incremented from initial value 0. The global location ``0x804a02c`` is
+accessed and dereferenced sucessively byte-after-byte so it is likely to hold a pointer to a char.
 

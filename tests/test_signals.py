@@ -1,3 +1,5 @@
+import sys
+import pytest
 from amoco.signals import *
 
 sig1 = Signal("#1")

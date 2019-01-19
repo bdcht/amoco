@@ -1,10 +1,10 @@
 import pytest
 import amoco
-from amoco.ui.graphics import load_engine
-load_engine()
-from amoco.ui.graphics.qt_.engine import app
-from amoco.ui.graphics.qt_.mainwin import MainWindow
-amoco.conf.sections['ui']['graphics'] = 'qt'
+#from amoco.ui.graphics import load_engine
+#load_engine()
+#from amoco.ui.graphics.qt_.engine import app
+#from amoco.ui.graphics.qt_.mainwin import MainWindow
+#amoco.conf.sections['ui']['graphics'] = 'qt'
 
 @pytest.mark.skipif(True,reason="work-in-progress")
 def test_graph():

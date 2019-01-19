@@ -9,7 +9,6 @@ branches:
 before_install:
   - pip install -r requirements.txt
   - pip install z3-solver
-  - pip install sqlite3
   - pip install SQLAlchemy
   - pip install PySide2
   - pip install Click

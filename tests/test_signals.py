@@ -58,6 +58,7 @@ class MyClassB(MyClassA):
     def __call__(self,x,y,z=4,q=5):
         return x+y+z+q
 
+@pytest.mark.skipif('__pypy__' in sys.builtin_module_names,reason='pypy')
 def test_references():
     a = MyClassA()
     b = MyClassB()

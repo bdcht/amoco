@@ -7,11 +7,10 @@ branches:
   only:
   - release
 before_install:
+  - pip install pytest-runner
   - pip install -r requirements.txt
   - pip install z3-solver
   - pip install SQLAlchemy
-  - pip install PySide2
-  - pip install Click
 install:
   - python setup.py install
 script:

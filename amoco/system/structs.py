@@ -197,7 +197,7 @@ class Field(object):
     def unpack(self,data,offset=0,order='<'):
         if self.order: order=self.order
         blob = self.type.unpack(data,offset,order)
-        sz = self.type.size
+        sz = len(self.type)
         count = self.count
         if count>0:
             blob = [blob]

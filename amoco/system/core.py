@@ -494,7 +494,7 @@ class MemoryMap(object):
         address,sto,_ = i.indices(sto)
         res = self.read(address,sto-address)
         try:
-            return ''.join(res)
+            return b''.join(res)
         except:
             return res
 

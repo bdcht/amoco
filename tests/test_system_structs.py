@@ -28,6 +28,7 @@ def test_Field_aliasing():
     S1 = StructFactory("S1","I : i")
     @StructDefine("S1 : x")
     class S2(StructFormatter): pass
+    S2.order = '<'
     @StructDefine("S1 : y")
     class S3(StructFormatter): pass
     S3.order = '>'

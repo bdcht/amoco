@@ -308,7 +308,7 @@ class StructCore(object):
     Note: It is mandatory that any class that inherits from StructCore can be instanciated
     with no arguments.
     """
-    order = '<'
+    order = '@'
     union = False
 
     @classmethod

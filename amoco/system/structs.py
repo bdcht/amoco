@@ -38,7 +38,7 @@ For example, the HAB Header class is defined with::
            return highlight([(Token.Literal,"%d.%d"%(x>>4,x&0xf))])
 
 Here, the :class:`StructDefine` decorator is used to provide the definition of
-fields of the HAB Header structure to the HAB_Header class. 
+fields of the HAB Header structure to the HAB_Header class.
 
 The *tag* :class:`Field` is an unsigned byte and the :class:`StructFormatter`
 utilities inherited by the class set it as a :meth:`name_formatter` allow
@@ -58,7 +58,7 @@ This name is obtained from constants defined with::
 
 The *length* field is a bigendian short integer with default formatter,
 and the *version* field is an unsigned byte with a dedicated formatter
-function that extracts major/minor versions from the byte nibbles. 
+function that extracts major/minor versions from the byte nibbles.
 
 This allows to decode and print the structure from provided data::
 

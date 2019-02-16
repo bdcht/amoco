@@ -145,7 +145,6 @@ I    : fs_magic
 B    : fs_space
 """)
 class superblock(StructFormatter):
-    order = '<'
     def __init__(self,data="",offset=0):
         self.name_formatter('fs_magic')
         self.name_formatter('fs_clean')
@@ -278,7 +277,6 @@ i    : ic_gid                   ; long eft gid
 I    : ic_oeftflag
 """)
 class inode(StructFormatter):
-    order = '<'
     def __init__(self,data="",offset=0):
         self.func_formatter(ic_smode=token_smode_fmt)
         self.flag_formatter('ic_suid')
@@ -304,7 +302,6 @@ i    : fsd_size
 s    : fsd_data
 """)
 class fsd(StructFormatter):
-    order = '<'
     def __init__(self,data="",offset=0):
         if data: self.unpack(data,offset)
 
@@ -324,7 +321,6 @@ H    : acl_perm
 i    : acl_who
 """)
 class acl(StructFormatter):
-    order = '<'
     def __init__(self,data="",offset=0):
         if data: self.unpack(data,offset)
 
@@ -373,7 +369,6 @@ I         : nextbno    ; blkno of next extent_block (in frags)
 extent*1  : extents    ; list of extent structs
 """)
 class extent_block(StructFormatter):
-    order = '<'
     def __init__(self,data="",offset=0):
         if data: self.unpack(data,offset)
 

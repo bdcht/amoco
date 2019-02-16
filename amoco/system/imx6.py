@@ -88,6 +88,7 @@ H :> length
 B :  version
 """)
 class HAB_Header(StructFormatter):
+    order = '<'
     def __init__(self,data="",offset=0):
         self.name_formatter('tag')
         self.func_formatter(version=self.token_ver_format)
@@ -128,6 +129,7 @@ I          : size
 I          : plugin
 """)
 class BootData(StructFormatter):
+    order = '<'
     def __init__(self,data="",offset=0):
         self.address_formatter('start')
         self.address_formatter('size')
@@ -146,6 +148,7 @@ H          :> nlen
 H          :> elen
 """)
 class PublicKey(StructFormatter):
+    order = '<'
     def __init__(self,data="",offset=0):
         self.name_formatter('key_type')
         if data:
@@ -217,7 +220,7 @@ class CSF(StructFormatter):
         return self
 
     def size(self):
-        S = struct.calcsize(self.order+self.format())
+        S = struct.calcsize(self.format())
         S += sum((len(c) for c in self.cmds),0)
         return S
 
@@ -247,6 +250,7 @@ I        :  address
 I        :  mask
 """)
 class CheckData(StructFormatter):
+    order = '<'
     def __init__(self,data="",offset=0):
         self.name_formatter('cmd')
         self.address_formatter('address')
@@ -265,7 +269,7 @@ class CheckData(StructFormatter):
         return self
 
     def size(self):
-        S = struct.calcsize(self.order+self.format())
+        S = struct.calcsize(self.format())
         if hasattr(self,'count'): S += 4
         return S
 
@@ -277,6 +281,7 @@ H        :> len
 B        :  und
 """)
 class NOP(StructFormatter):
+    order = '<'
     def __init__(self,data="",offset=0):
         self.name_formatter('cmd')
         if data: self.unpack(data,offset)
@@ -288,6 +293,7 @@ H        :> len
 B        :  eng
 """)
 class Unlock(StructFormatter):
+    order = '<'
     def __init__(self,data="",offset=0):
         self.name_formatter('cmd')
         if data: self.unpack(data,offset)
@@ -303,7 +309,7 @@ class Unlock(StructFormatter):
         return self
 
     def size(self):
-        S = struct.calcsize(self.order+self.format())
+        S = struct.calcsize(self.format())
         if hasattr(self,'val'): S += 4*len(self.val)
         return S
 
@@ -321,6 +327,7 @@ B        :  tgt
 I        :> key_dat
 """)
 class InstallKey(StructFormatter):
+    order = '<'
     def __init__(self,data="",offset=0):
         self.name_formatter('cmd')
         self.flag_formatter('flg')
@@ -341,7 +348,7 @@ class InstallKey(StructFormatter):
         return self
 
     def size(self):
-        S = struct.calcsize(self.order+self.format())
+        S = struct.calcsize(self.format())
         if hasattr(self,'crt_hsh'): S += 4*len(self.crt_hsh)
         return S
 
@@ -357,6 +364,7 @@ B        :  cfg
 I        :> aut_start
 """)
 class Authenticate(StructFormatter):
+    order = '<'
     def __init__(self,data="",offset=0):
         self.name_formatter('cmd')
         self.flag_formatter('flg')
@@ -391,7 +399,7 @@ class Authenticate(StructFormatter):
         return self
 
     def size(self):
-        S = struct.calcsize(self.order+self.format())
+        S = struct.calcsize(self.format())
         if hasattr(self,'blks'): S += 4*len(self.blks)
         return S
 

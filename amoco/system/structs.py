@@ -314,9 +314,9 @@ class StructCore(object):
     @classmethod
     def format(cls):
         if cls.union is False:
-            return ''.join((f.format() for f in cls.fields))
+            return cls.order+(''.join((f.format() for f in cls.fields)))
         else:
-            return cls.fields[cls.union].format()
+            return cls.order+cls.fields[cls.union].format()
     @classmethod
     def size(cls):
         return struct.calcsize(cls.format())

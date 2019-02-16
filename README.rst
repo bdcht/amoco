@@ -78,6 +78,10 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.6.1`_
+
+  * use native structure size/aligment by default
+
 - `v2.6.0`_
 
   * add V850(E2S) architecture

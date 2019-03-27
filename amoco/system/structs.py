@@ -164,27 +164,33 @@ class Field(object):
         pack (value,order='<') : packs the value with the given order and returns the
             byte string according to type typename.
     """
-    def __init__(self,ftype,fcount=0,fname=None,forder=None,fcomment=''):
+    def __init__(self,ftype,fcount=0,fname=None,forder=None,falign=0,fcomment=''):
         self.typename = ftype
         self.type_private = isinstance(ftype,(StructCore))
         self.count = fcount
         self.name = fname
-        self.order = forder
+        self.order = forder or '<'
+        self._align_value = None
+        if falign:
+            self.align_value = falign
         self.comment = fcomment
     @property
     def type(self):
         if self.type_private:
             return self.typename
-        cls = StructDefine.All[self.typename]
-        return cls()
+        try:
+            cls = StructDefine.All[self.typename]
+        except KeyError:
+            return None
+        else:
+            return cls()
     def format(self):
-        fmt = self.type.format()
-        sz = struct.calcsize(fmt)
-        if self.count>0: sz = sz*self.count
+        sz = self.size()
         return '%ds'%sz
-    @property
     def size(self):
-        return struct.calcsize(self.format())
+        sz = self.type.size()
+        if self.count>0: sz = sz*self.count
+        return sz
     @property
     def source(self):
         res = "%s"%self.typename
@@ -193,29 +199,39 @@ class Field(object):
         if self.comment: res += " ;%s"%self.comment
         return res
     def __len__(self):
-        return self.size
-    def unpack(self,data,offset=0,order='<'):
-        if self.order: order=self.order
-        blob = self.type.unpack(data,offset,order)
-        sz = len(self.type)
+        return self.size()
+    @property
+    def align_value(self):
+        if self._align_value: return self._align_value
+        if isinstance(self.type,Field): return self.type.align_value
+        return self.type.align_value()
+    @align_value.setter
+    def align_value(self,val):
+        self._align_value = val
+    def align(self,offset):
+        A = self.align_value
+        r = offset%A
+        if r==0: return offset
+        return offset+(A-r)
+    def unpack(self,data,offset=0):
+        blob = self.type.unpack(data,offset)
+        sz = self.type.size()
         count = self.count
         if count>0:
             blob = [blob]
             count -= 1
             offset += sz
             while count>0:
-                blob.append(self.type.unpack(data,offset,order))
+                blob.append(self.type.unpack(data,offset))
                 offset += sz
                 count -= 1
         return blob
-    def get(self,data,offset=0,order='<'):
-        if self.order: order=self.order
-        return (self.name,self.unpack(data,offset,order))
-    def pack(self,value,order='<'):
-        if self.order: order=self.order
+    def get(self,data,offset=0):
+        return (self.name,self.unpack(data,offset))
+    def pack(self,value):
         if self.count>0:
-            return b''.join([struct.pack(order+self.format(),v) for v in value])
-        return struct.pack(order+self.format(),value)
+            return b''.join([self.type.pack(v) for v in value])
+        return self.type.pack(value)
     def __call__(self):
         return self
     def __repr__(self):
@@ -237,13 +253,19 @@ class RawField(Field):
     def format(self):
         fmt = self.typename
         if self.count==0: return fmt
-        sz = struct.calcsize(fmt)*self.count
-        return '%ds'%sz
-    def unpack(self,data,offset=0,order='<'):
-        if self.order: order=self.order
+        return '%d%s'%(sz,fmt)
+    def size(self):
+        sz = struct.calcsize(self.typename)
+        if self.count>0: sz = sz*self.count
+        return sz
+    def unpack(self,data,offset=0):
         pfx = '%d'%self.count if self.count>0 else ''
-        res = struct.unpack(order+pfx+self.typename,data[offset:offset+self.size])
+        res = struct.unpack(self.order+pfx+self.typename,data[offset:offset+self.size()])
         if self.count==0 or self.typename=='s': return res[0]
+        return res
+    def pack(self,value):
+        pfx = '%d'%self.count if self.count>0 else ''
+        res = struct.pack(self.order+pfx+self.typename,value)
         return res
     def __repr__(self):
         fmt = self.typename
@@ -260,6 +282,11 @@ class StructDefine(object):
     """
     All = {}
     rawtypes   = ('x','c','b','B','h','H','i','I','l','L','f','d','s','n','N','p','P','q','Q')
+    alignments = {'x':1, 'c':1, 'b':1, 'B':1, 's':1,
+                  'h':2, 'H':2,
+                  'i':4, 'I':4, 'l':4, 'L':4, 'f':4,
+                  'q':8, 'Q':8, 'd':8,
+                  'P':8}
     integer    = pp.Regex(r'[1-9][0-9]*')
     number     = integer
     number.setParseAction(lambda r: int(r[0]))
@@ -273,17 +300,28 @@ class StructDefine(object):
     def __init__(self,fmt,**kargs):
         self.fields = []
         self.source = fmt
+        self.packed = kargs.get('packed',False)
+        if 'alignments' in kargs:
+           self.alignments = kargs['alignments']
         for l in self.structfmt.parseString(fmt,True):
             f_type,f_name,f_comment = l
             f_order,f_name = f_name
             f_type,f_count = f_type
-            f_cls = RawField if f_type in self.rawtypes else Field
-            if f_type in kargs: f_type = kargs[f_type]
-            self.fields.append(f_cls(f_type,f_count,f_name,f_order,f_comment))
+            if f_order is None and 'order' in kargs:
+                f_order=kargs['order']
+            if f_type in self.rawtypes:
+                f_cls = RawField
+                f_align = self.alignments[f_type]
+            else:
+                f_cls = Field
+                f_type = kargs.get(f_type,f_type)
+                f_align = 0
+            self.fields.append(f_cls(f_type,f_count,f_name,f_order,f_align,f_comment))
     def __call__(self,cls):
         self.All[cls.__name__] = cls
         cls.fields = self.fields
         cls.source = self.source
+        cls.packed = self.packed
         return cls
 
 class UnionDefine(StructDefine):
@@ -293,13 +331,18 @@ class UnionDefine(StructDefine):
         self.All[cls.__name__] = cls
         cls.fields = self.fields
         cls.source = self.source
-        s = [f.size for f in cls.fields]
+        s = [f.size() for f in cls.fields]
         cls.union  = s.index(max(s))
         return cls
 
-def TypeDefine(newname, typebase, typecount=0):
-    f_cls = RawField if  typebase in StructDefine.rawtypes else Field
-    StructDefine.All[newname] = f_cls(typebase,fcount=typecount,fname='typedef')
+def TypeDefine(newname, typebase, typecount=0,align_value=0):
+    if typebase in StructDefine.rawtypes:
+        f_cls = RawField
+        f_align = align_value or StructDefine.alignments[typebase]
+    else:
+        f_cls = Field
+        f_align = 0
+    StructDefine.All[newname] = f_cls(typebase,fcount=typecount,falign=f_align,fname='typedef')
 
 class StructCore(object):
     """StructCore is a ParentClass for all user-defined structures based on a StructDefine format.
@@ -308,42 +351,68 @@ class StructCore(object):
     Note: It is mandatory that any class that inherits from StructCore can be instanciated
     with no arguments.
     """
-    order = '@'
+    packed = False
     union = False
 
     @classmethod
     def format(cls):
         if cls.union is False:
-            return cls.order+(''.join((f.format() for f in cls.fields)))
+            return ''.join((f.format() for f in cls.fields))
         else:
-            return cls.order+cls.fields[cls.union].format()
+            return cls.fields[cls.union].format()
     @classmethod
     def size(cls):
-        return struct.calcsize(cls.format())
+        A = cls.align_value()
+        sz = 0
+        for f in cls.fields:
+            if cls.union is False and not cls.packed:
+                sz = f.align(sz)
+            if cls.union is False:
+                sz += f.size()
+            elif f.size>sz:
+                sz = f.size()
+        r = sz%A
+        if (not cls.packed) and r>0:
+            sz += (A-r)
+        return sz
     def __len__(self):
         return self.size()
-    def unpack(self,data,offset=0,order=None):
+    @classmethod
+    def align_value(cls):
+        return max([f.align_value for f in cls.fields])
+    def unpack(self,data,offset=0):
         for f in self.fields:
-            setattr(self,f.name,f.unpack(data,offset,order or self.order))
+            if self.union is False and not self.packed:
+                offset = f.align(offset)
+            setattr(self,f.name,f.unpack(data,offset))
             if self.union is False:
-                offset += f.size
+                offset += f.size()
         return self
     def pack(self,data=None):
         if data is None:
             data = [getattr(self,f.name) for f in self.fields]
         parts = []
+        offset = 0
         for f,v in zip(self.fields,data):
-            parts.append(f.pack(v,self.order))
+            p = f.pack(v)
+            if not self.packed:
+                pad = f.align(offset)-offset
+                p = b'\0'*pad + p
+            parts.append(p)
         if self.union is False:
-            return b''.join(parts)
+            res = b''.join(parts)
+            if not self.packed:
+                res = res.ljust(self.size(),b'\0')
+            return res
         else:
             return parts[self.union]
     def offset_of(self,name):
+        if self.union is not False:
+            return 0
         o = 0
         for f in self.fields:
             if f.name==name: return o
-            if self.union is False:
-                o += f.size
+            o = f.align(o)
         raise AttributeError(name)
 
 class StructFormatter(StructCore):
@@ -442,13 +511,13 @@ class StructMaker(StructFormatter):
 
 #------------------------------------------------------------------------------
 
-def StructFactory(name,fmt):
+def StructFactory(name,fmt,**kargs):
     'Returns a StructFormatter class build with name and format'
-    return StructDefine(fmt)(type(name,(StructFormatter,),{}))
+    return StructDefine(fmt,**kargs)(type(name,(StructFormatter,),{}))
 
-def UnionFactory(name,fmt):
+def UnionFactory(name,fmt,**kargs):
     'Returns a StructFormatter (union) class build with name and format'
-    return UnionDefine(fmt)(type(name,(StructFormatter,),{}))
+    return UnionDefine(fmt,**kargs)(type(name,(StructFormatter,),{}))
 
 #------------------------------------------------------------------------------
 

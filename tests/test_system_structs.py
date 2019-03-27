@@ -28,16 +28,32 @@ def test_Field_aliasing():
     S1 = StructFactory("S1","I : i")
     @StructDefine("S1 : x")
     class S2(StructFormatter): pass
-    S2.order = '<'
     @StructDefine("S1 : y")
     class S3(StructFormatter): pass
-    S3.order = '>'
-    assert S2.order == '<'
     s = S2()
     s.unpack(b'\x00\x00\x00\x01')
     assert s.x.i == 0x01000000
     q = S3()
-    assert q.order == '>'
+    S1.fields[0].order = '>'
     q.unpack(b'\x01\x00\x00\x00')
     assert q.y.i == 0x01000000
     assert s.x.i == 0x01000000
+
+def test_Struct_slop():
+    S1 = StructFactory("S1","c: a\nI : b")
+    assert S1.size()==8
+    S2 = StructFactory("S2","I: a\nc : b")
+    assert S2.size()==8
+    S3 = StructFactory("S3","c: a\nI : b",packed=True)
+    assert S3.size()==5
+    s1 = S1().unpack(b'\x41\xff\xff\xff\xef\xcd\xab\x89')
+    assert s1.a == b'A'
+    assert s1.b == 0x89abcdef
+    s2 = S2().unpack(b'\x01\x02\x03\x04\x42')
+    assert s2.a == 0x04030201
+    assert s2.b == b'B'
+    assert s2.pack() == b'\x01\x02\x03\x04\x42\0\0\0'
+    s3 = S3().unpack(b'\x43\x01\x00\x00\x00')
+    assert s3.a == b'C'
+    assert s3.b == 1
+    assert s3.pack() == b'\x43\x01\x00\x00\x00'

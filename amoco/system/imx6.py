@@ -86,7 +86,7 @@ with Consts('eng'):
 B :  tag
 H :> length
 B :  version
-""")
+""",packed=True)
 class HAB_Header(StructFormatter):
     order = '<'
     def __init__(self,data="",offset=0):
@@ -109,7 +109,7 @@ I          : boot_data
 I          : self
 I          : csf
 I          : reserved2
-""")
+""",packed=True)
 class IVT(StructFormatter):
     order = '<'
     def __init__(self,data="",offset=0):
@@ -127,7 +127,7 @@ class IVT(StructFormatter):
 I          : start
 I          : size
 I          : plugin
-""")
+""",packed=True)
 class BootData(StructFormatter):
     order = '<'
     def __init__(self,data="",offset=0):
@@ -146,7 +146,7 @@ B          :  unk
 I          :  unk_flags
 H          :> nlen
 H          :> elen
-""")
+""",packed=True)
 class PublicKey(StructFormatter):
     order = '<'
     def __init__(self,data="",offset=0):
@@ -169,7 +169,7 @@ class PublicKey(StructFormatter):
 
 @StructDefine("""
 HAB_Header : header
-""")
+""",packed=True)
 class CRT(StructFormatter):
     def __init__(self,data="",offset=0):
         self.keys = []
@@ -200,7 +200,7 @@ class CRT(StructFormatter):
 
 @StructDefine("""
 HAB_Header : header
-""")
+""",packed=True)
 class CSF(StructFormatter):
     def __init__(self,data="",offset=0):
         self.cmds = []
@@ -248,7 +248,7 @@ H        :> len
 B        :  par
 I        :  address
 I        :  mask
-""")
+""",packed=True)
 class CheckData(StructFormatter):
     order = '<'
     def __init__(self,data="",offset=0):
@@ -279,7 +279,7 @@ class CheckData(StructFormatter):
 B        :  cmd
 H        :> len
 B        :  und
-""")
+""",packed=True)
 class NOP(StructFormatter):
     order = '<'
     def __init__(self,data="",offset=0):
@@ -291,7 +291,7 @@ class NOP(StructFormatter):
 B        :  cmd
 H        :> len
 B        :  eng
-""")
+""",packed=True)
 class Unlock(StructFormatter):
     order = '<'
     def __init__(self,data="",offset=0):
@@ -325,7 +325,7 @@ B        :  alg
 B        :  src
 B        :  tgt
 I        :> key_dat
-""")
+""",packed=True)
 class InstallKey(StructFormatter):
     order = '<'
     def __init__(self,data="",offset=0):
@@ -362,7 +362,7 @@ B        :  pcl
 B        :  eng
 B        :  cfg
 I        :> aut_start
-""")
+""",packed=True)
 class Authenticate(StructFormatter):
     order = '<'
     def __init__(self,data="",offset=0):

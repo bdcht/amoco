@@ -296,6 +296,20 @@ with Consts('e_machine'):
     EM_ARC_A5=93
     EM_XTENSA=94
     EM_NUM=95
+    EM_ST200=100
+    EM_MSP430=105
+    EM_SEP=108
+    EM_M16C=117
+    EM_DSPIC30F=118
+    EM_CE=119
+    EM_M32C=120
+    EM_R32C=162
+    EM_QDSP6=164
+    EM_AARCH64=183
+    EM_AVR32=185
+    EM_STM8=186
+    EM_CUDA=190
+    EM_Z80=220
     EM_AMDGPU=224
     EM_RISCV=243
     EM_BPF=247
@@ -384,6 +398,9 @@ with Consts('sh_type'):
     SHT_HIPROC=0x7fffffff
     SHT_LOUSER=0x80000000
     SHT_HIUSER=0x8fffffff
+    SHT_ARM_EXIDX=SHT_LOPROC+1
+    SHT_ARM_PREEMPTMAP=SHT_LOPROC+2
+    SHT_ARM_ATTRIBUTES=SHT_LOPROC+3
 
 # legal values for sh_flags (section flags):
 with Consts('sh_flags'):
@@ -580,6 +597,7 @@ with Consts('p_type'):
     PT_HIOS=0x6fffffff
     PT_LOPROC=0x70000000
     PT_HIPROC=0x7fffffff
+    PT_ARM_EXIDX=PT_LOPROC+1
 
 # legal values for p_flags (segment flags):
 with Consts('p_flags'):
@@ -588,6 +606,9 @@ with Consts('p_flags'):
     PF_R=(1<<2)
     PF_MASKOS=0x0ff00000
     PF_MASKPROC=0xf0000000
+    PF_ARM_SB=0x10000000
+    PF_ARM_PI=0x20000000
+    PF_ARM_ABS=0x40000000
 
 # Note Sections :
 #------------------------------------------------------------------------------
@@ -718,9 +739,6 @@ with Consts('d_un'):
 class Elf32(object):
 
     basemap   = None
-    symtab    = None
-    strtab    = None
-    reltab    = None
     functions = None
     variables = None
 
@@ -786,13 +804,14 @@ class Elf32(object):
             data = self.__file.read(S.sh_size)
             if S.sh_type!=SHT_STRTAB:
                 logger.verbose('section names not a string table')
-                for s in self.Shdr:
-                    s.name = ''
+                for i,s in enumerate(self.Shdr):
+                    s.name = '.s%d'%i
             else:
                 for s in self.Shdr:
                     name = data[s.sh_name:].split(b'\0')[0]
                     s.name = codecs.decode(name)
 
+        self.__sections = {}
         self.functions = self.__functions()
         self.variables = self.__variables()
     ##
@@ -861,18 +880,17 @@ class Elf32(object):
         s,offset,base = self.getinfo(target)
         return S.p_offset+offset
 
-    def readsegment(self,S):
+    def readsegment(self,S,force=False):
         if S:
-            if S.p_type==PT_LOAD:
-                self.__file.seek(S.p_offset)
-                return self.__file.read(S.p_filesz).ljust(S.p_memsz,b'\x00')
-        return None
-    ##
+            if (not force) and S.p_type!=PT_LOAD: return None
+            self.__file.seek(S.p_offset)
+            return self.__file.read(S.p_filesz).ljust(S.p_memsz,b'\x00')
+
     def loadsegment(self,S,pagesize=None):
         if S:
             if S.p_type==PT_LOAD:
                 self.__file.seek( S.p_offset )
-                if S.p_offset != (S.p_vaddr%S.p_align):
+                if S.p_align>1 and (S.p_offset != (S.p_vaddr%S.p_align)):
                     logger.verbose('wrong p_vaddr/p_align [%08x/%0d]'%(S.p_vaddr,S.p_align))
                 base = S.p_vaddr
                 bytes_ = self.__file.read( S.p_filesz ).ljust(S.p_memsz,b'\x00')
@@ -881,7 +899,6 @@ class Elf32(object):
                     bytes_ = bytes_.ljust(pagesize,b'\x00')
                 return {base:bytes_}
         return None
-    ##
 
     def readsection(self,sect):
         S = None
@@ -893,19 +910,21 @@ class Elf32(object):
         else:
             S = sect
         if S:
+            if S.name in self.__sections:
+                return self.__sections[S.name]
             if S.sh_type in (SHT_SYMTAB,SHT_DYNSYM):
-                return self.__read_symtab(S)
+                s = self.__read_symtab(S)
             elif S.sh_type==SHT_STRTAB :
-                return self.__read_strtab(S)
+                s = self.__read_strtab(S)
             elif S.sh_type in (SHT_REL,SHT_RELA):
-                return self.__read_relocs(S)
+                s = self.__read_relocs(S)
             elif S.sh_type==SHT_DYNAMIC :
-                return self.__read_dynamic(S)
-            elif S.sh_type==SHT_PROGBITS:
+                s = self.__read_dynamic(S)
+            else:
                 self.__file.seek(S.sh_offset)
-                return self.__file.read(S.sh_size)
-        return None
-    ##
+                s = self.__file.read(S.sh_size)
+            self.__sections[S.name] = s
+            return s
 
     def __read_symtab(self,section):
         if section.sh_type not in (SHT_SYMTAB,SHT_DYNSYM) :
@@ -923,9 +942,7 @@ class Elf32(object):
         symtab = []
         for i in range(n):
             symtab.append( Elf32_Sym(data[i*l:]) )
-        self.symtab = symtab
         return symtab
-    ##
 
     def __read_strtab(self,section):
         if section.sh_type!=SHT_STRTAB:
@@ -933,9 +950,7 @@ class Elf32(object):
         self.__file.seek(section.sh_offset)
         data = self.__file.read(section.sh_size)
         strtab = Elf32_Str(data)
-        self.strtab = strtab
         return strtab
-    ##
 
     def __read_relocs(self,section):
         if  section.sh_type not in (SHT_REL,SHT_RELA) :
@@ -955,7 +970,6 @@ class Elf32(object):
         elif section.sh_type==SHT_RELA:
             for i in range(n):
                 reltab.append( Elf32_Rela(data[i*l:]) )
-        self.reltab = reltab
         return reltab
 
     def __read_dynamic(self,section):
@@ -974,9 +988,7 @@ class Elf32(object):
         dyntab = []
         for i in range(n):
             dyntab.append( Elf32_Dyn(data[i*l:]) )
-        self.dyntab = dyntab
         return dyntab
-    ##
 
     def __read_note(self,section):
         if section.sh_type!=SHT_NOTE:
@@ -985,9 +997,7 @@ class Elf32(object):
         self.__file.seek(section.sh_offset)
         data = self.__file.read(section.sh_size)
         note = Elf32_Note(data)
-        self.note = note
         return note
-    ##
 
     def __functions(self,fltr=None):
         D = self.__symbols(STT_FUNC)
@@ -1008,34 +1018,29 @@ class Elf32(object):
         return D
 
     def __symbols(self,t):
-        if not self.readsection('.symtab') : return {}
         D = {}
-        if self.readsection('.strtab'):
-            for sym in self.symtab:
+        symtab = self.readsection('.symtab') or []
+        strtab = self.readsection('.strtab')
+        if strtab:
+            for sym in symtab:
                 if sym.st_type==t and sym.st_value:
-                    D[sym.st_value] = (str(self.strtab[sym.st_name].decode()),
+                    D[sym.st_value] = (str(strtab[sym.st_name].decode()),
                                        sym.st_size,
                                        sym.st_info,
                                        sym.st_shndx)
-        else:
-            # need to build a fake strtab with our own symbol names:
-            pass #TODO
         return D
 
     def __dynamic(self,type=STT_FUNC):
-        if not self.readsection('.dynsym') : return {}
         D = {}
-        if self.readsection('.dynstr'):
-            for i,s in enumerate(self.Shdr):
+        dynsym = self.readsection('.dynsym') or []
+        dynstr = self.readsection('.dynstr')
+        if dynstr:
+            for s in self.Shdr:
                 if s.sh_type in (SHT_REL,SHT_RELA):
-                    if self.readsection(i):
-                        for r in self.reltab:
-                            if r.r_offset:
-                                sym = self.symtab[ r.r_sym ]
-                                D[r.r_offset] = str(self.strtab[sym.st_name].decode())
-        else:
-            # need to build a fake strtab with our own symbol names:
-            pass #TODO
+                    for r in self.readsection(s):
+                        if r.r_offset:
+                            sym = dynsym[ r.r_sym ]
+                            D[r.r_offset] = str(dynstr[sym.st_name].decode())
         return D
 
     def __str__(self):
@@ -1275,9 +1280,6 @@ class Elf64_Dyn(Elfcore):
 class Elf64(object):
 
     basemap   = None
-    symtab    = None
-    strtab    = None
-    reltab    = None
     functions = None
     variables = None
 
@@ -1343,13 +1345,14 @@ class Elf64(object):
             data = self.__file.read(S.sh_size)
             if S.sh_type!=SHT_STRTAB:
                 logger.verbose(u'section names not a string table')
-                for s in self.Shdr:
-                    s.name = u''
+                for i,s in enumerate(self.Shdr):
+                    s.name = u'.s%d'%i
             else:
                 for s in self.Shdr:
                     name = data[s.sh_name:].split(b'\0')[0]
                     s.name = codecs.decode(name)
 
+        self.__sections = {}
         self.functions = self.__functions()
         self.variables = self.__variables()
     ##
@@ -1387,14 +1390,12 @@ class Elf64(object):
                 if s.sh_type == SHT_NULL: continue
                 if s.sh_addr <= addr < s.sh_addr+s.sh_size :
                     return s,addr-s.sh_addr,s.sh_addr
-            ##
         elif self.Phdr:
             for s in self.Phdr[::-1]:
                 if s.p_type != PT_LOAD: continue
                 if s.p_vaddr <= addr < s.p_vaddr+s.p_filesz:
                     return s,addr-s.p_vaddr,s.p_vaddr
         return None,0,0
-    ##
 
     def data(self,target,size):
         return self.readcode(target,size)[0]
@@ -1419,13 +1420,13 @@ class Elf64(object):
         s,offset,base = self.getinfo(target)
         return S.p_offset+offset
 
-    def readsegment(self,S):
+    def readsegment(self,S,force=False):
         if S:
-            if S.p_type==PT_LOAD:
-                self.__file.seek(S.p_offset)
-                return self.__file.read(S.p_filesz).ljust(S.p_memsz,b'\x00')
+            if (not force) and S.p_type!=PT_LOAD: return None
+            self.__file.seek(S.p_offset)
+            return self.__file.read(S.p_filesz).ljust(S.p_memsz,b'\x00')
         return None
-    ##
+
     def loadsegment(self,S,pagesize=None):
         if S:
             if S.p_type==PT_LOAD:
@@ -1439,7 +1440,6 @@ class Elf64(object):
                     bytes_ = bytes_.ljust(pagesize,b'\x00')
                 return {base:bytes_}
         return None
-    ##
 
     def readsection(self,sect):
         S = None
@@ -1451,19 +1451,22 @@ class Elf64(object):
         else:
             S = sect
         if S:
+            if S.name in self.__sections:
+                return self.__sections[S.name]
             if S.sh_type==SHT_SYMTAB or S.sh_type==SHT_DYNSYM:
-                return self.__read_symtab(S)
+                s = self.__read_symtab(S)
             elif S.sh_type==SHT_STRTAB:
-                return self.__read_strtab(S)
+                s = self.__read_strtab(S)
             elif S.sh_type==SHT_REL or S.sh_type==SHT_RELA:
-                return self.__read_relocs(S)
+                s = self.__read_relocs(S)
             elif S.sh_type==SHT_DYNAMIC:
-                return self.__read_dynamic(S)
-            elif S.sh_type==SHT_PROGBITS:
+                s = self.__read_dynamic(S)
+            else:
                 self.__file.seek(S.sh_offset)
-                return self.__file.read(S.sh_size)
+                s = self.__file.read(S.sh_size)
+            self.__sections[S.name] = s
+            return s
         return None
-    ##
 
     def __read_symtab(self,section):
         if section.sh_type!=SHT_SYMTAB and section.sh_type!=SHT_DYNSYM:
@@ -1481,9 +1484,7 @@ class Elf64(object):
         symtab = []
         for i in range(n):
             symtab.append( Elf64_Sym(data[i*l:]) )
-        self.symtab = symtab
         return symtab
-    ##
 
     def __read_strtab(self,section):
         if section.sh_type!=SHT_STRTAB:
@@ -1491,9 +1492,7 @@ class Elf64(object):
         self.__file.seek(section.sh_offset)
         data = self.__file.read(section.sh_size)
         strtab = Elf64_Str(data)
-        self.strtab = strtab
         return strtab
-    ##
 
     def __read_relocs(self,section):
         if  section.sh_type!=SHT_REL and section.sh_type!=SHT_RELA:
@@ -1513,7 +1512,6 @@ class Elf64(object):
         elif section.sh_type==SHT_RELA:
             for i in range(n):
                 reltab.append( Elf64_Rela(data[i*l:]) )
-        self.reltab = reltab
         return reltab
 
     def __read_dynamic(self,section):
@@ -1523,7 +1521,7 @@ class Elf64(object):
         # read the section:
         self.__file.seek(section.sh_offset)
         data = self.__file.read(section.sh_size)
-        # and parse it into Elf32_Dyn objects:
+        # and parse it into Elf64_Dyn objects:
         l = section.sh_entsize
         if (section.sh_size%l)!=0:
             raise ElfError('dynamic linking size mismatch')
@@ -1532,9 +1530,7 @@ class Elf64(object):
         dyntab = []
         for i in range(n):
             dyntab.append( Elf64_Dyn(data[i*l:]) )
-        self.dyntab = dyntab
         return dyntab
-    ##
 
     def __read_note(self,section):
         if section.sh_type!=SHT_NOTE:
@@ -1543,9 +1539,7 @@ class Elf64(object):
         self.__file.seek(section.sh_offset)
         data = self.__file.read(section.sh_size)
         note = Elf64_Note(data)
-        self.note = note
         return note
-    ##
 
     def __functions(self,fltr=None):
         D = self.__symbols(STT_FUNC)
@@ -1566,35 +1560,30 @@ class Elf64(object):
         return D
 
     def __symbols(self,type):
-        if not self.readsection('.symtab') : return {}
         D = {}
-        if self.readsection('.strtab'):
-            for sym in self.symtab:
+        symtab = self.readsection('.symtab') or []
+        strtab = self.readsection('.strtab')
+        if strtab:
+            for sym in symtab:
                 if sym.ELF64_ST_TYPE()==type and sym.st_value:
-                    D[sym.st_value] = (str(self.strtab[sym.st_name].decode()),
+                    D[sym.st_value] = (str(strtab[sym.st_name].decode()),
                                        sym.st_size,
                                        sym.st_info,
                                        sym.st_shndx)
-        else:
-            # need to build a fake strtab with our own symbol names:
-            pass #TODO
         return D
 
     def __dynamic(self,type=STT_FUNC):
-        if not self.readsection('.dynsym') : return {}
         D = {}
-        if self.readsection('.dynstr'):
-            for i,s in enumerate(self.Shdr):
+        dynsym = self.readsection('.dynsym') or []
+        dynstr = self.readsection('.dynstr')
+        if dynstr:
+            for s in self.Shdr:
                 if s.sh_type == SHT_REL \
                 or s.sh_type == SHT_RELA :
-                    if self.readsection(i):
-                        for r in self.reltab:
-                            if r.r_offset:
-                                sym = self.symtab[ r.ELF64_R_SYM() ]
-                                D[r.r_offset] = str(self.strtab[sym.st_name].decode())
-        else:
-            # need to build a fake strtab with our own symbol names:
-            pass #TODO
+                    for r in self.readsection(s):
+                        if r.r_offset:
+                            sym = dynsym[ r.ELF64_R_SYM() ]
+                            D[r.r_offset] = str(dynstr[sym.st_name].decode())
         return D
 
     def __str__(self):

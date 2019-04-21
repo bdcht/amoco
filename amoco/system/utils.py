@@ -265,3 +265,23 @@ class SRECline(object):
             return "[%s] %s"%(h,token_constant_fmt(None,self.address))
         if self.SRECtype in (Start16,Start24,Start32) :
             return "[%s] %s"%(h,token_address_fmt(None,self.address))
+
+def read_leb128(data,sign=1):
+    result=0
+    shift=0
+    count=0
+    for b in data:
+        if isinstance(b,bytes): b=ord(b)
+        count+=1
+        result |= (b&0x7f)<<shift
+        shift += 7
+        if b&0x80==0:
+            break
+    if sign<0 and (b&0x40):
+        result |= (~0<<shift)
+    return result,count
+
+def read_uleb128(data):
+    return read_leb128(data)
+def read_sleb128(data):
+    return read_leb128(data,-1)

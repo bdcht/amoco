@@ -107,6 +107,10 @@ def load_program(f,cpu=None):
             from amoco.system.linux_arm import ELF
             logger.info("linux_arm program created")
             return ELF(p)
+        elif p.Ehdr.e_machine==elf.EM_AARCH64:
+            from amoco.system.linux_arm64 import ELF
+            logger.info("linux_arm64 program created")
+            return ELF(p)
         elif p.Ehdr.e_machine==elf.EM_SPARC:
             from amoco.system.leon2 import ELF
             logger.info("leon2 program created")

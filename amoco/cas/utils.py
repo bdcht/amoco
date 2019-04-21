@@ -58,3 +58,12 @@ def ROLWithCarry(x,n,c):
     y = composer([x,c])
     ry = ROL(y,n)
     return (ry[0:x.size],ry[x.size:y.size])
+
+def get_lsb_msb(v):
+    msb = v.bit_length()-1
+    lsb = (v & -v).bit_length()-1
+    return (lsb,msb)
+
+def ismask(v):
+    i1,i2 = get_lsb_msb(v)
+    return ((1<<(i2+1))-1) ^ ((1<<i1)-1) == v

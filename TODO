@@ -3,6 +3,7 @@
 * change config module to use traitlets to have configuration changes to take effect immediately
 * create a dbg branch to add support for using a debugger to allow concretization of mappers via the cti attribute.
 * improve the overall "helpers" interface in order to have a more dynamic behavior (retreiving symbols on-the-fly rather than through a call to a helper func)
+* improve the overall "expressions helpers" by decomposing the eqn2_helpers into several functions in its own module of the cas package.
 * add support for structures helpers via the new structs module
 * improve the overall "stubs" interface to store/fetch stubs from a database table.
 * add support for system-dependent calling convention (ABI)

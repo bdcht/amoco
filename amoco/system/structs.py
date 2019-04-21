@@ -149,11 +149,11 @@ class Field(object):
             of length count of objects of type typename
         name (str)     : the name associated to this field.
         type (StructFormatter) : getter for the type associated with the field's typename.
-        size (int) : number of bytes eaten by this field.
         comment (str) : comment, useful for pretty printing field usage
         order (str) : forces the endianness of this field.
 
     Methods:
+        size () : number of bytes eaten by this field.
         format (): format string that allows to struct.(un)pack the field as a
                        string of bytes.
         unpack (data,offset=0,order='<') : unpacks a data from given offset using
@@ -200,6 +200,14 @@ class Field(object):
         return res
     def __len__(self):
         return self.size()
+    def __eq__(self,other):
+        if (self.typename == other.typename) and \
+           (self.count == other.count) and \
+           (self.order == other.order) and \
+           (self._align_value == other._align_value):
+            return True
+        else:
+            return False
     @property
     def align_value(self):
         if self._align_value: return self._align_value
@@ -232,8 +240,16 @@ class Field(object):
         if self.count>0:
             return b''.join([self.type.pack(v) for v in value])
         return self.type.pack(value)
+    def copy(self):
+        cls = self.__class__
+        return cls(self.typename,
+                   self.count,
+                   self.name,
+                   self.order,
+                   self._align_value,
+                   self.comment)
     def __call__(self):
-        return self
+        return self.copy()
     def __repr__(self):
         try:
             fmt = self.type.format()
@@ -276,6 +292,58 @@ class RawField(Field):
 
 #------------------------------------------------------------------------------
 
+class VarField(RawField):
+    """A VarField is a Field with variable length, associated with a
+    termination condition that will end the unpack method.
+    An instance of VarField has an infinite size() unless it has been
+    unpacked with data.
+    """
+    def format(self):
+        fmt = self.typename
+        cnt = self._sz if hasattr(self,'_sz') else '*'
+        return '%s%s'%(cnt,fmt)
+    def size(self):
+        try:
+            return self._sz
+        except AttributeError:
+            return float('Infinity')
+    def unpack(self,data,offset=0):
+        sz1 = struct.calcsize(self.typename)
+        el1 = data[offset:offset+sz1]
+        el1 = struct.unpack(self.order+self.typename,el1)[0]
+        res = [el1]
+        pos = offset+sz1
+        while (not self.terminate(el1)):
+            el1 = data[pos:pos+sz1]
+            el1 = struct.unpack(self.order+self.typename,el1)[0]
+            res.append(el1)
+            pos += sz1
+        self._sz = pos-offset
+        return b''.join(res) if self.typename=='s' else res
+    def pack(self,value):
+        res = [struct.pack(self.order+self.typename,v) for v in value]
+        return b''.join(res)
+    def __repr__(self):
+        fmt = self.typename
+        r = '<VarField %s [%s]'%(self.name,self.format())
+        r += ' (%s)>'%self.comment if self.comment else '>'
+        return r
+    @staticmethod
+    def __default_terminate(val):
+        if isinstance(val,bytes):
+            return val==b'\0'
+        else:
+            return val==0
+    def terminate(self,val):
+        if hasattr(self,'_terminate'):
+            f = self._terminate
+            return f(val)
+        return self.__default_terminate(val)
+    def set_terminate(self,func):
+        self._terminate = func
+
+#------------------------------------------------------------------------------
+
 class StructDefine(object):
     """StructDefine is a decorator class used for defining structures
     by parsing a simple intermediate language input decorating a StructFormatter class.
@@ -288,12 +356,12 @@ class StructDefine(object):
                   'q':8, 'Q':8, 'd':8,
                   'P':8}
     integer    = pp.Regex(r'[1-9][0-9]*')
-    number     = integer
-    number.setParseAction(lambda r: int(r[0]))
+    integer.setParseAction(lambda r: int(r[0]))
     symbol     = pp.Regex(r'[A-Za-z_][A-Za-z0-9_]*')
     comment    = pp.Suppress(';')+pp.restOfLine
     fieldname  = pp.Suppress(':')+pp.Group(pp.Optional(pp.Literal('>')|pp.Literal('<'),default=None)+symbol)
-    length     = integer|symbol
+    inf        = pp.Literal('~')
+    length     = integer|symbol|inf
     typename   = pp.Group(symbol+pp.Optional(pp.Suppress('*')+length,default=0))
     structfmt  = pp.OneOrMore(pp.Group(typename+fieldname+pp.Optional(comment,default='')))
 
@@ -311,6 +379,8 @@ class StructDefine(object):
                 f_order=kargs['order']
             if f_type in self.rawtypes:
                 f_cls = RawField
+                if f_count=='~':
+                    cls = VarField
                 f_align = self.alignments[f_type]
             else:
                 f_cls = Field
@@ -354,6 +424,11 @@ class StructCore(object):
     packed = False
     union = False
 
+    def __new__(cls,*args,**kargs):
+        obj = super(StructCore,cls).__new__(cls,*args,**kargs)
+        obj.fields = [f.copy() for f in cls.fields]
+        return obj
+
     @classmethod
     def format(cls):
         if cls.union is False:
@@ -377,6 +452,14 @@ class StructCore(object):
         return sz
     def __len__(self):
         return self.size()
+    def __eq__(self,other):
+        if (self.packed==other.packed) and \
+           (self.union==other.union) and \
+           len(self.fields)==len(other.fields) and \
+           all((sf==of for sf,of in zip(self.fields,other.fields))):
+            return True
+        else:
+            return False
     @classmethod
     def align_value(cls):
         return max([f.align_value for f in cls.fields])

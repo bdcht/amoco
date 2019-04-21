@@ -78,6 +78,18 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.6.3`_
+
+  * add DWARF architecture
+  * update and improve elf loader
+  * improve expression simplify for shifts+and ops
+  * merge variable-length struct fields class "VarField"
+
+- `v2.6.2`_
+
+  * fix support for structs "slop"
+  * allow self-defined alignements of structs
+
 - `v2.6.1`_
 
   * use native structure size/aligment by default
@@ -280,6 +292,8 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.6.3: https://github.com/bdcht/amoco/releases/tag/v2.6.3
+.. _v2.6.2: https://github.com/bdcht/amoco/releases/tag/v2.6.2
 .. _v2.6.1: https://github.com/bdcht/amoco/releases/tag/v2.6.1
 .. _v2.6.0: https://github.com/bdcht/amoco/releases/tag/v2.6.0
 .. _v2.5.3: https://github.com/bdcht/amoco/releases/tag/v2.5.3

@@ -23,13 +23,13 @@ class GraphScene(QGraphicsScene):
         self.addItem(nv.obj)
 
     def Draw(self,N=1,stepflag=False,constrained=False,opt=False):
-        #self.sug.init_all(cons=constrained,optimize=opt)
+        self.sug.init_all()
         if stepflag:
             self.drawer=self.sug.draw_step()
             self.greens=[]
         else:
             self.sug.draw(N)
-        #for e in self.sug.alt_e: e.view.set_properties(stroke_color='red')
+        for e in self.sug.alt_e: e.view.set_properties(stroke_color='red')
         for e in self.sug.g.sE:
             #self.parent.root.add_child(e.view)
             # move edge start/end to CX points:

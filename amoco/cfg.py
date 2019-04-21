@@ -318,7 +318,7 @@ class graph(Graph):
     def signature(self):
         return u''.join([signature(g) for g in self.C])
 
-    def to_dot(self,name=None):
+    def to_dot(self,name=None,full=True):
         dot  = "digraph G {\n"
         dot += '    graph [orientation=landscape, labeljust=left];\n'
         dot += "    node [shape=box,fontname=monospace,fontsize=8];\n"
@@ -327,7 +327,7 @@ class graph(Graph):
         else:
             g = self
         for v in g.V():
-            txt = u"%s"%v.data
+            txt = u"%s"%v.data if full else "%s [%d]"%(v.name,len(v.data.instr))
             dot += '    "%s" [label="%s"];\n'%(id(v),txt)
         for e in g.E():
             dot += '    "%s" -> "%s"'%(id(e.v[0]),id(e.v[1]))

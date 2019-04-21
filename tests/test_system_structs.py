@@ -1,11 +1,25 @@
 import pytest
 from amoco.system.structs import *
 
-def test_field():
-    pass
+def test_varfield():
+    f = VarField('s',fname='string')
+    assert f.size()==float('Infinity')
+    assert f.unpack(b'abcdef\0dzdfoihzdofh') == b'abcdef\x00'
+    assert f.size()==7
 
 def test_StructDefine():
-    pass
+    S = StructDefine("B : v")(type('S',(StructCore,),{}))
+    a = S()
+    b = S()
+    assert not (a.fields is b.fields)
+    a.packed = True
+    assert S.packed == False
+    assert b.packed == False
+    assert a.packed == True
+    a.unpack(b'\x01')
+    b.unpack(b'\x02')
+    assert a.v == 1
+    assert b.v == 2
 
 def test_UnionDefine():
     pass

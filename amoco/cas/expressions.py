@@ -1661,46 +1661,85 @@ def eqn1_helpers(e,**kargs):
 # reminder: be careful not to modify the internal structure of
 # e.l or e.r because these objects might be used also in other
 # expressions. See tests/test_cas_exp.py for details.
+from amoco.cas.utils import get_lsb_msb, ismask
 def eqn2_helpers(e,bitslice=False,widening=False):
     if complexity(e.r)>e.threshold(): e.r = top(e.r.size)
     if complexity(e.l)>e.threshold(): e.l = top(e.l.size)
-    if not (e.r._is_def and e.l._is_def): return top(e.size)
+    if not (e.r._is_def and e.l._is_def):
+        return top(e.size)
+    # if e := ((a l.op cst) e.op r)
     if e.l._is_eqn and e.l.r._is_cst and e.l.op.unary==0:
         xop = e.op*e.l.op
+        # if ++ -- +- -+,
         if xop:
+            # move cst to the right:
+            # e := (a e.op r) l.op cst
             e.op,lop = e.l.op,e.op
             lr,e.r   = e.r,e.l.r
             e.l = lop(e.l.l,lr)
+    # if e:= (l + (- r)
+    # change into e:= l - r
     if e.r._is_eqn and e.r.op.unary:
         if e.op.symbol == OP_ADD and e.r.op.symbol == OP_MIN:
             e.op = _operator(OP_MIN)
             e.r  = e.r.r
+    # if e:= (l [+-] (a [+-] cst))
+    # move cst to the right:
+    # e:= (l [+-] a) xop cst
     if e.r._is_eqn and e.r.r._is_cst:
         xop = e.op*e.r.op
         if xop:
             e.l = e.op(e.l,e.r.l)
             e.r = e.r.r
             e.op = _operator(xop)
+    # now if e:= (l op cst)
     if e.r._is_cst:
         if e.r.value==0:
-            if e.op.symbol in (OP_OR,OP_XOR,OP_ADD,OP_MIN,OP_LSR,OP_LSL,OP_ROR,OP_ROL):
+            # if e:= (l [|^+-...] 0) then e:= l
+            if e.op.symbol in (OP_OR,OP_XOR,
+                               OP_ADD,OP_MIN,
+                               OP_LSR,OP_LSL,
+                               OP_ROR,OP_ROL):
                 return e.l
-            if e.op.symbol in (OP_AND,OP_MUL,OP_MUL2):
+            # if e:= (l [|&*] 0) then e:= 0
+            if e.op.symbol in (OP_AND,
+                               OP_MUL,OP_MUL2):
                 return cst(0,e.size)
-        elif e.r.value==1 and e.op.symbol in (OP_MUL,OP_MUL2,OP_DIV):
+        # if e:= (l [|*/] 1) then e:= l
+        elif e.r.value==1 and e.op.symbol in (OP_MUL,OP_MUL2,
+                                              OP_DIV):
             return e.l
-        elif e.r.value in (0x1,0xf,0xff,0xffff,0xffffffff) and e.op.symbol==OP_AND:
-            s = {1:1,0xf:4,0xff:8,0xffff:16,0xffffffff:32}[e.r.value]
-            return e.l[0:s].zeroextend(e.size)
+        # if e:= (l & mask) then e:= l[i1:i2]
+        elif e.op.symbol==OP_AND and ismask(e.r.value):
+            i1,i2 = get_lsb_msb(e.r.value)
+            c = comp(e.size)
+            c[0:e.size] = cst(0,e.size)
+            c[i1:i2+1] = e.l[i1:i2+1]
+            return c.simplify()
         elif bitslice and e.op.symbol in (OP_AND,OP_OR,OP_XOR):
             return composer([e.op(e.l[i:i+1],e.r[i:i+1]) for i in range(e.size)])
         elif bitslice and e.op.symbol in (OP_LSL):
             return composer([bit0]*e.r.value + [e.l[i:i+1] for i in range(0,e.size-e.r.value)])
         elif bitslice and e.op.symbol in (OP_LSR):
             return composer([e.l[i:i+1] for i in range(e.r.value,e.size)]+[bit0]*e.r.value)
+        # if e:= (l [>> <<] r) then e:= l[i1:i2]
+        elif e.op.symbol in (OP_LSL,OP_LSR):
+            c = comp(e.l.size)
+            c[0:e.l.size] = cst(0,e.l.size)
+            if e.op.symbol==OP_LSL:
+                l = e.l[0:e.l.size-e.r.value]
+                c[e.r.value:e.l.size] = l
+            elif e.op.symbol==OP_LSR:
+                l = e.l[e.r.value:e.l.size]
+                c[0:e.l.size-e.r.value] = l
+            return c.simplify()
+        # if e:= ((a op b) e.op cst)
         if e.l._is_eqn:
             xop = e.op*e.l.op
             if xop:
+                # if e:= ((a [+-] cst) [+-] cst)
+                # merge constants:
+                # change into e := a [+-] cst
                 if e.l.r._is_cst:
                     cc = OP_ARITH[xop](e.l.r,e.r)
                     e.op = e.l.op
@@ -1708,6 +1747,8 @@ def eqn2_helpers(e,bitslice=False,widening=False):
                     e.r = cc
                 return e
             elif e.r.size==1:
+                # if e:= ((a op b) == bit1) change in e := (a op b)
+                # if e:= ((a op b) == bit0) change in e := ~(a op b)
                 if e.op.symbol == OP_EQ:
                     return e.l if e.r.value==1 else ~(e.l)
                 if e.op.symbol == OP_NEQ:

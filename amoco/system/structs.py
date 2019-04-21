@@ -425,7 +425,7 @@ class StructCore(object):
     union = False
 
     def __new__(cls,*args,**kargs):
-        obj = super(StructCore,cls).__new__(cls,*args,**kargs)
+        obj = super(StructCore,cls).__new__(cls)
         obj.fields = [f.copy() for f in cls.fields]
         return obj
 

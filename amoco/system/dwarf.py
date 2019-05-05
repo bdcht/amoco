@@ -259,6 +259,7 @@ class CIE(StructFormatter):
   pass
 
 from amoco.system.core import CoreExec
+from amoco.cas.expressions import complexity
 from amoco.arch.dwarf import cpu
 
 PAGESIZE = 4096
@@ -267,6 +268,8 @@ class DwarfExec(CoreExec):
 
     def __init__(self,p):
         CoreExec.__init__(self,p,cpu)
+        self.VAR = {}
+        self.varid = 0
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):
@@ -300,4 +303,30 @@ class DwarfExec(CoreExec):
         m[pc] = self.cpu.cst(vaddr,pc.size)
         self._initmap = m
 
+    def setstack(self,*args):
+        m0 = mapper()
+        m0.setmemory(self.mmap)
+        m0[self.cpu.stack_elt] = cst(0,6)
+        for x in args:
+            if isinstance(x,str):
+                x = reg(x,64)
+            elif isinstance(x,int):
+                x = cst(x,64)
+            self.cpu._push_(m0,x)
+        return m0
 
+    def printstack(self,m,ssa=False):
+       n = m[self.cpu.stack_elt]
+       for x in reversed(range(n)):
+           v = m(self.cpu.mem(self.cpu.sp+8*x,64))
+           if ssa and complexity(v)>10:
+               self.VAR['v%d'%self.varid] = v
+               m[self.cpu.mem(self.cpu.sp+8*x,64)] = v = self.cpu.reg('v%d'%self.varid,64)
+               self.varid += 1
+           print("% 2d: %s"%(x,v.pp()))
+
+    def setvar(m,idx,name):
+        x = m(self.cpu.mem(self.cpu.sp+idx*8,64))
+        self.VAR[name] = x
+        m[self.cpu.mem(self.cpu.sp+idx*8,64)] = self.cpu.reg(name,64)
+        self.printstack(m)

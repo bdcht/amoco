@@ -300,7 +300,7 @@ def A_default(obj,Rd,imm8):
 @ispec("16[ 010001 10 D Rm(4) Rd(3) ]", mnemonic="MOV")
 def A_default(obj,D,Rm,Rd):
   obj.setflags = False
-  obj.d = env.regs[D<<3+Rd]
+  obj.d = env.regs[Rd|(D<<3)]
   obj.m = env.regs[Rm]
   obj.operands = [obj.d, obj.m]
   obj.type = type_data_processing

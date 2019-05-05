@@ -39,6 +39,10 @@ class ELF(CoreExec):
         m = mapper()
         for k,v in ((cpu.pc, cpu.cst(self.bin.entrypoints[0],32)),
                    ):
+            if v&1:
+                # switch to Thumb mode if pc&1:
+                self.cpu.internals['isetstate'] = 1
+                v = (v>>1)<<1
             m[k] = v
         return m
 

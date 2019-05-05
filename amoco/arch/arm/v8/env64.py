@@ -92,6 +92,9 @@ Z = slc(pstate,1,1,ref='Z')   # zero flag
 C = slc(pstate,2,1,ref='C')   # carry flag
 V = slc(pstate,3,1,ref='V')   # overflow flag
 
+is_reg_flags(pstate)
+is_reg_stack(sp)
+is_reg_pc(pc)
 
 Xregs = [r0,r1,r2,r3,r4,
         r5,r6,r7,r8,r9,

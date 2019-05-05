@@ -11,11 +11,11 @@ from .env64 import *
 from .utils import *
 from amoco.cas.utils import *
 
-def __mem(a,sz):
+def __mem(a,sz,disp=0):
     endian = 1
     if internals['endianstate']==1:
         endian=-1
-    return mem(a,sz,endian=endian)
+    return mem(a,sz,disp=disp,endian=endian)
 
 def i_ADC(i,fmap):
     fmap[pc] = fmap[pc]+i.length
@@ -68,8 +68,7 @@ def i_ADR(i,fmap):
 
 def i_ADRP(i,fmap):
     fmap[pc] = fmap[pc]+i.length
-    base = fmap(pc)
-    base[0:12]=cst(0,12)
+    base = fmap(pc & 0xFFFFFFFFFFFFF000)
     fmap[i.d] = base+i.imm
 
 def i_AND(i,fmap):
@@ -219,21 +218,25 @@ def i_CLZ(i,fmap):
 def i_CSEL(i,fmap):
     fmap[pc] = fmap[pc]+i.length
     dst, op1, op2, cond = i.operands
+    cond = CONDITION[cond^1][1]
     fmap[dst] = tst(fmap(cond), fmap(op1), fmap(op2))
 
 def i_CSINC(i,fmap):
     fmap[pc] = fmap[pc]+i.length
     dst, op1, op2, cond = i.operands
+    cond = CONDITION[cond^1][1]
     fmap[dst] = tst(fmap(cond), fmap(op1), fmap(op2)+1)
 
 def i_CSINV(i,fmap):
     fmap[pc] = fmap[pc]+i.length
     dst, op1, op2, cond = i.operands
+    cond = CONDITION[cond^1][1]
     fmap[dst] = tst(fmap(cond), fmap(op1), fmap(~op2))
 
 def i_CSNEG(i,fmap):
     fmap[pc] = fmap[pc]+i.length
     dst, op1, op2, cond = i.operands
+    cond = CONDITION[cond^1][1]
     fmap[dst] = tst(fmap(cond), fmap(op1), fmap(-op2))
 
 def i_DCPS1(i,fmap):

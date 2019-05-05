@@ -38,6 +38,13 @@ def label(i,pos=0):
     offset = i.operands[pos]
     return str(_pc+offset)
 
+def label_adr(i):
+    _pc = i.address
+    if _pc is None: _pc=pc
+    _pc = _pc&0xfffffffffffff000
+    offset = i.operands[1]
+    return str(_pc+offset)
+
 # -----------------------------------------------------------------------------
 # instruction aliases:
 
@@ -260,6 +267,7 @@ format_allregs = [lambda i: ', '.join(regs(i))]
 format_default = [mnemo]+format_allregs
 format_ld_st   = [mnemo, lambda i: ', '.join(regs(i,-2)+deref(i,-2))]
 format_B       = [mnemo, label]
+format_ADR     = [mnemo, lambda i: '%s, %s'%(i.operands[0],label_adr(i))]
 format_CBx     = [mnemo, lambda i: '%s, %s'%(i.t,label(i,1)) ]
 format_CCMx    = [mnemo, lambda i: regs(i,2), lambda i: bin(i.flags.value), condreg]
 
@@ -267,6 +275,7 @@ ARM_V8_full_formats = {
     'A64_generic'       : format_default,
     'A64_load_store'    : format_ld_st,
 
+    'A64_adr'           : format_ADR,
     'A64_Bcond'         : format_B,
     'A64_B'             : format_B,
     'A64_CBx'           : format_CBx,

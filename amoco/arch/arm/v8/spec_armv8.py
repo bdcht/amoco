@@ -114,13 +114,13 @@ def A64_generic(obj,sf,S,shift,Rm,imm6,Rn,Rd):
     obj.type = type_data_processing
 
 @ispec("32[ p immlo(2) 10000 immhi(19) Rd(5) ]", mnemonic="ADR")
-def A64_generic(obj,p,immlo,immhi,Rd):
+def A64_adr(obj,p,immlo,immhi,Rd):
     obj.page = (p==1)
     if obj.page==1:
             obj.mnemonic+='P'
-            obj.imm = env.cst(immhi<<14+immlo<<12,64)
+            obj.imm = env.cst((immhi<<14)+(immlo<<12),64)
     else:
-            obj.imm = env.cst(immhi<<2+immlo,64)
+            obj.imm = env.cst((immhi<<2)+immlo,64)
     obj.d = sp2z(env.Xregs[Rd])
     obj.operands = [obj.d,obj.imm]
     obj.type = type_data_processing
@@ -296,7 +296,7 @@ def A64_CCMx(obj,sf,imm5,cond,Rn,nzcv):
     obj.flags = env.cst(nzcv,4)
     obj.misc['cond'] = env.CONDITION[cond][0]
     obj.cond = env.CONDITION[cond][1]
-    obj.operands = [obj.n,obj.imm,obj.nzcv,obj.cond]
+    obj.operands = [obj.n,obj.imm,obj.flags,obj.cond]
     obj.type = type_data_processing
 
 @ispec("32[ sf 0 1 11010010 Rm(5) cond(4) 0 0 Rn(5) 0 nzcv(4) ]",mnemonic="CCMN")
@@ -309,7 +309,7 @@ def A64_CCMx_reg(obj,sf,Rm,cond,Rn,nzcv):
     obj.flags = env.cst(nzcv,4)
     obj.misc['cond'] = env.CONDITION[cond][0]
     obj.cond = env.CONDITION[cond][1]
-    obj.operands = [obj.n,obj.m,obj.nzcv,obj.cond]
+    obj.operands = [obj.n,obj.m,obj.flags,obj.cond]
     obj.type = type_data_processing
 
 @ispec("32[ sf 0 0 11010100 Rm(5) cond(4) 0 1 Rn(5) Rd(5) ]",mnemonic="CSINC")
@@ -322,8 +322,7 @@ def A64_CSx(obj,sf,Rm,cond,Rn,Rd):
     obj.d = sp2z(regs[Rd])
     obj.n = sp2z(regs[Rn])
     obj.m = sp2z(regs[Rm])
-    obj.misc['cond'] = env.CONDITION[cond][0]
-    obj.cond = env.CONDITION[cond][1]
+    obj.cond = cond
     obj.operands = [obj.d,obj.n,obj.m,obj.cond]
     obj.type = type_data_processing
 

@@ -1,11 +1,27 @@
 import pytest
 from amoco.system.structs import *
 
+def test_rawfield():
+    f = RawField('I',fcount=2,fname='v')
+    assert f.format()=='2I'
+    assert f.size()==8
+    assert f.unpack(b'\0\x01\x02\x03AAAA') == (0x03020100,0x41414141)
+
 def test_varfield():
     f = VarField('s',fname='string')
+    assert f.format()=='#s'
     assert f.size()==float('Infinity')
     assert f.unpack(b'abcdef\0dzdfoihzdofh') == b'abcdef\x00'
     assert f.size()==7
+    assert f.format()=='7s'
+
+def test_cntfield():
+    f = CntField('s','~b',fname='bstr')
+    assert f.format()=='#s'
+    assert f.size()==float('Infinity')
+    assert f.unpack(b'\x04abcdefgh') == b'abcd'
+    assert f.size()==5
+    assert f.format()=='b4s'
 
 def test_StructDefine():
     S = StructDefine("B : v")(type('S',(StructCore,),{}))
@@ -71,3 +87,37 @@ def test_Struct_slop():
     assert s3.a == b'C'
     assert s3.b == 1
     assert s3.pack() == b'\x43\x01\x00\x00\x00'
+
+def test_Struct_CntFields():
+    @StructDefine("""
+    s*16 : uuidDesigner
+    I    : cbStructSize
+    s*~I : bstrAddinRegKey
+    s*~I : bstrAddinName
+    s*~I : bstrAddinDescription
+    I    : dwLoadBehaviour
+    s*~I : bstrSatelliteDll
+    s*~I : bstrAdditionalRegKey
+    I    : dwCommandLineSafe
+    """,packed=True)
+    class DesignerInfo(StructFormatter):
+        order = '<'
+        def __init__(self,data="",offset=0):
+            if data:
+                self.unpack(data,offset)
+    d = DesignerInfo()
+    assert d.format() == '16sI#s#s#sI#s#sI'
+    assert d.size() == float('Infinity')
+    d.unpack(b'A'*16+
+             b'\x01\0\0\0'+
+             b'\x04\0\0\0abcd'+
+             b'\x04\0\0\0abcd'+
+             b'\x04\0\0\0abcd'+
+             b'\x02\0\0\0'+
+             b'\x04\0\0\0abcd'+
+             b'\x04\0\0\0abcd'+
+             b'\x03\0\0\0')
+    assert d.uuidDesigner == b'A'*16
+    assert d.bstrAddinRegKey == b'abcd'
+    assert d.dwCommandLineSafe == 3
+

@@ -185,6 +185,7 @@ class Field(object):
         else:
             return cls()
     def format(self):
+        "a (non-Raw)Field format is always returned as matching a finite-length string."
         sz = self.size()
         return '%ds'%sz
     def size(self):
@@ -222,6 +223,7 @@ class Field(object):
         if r==0: return offset
         return offset+(A-r)
     def unpack(self,data,offset=0):
+        "returns a (sequence of count) element(s) of its self.type"
         blob = self.type.unpack(data,offset)
         sz = self.type.size()
         count = self.count
@@ -264,11 +266,15 @@ class Field(object):
 
 class RawField(Field):
     """A RawField is a Field associated to a *raw* type, i.e. an internal type
-    matching a standard C type (u)int8/16/32/64, floats/double, (u)char.
+       matching a standard C type (u)int8/16/32/64, floats/double, (u)char.
+       Contrarily to a generic Field which essentially forward the unpack call to
+       its subtype, a RawField will rely on struct package to return the raw
+       unpacked value.
     """
     def format(self):
         fmt = self.typename
         if self.count==0: return fmt
+        sz = self.count
         return '%d%s'%(sz,fmt)
     def size(self):
         sz = struct.calcsize(self.typename)
@@ -278,6 +284,7 @@ class RawField(Field):
         pfx = '%d'%self.count if self.count>0 else ''
         res = struct.unpack(self.order+pfx+self.typename,data[offset:offset+self.size()])
         if self.count==0 or self.typename=='s': return res[0]
+        if self.typename=='c': return b''.join(res)
         return res
     def pack(self,value):
         pfx = '%d'%self.count if self.count>0 else ''
@@ -293,14 +300,14 @@ class RawField(Field):
 #------------------------------------------------------------------------------
 
 class VarField(RawField):
-    """A VarField is a Field with variable length, associated with a
+    """A VarField is a RawField with variable length, associated with a
     termination condition that will end the unpack method.
     An instance of VarField has an infinite size() unless it has been
     unpacked with data.
     """
     def format(self):
         fmt = self.typename
-        cnt = self._sz if hasattr(self,'_sz') else '*'
+        cnt = self._sz if hasattr(self,'_sz') else '#'
         return '%s%s'%(cnt,fmt)
     def size(self):
         try:
@@ -319,7 +326,9 @@ class VarField(RawField):
             res.append(el1)
             pos += sz1
         self._sz = pos-offset
-        return b''.join(res) if self.typename=='s' else res
+        if self.typename=='s': return b''.join(res)
+        if self.typename=='c': return b''.join(res)
+        return res
     def pack(self,value):
         res = [struct.pack(self.order+self.typename,v) for v in value]
         return b''.join(res)
@@ -344,6 +353,44 @@ class VarField(RawField):
 
 #------------------------------------------------------------------------------
 
+class CntField(RawField):
+    """A CntField is a RawField where the amount of elements to unpack
+    is provided as first bytes, encoded as either a byte/word/dword.
+    """
+    def format(self):
+        fmt = self.typename
+        if hasattr(self,'fcount'):
+            cnt = "%s%d"%(self.fcount[1:],self.count)
+        else:
+            cnt = '#'
+        return '%s%s'%(cnt,fmt)
+    def size(self):
+        try:
+            return struct.calcsize(self.format())
+        except:
+            return float('Infinity')
+    def unpack(self,data,offset=0):
+        if hasattr(self,'fcount'): self.count = self.fcount
+        sz = struct.calcsize(self.count[1:])
+        nb = data[offset:offset+sz]
+        nb = struct.unpack(self.order+self.count[1:],nb)[0]
+        self.fcount = self.count
+        self.count  = nb
+        res = struct.unpack(self.order+self.format(),data[offset:offset+self.size()])
+        if self.count==0 or self.typename=='s': return res[1]
+        if self.typename=='c': return b''.join(res[1:])
+        return res[1:]
+    def pack(self,value):
+        res = struct.pack(self.order+self.format(),value)
+        return res
+    def __repr__(self):
+        fmt = self.format()
+        r = '<Field %s [%s]'%(self.name,fmt)
+        r += ' (%s)>'%self.comment if self.comment else '>'
+        return r
+
+#------------------------------------------------------------------------------
+
 class StructDefine(object):
     """StructDefine is a decorator class used for defining structures
     by parsing a simple intermediate language input decorating a StructFormatter class.
@@ -360,7 +407,7 @@ class StructDefine(object):
     symbol     = pp.Regex(r'[A-Za-z_][A-Za-z0-9_]*')
     comment    = pp.Suppress(';')+pp.restOfLine
     fieldname  = pp.Suppress(':')+pp.Group(pp.Optional(pp.Literal('>')|pp.Literal('<'),default=None)+symbol)
-    inf        = pp.Literal('~')
+    inf        = pp.Regex(r'~[bBhHiI]?')
     length     = integer|symbol|inf
     typename   = pp.Group(symbol+pp.Optional(pp.Suppress('*')+length,default=0))
     structfmt  = pp.OneOrMore(pp.Group(typename+fieldname+pp.Optional(comment,default='')))
@@ -379,8 +426,10 @@ class StructDefine(object):
                 f_order=kargs['order']
             if f_type in self.rawtypes:
                 f_cls = RawField
-                if f_count=='~':
-                    cls = VarField
+                if isinstance(f_count,str) and f_count.startswith('~'):
+                    f_cls = VarField
+                    if f_count[1:] in 'bBhHiI':
+                        f_cls = CntField
                 f_align = self.alignments[f_type]
             else:
                 f_cls = Field

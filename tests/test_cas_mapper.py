@@ -19,6 +19,8 @@ def test_slicing(m,x,y):
     assert m(x[16:32])==0xabcd
 
 def test_aliasing1(m,x,y):
+    al = conf.Cas.noaliasing
+    conf.Cas.noaliasing = False
     m.clear()
     mx = mem(x,32)
     my = mem(y,32)
@@ -32,8 +34,11 @@ def test_aliasing1(m,x,y):
     assert str(rx)=='M32$3(x)'
     assert rx.mods[0][1]==0xdeadbeef
     assert rx.mods[1][0]==my.a
+    conf.Cas.noaliasing = al
 
 def test_aliasing2(m,x,y,z,w,r,a,b):
+    al = conf.Cas.noaliasing
+    conf.Cas.noaliasing = False
     m.clear()
     mx = mem(x,32)
     my = mem(y,32)
@@ -56,8 +61,11 @@ def test_aliasing2(m,x,y,z,w,r,a,b):
     m[b]  = m(b+mx)                   # add  b  , [x]
     assert len(m(b).r.mods)==2
     m[mem(a,32)] = cst(0,32)          # mov [a] , 0
+    conf.Cas.noaliasing = al
 
 def test_aliasing3(m,x,y,a):
+    al = conf.Cas.noaliasing
+    conf.Cas.noaliasing = False
     m.clear()
     m[mem(x-4,32)] = cst(0x44434241,32)
     m[mem(x-8,32)] = y
@@ -73,6 +81,7 @@ def test_aliasing3(m,x,y,a):
     mprev[a] = x-4
     res = mprev(res)
     assert res[16:24] == 0xcc
+    conf.Cas.noaliasing = al
 
 def test_compose1(m,x,y,z,w):
     mx = mem(x,32)
@@ -91,6 +100,8 @@ def test_compose1(m,x,y,z,w):
     assert cm(z) == 0x4567babe
 
 def test_compose2(m,x,y,z,w):
+    al = conf.Cas.noaliasing
+    conf.Cas.noaliasing = False
     mx = mem(x,32)
     my = mem(y,32)
     mxx = mem(x+2,32)
@@ -105,6 +116,7 @@ def test_compose2(m,x,y,z,w):
     cm = m<<mprev
     assert cm(my) == 0x4567babe
     assert cm(w)==cm(my)
+    conf.Cas.noaliasing = al
 
 def test_signpropagate(m,x,y):
     m[x] = cst(0xfffffffe,32)

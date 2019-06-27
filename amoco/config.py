@@ -7,10 +7,10 @@ This module defines the default amoco configuration
 and loads any user-defined configuration file.
 
 Attributes:
-    conf (SafeConfigParser): holds in a standard ConfigParser object,
+    conf (Config): holds in a Config object based on Configurable traitlets,
         various parameters mostly related to how outputs should be formatted.
 
-        The defined sections are:
+        The defined configurable sections are:
 
         - 'block' which deals with how basic blocks are printed, with options:
 
@@ -29,7 +29,7 @@ Attributes:
             - 'url' allows to define the dialect and/or location of the database (default to sqlite)
             - 'log' indicates that database logging should be redirected to the amoco logging handlers
 
-        - 'log' which deals with logging options:
+        - 'logger' which deals with logging options:
 
             - 'level' one of 'ERROR' (default), 'VERBOSE', 'INFO', 'WARNING' or 'DEBUG' from less to more verbose,
             - 'tempfile' to also save DEBUG logs in a temporary file if True (default),
@@ -42,89 +42,103 @@ Attributes:
 
 """
 
-from os.path import expanduser
-from os import access, F_OK, R_OK
-from io import StringIO
-from collections import defaultdict
+from os import getenv
 
-try:
-    from configparser import ConfigParser
-except ImportError:
-    from ConfigParser import ConfigParser
+from traitlets.config import Configurable
+from traitlets.config import PyFileConfigLoader
+from traitlets import Integer, Unicode, Bool, observe
 
 #-----------------------
 
-_locations = ['~/.amoco/config', '~/.amocorc']
 
-_default = u"""
-[block]
-header   = True
-footer   = False
-bytecode = True
-padding  = 4
+class DB(Configurable):
+    "configurable parameters related to the database"
+    url    = Unicode('sqlite://',config=True)
+    log    = Bool(False,config=True)
 
-[cas]
-complexity = 10000
-unicode    = False
-noaliasing = True
+class Code(Configurable):
+    "configurable parameters related to assembly blocks"
+    helper = Bool(True,config=True)
+    header   = Bool(True,config=True)
+    footer   = Bool(True,config=True)
+    bytecode = Bool(True,config=True)
+    padding  = Integer(4,config=True)
 
-[db]
-url = sqlite://
-log = False
+class Cas(Configurable):
+    "configurable parameters related to the Computer Algebra System (expressions)"
+    complexity = Integer(10000,config=True)
+    unicode    = Bool(False,config=True)
+    noaliasing = Bool(True,config=True)
 
-[log]
-level    = WARNING
-tempfile = True
+class Log(Configurable):
+    "configurable parameters related to logging"
+    level = Unicode('WARNING',config=True)
+    filename = Unicode('',config=True)
+    tempfile = Bool(True,config=True)
+    @observe('level')
+    def _level_changed(self,change):
+        from amoco.logger import set_log_all
+        set_log_all(change.new)
 
-[ui]
-formatter = Null
-graphics  = term
+class UI(Configurable):
+    "configurable parameters related to User Interface(s)"
+    formatter = Unicode('Null',config=True)
+    graphics  = Unicode('term',config=True)
 
-[x86]
-format = Intel
-"""
+class Arch(Configurable):
+    assemble = Bool(False,config=True)
+    format_x86 = Unicode('Intel',config=True)
+    @observe('format_x86')
+    def _format_x86_changed(self,change):
+        from amoco.arch.x86.cpu_x86 import configure
+        configure(format=change.new)
+    format_x64 = Unicode('Intel',config=True)
+    @observe('format_x64')
+    def _format_x64_changed(self,change):
+        from amoco.arch.x64.cpu_x64 import configure
+        configure(format=change.new)
 
-class confdict(defaultdict):
+class Config(object):
+    _locations = ['.amoco/config', '.amocorc']
 
-    def __setitem__(self,key,value):
-        super(confdict,self).__setitem__(key,value)
+    def __init__(self,f=None):
+        if f is None:
+            for f in self._locations:
+                cl = PyFileConfigLoader(filename=f,path=('.',getenv('HOME')))
+                try:
+                    c = cl.load_config()
+                except:
+                    c = None
+                    self.f = None
+                else:
+                    self.f = f
+                    break
+        self.UI = UI(config=c)
+        self.DB = DB(config=c)
+        self.Code = Code(config=c)
+        self.Arch = Arch(config=c)
+        self.Log = Log(config=c)
+        self.Cas = Cas(config=c)
 
-class Conf(object):
-    def __init__(self,default):
-        self.cp = ConfigParser()
-        self.cp.readfp(StringIO(default))
-        for f in _locations:
-            f = expanduser(f)
-            if access(f,F_OK|R_OK):
-                self.cp.read([f])
-                break
-        self.setup()
+    def __str__(self):
+        s = []
+        mlen = 0
+        for c in filter(lambda x: isinstance(getattr(self,x),Configurable),
+                       dir(self)):
+            pfx = "c.%s"%c
+            c = getattr(self,c)
+            for t in c.trait_names():
+                if t in ('config','parent'): continue
+                v = getattr(c,t)
+                t = '{}.{}'.format(pfx,t)
+                mlen = max(mlen,len(t))
+                if isinstance(v,unicode): v="'%s'"%v
+                s.append((t,v))
+        return u'\n'.join(('{:{mlen}} = {}'.format(t,v,mlen=mlen) for (t,v) in s))
 
-    def setup(self):
-        self.sections = defaultdict(lambda:None)
-        for s in self.cp.sections():
-            self.sections[s] = defaultdict(lambda:None)
-            for (k,v) in self.cp.items(s):
-                self.sections[s][k] = self.converter(v)
-
-    def converter(self,value):
-        if value in ('True','true'): return True
-        if value in ('False','false'): return False
-        try:
-            return int(value,0)
-        except ValueError:
-            pass
-        try:
-            return float(value)
-        except ValueError:
-            pass
-        return value
 
 # define default config:
 #-----------------------
 
-conf = Conf(_default)
-
-def conf_proxy(module_name):
-    return conf.sections[module_name.split('.')[-1]]
+conf = Config()
 

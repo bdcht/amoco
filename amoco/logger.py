@@ -41,14 +41,11 @@ logging.addLevelName(VERBOSE,u'VERBOSE')
 
 default_format = logging.Formatter(u"[%(levelname)s] %(name)s: %(message)s")
 
-from amoco.config import conf_proxy
-conf = conf_proxy('log')
+from amoco.config import conf
 
-default_level = conf['level']
-
-if conf['file']:
-    logfilename  = conf['file']
-elif conf['tempfile']:
+if conf.Log.filename:
+    logfilename  = conf.Log.filename
+elif conf.Log.tempfile:
     import tempfile
     logfilename  = tempfile.mkstemp('.log',prefix="amoco-")[1]
 else:
@@ -58,7 +55,7 @@ if logfilename:
     logfile = logging.FileHandler(logfilename,mode='w')
     logfile.setFormatter(default_format)
     logfile.setLevel(VERBOSE)
-    conf['file'] = logfilename
+    conf.Log.filename = logfilename
 else:
     logfile = None
 
@@ -81,7 +78,7 @@ class Log(logging.Logger):
         logging.Logger.__init__(self,name)
         handler.setFormatter(default_format)
         self.addHandler(handler)
-        self.setLevel(default_level)
+        self.setLevel(conf.Log.level)
         if logfile: self.addHandler(logfile)
         self.register(name,self)
 
@@ -131,7 +128,6 @@ def set_log_all(level):
     Args:
         level (int): level value as an integer.
     """
-    default_level = level
     for l in Log.loggers.values():
         l.setLevel(level)
 

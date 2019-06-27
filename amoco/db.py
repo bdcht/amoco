@@ -16,8 +16,7 @@ pickled objects.
 
 """
 
-from amoco.config import conf_proxy
-conf = conf_proxy(__name__)
+from amoco.config import conf
 
 from amoco.logger import Log,logging
 logger = Log(__name__)
@@ -29,7 +28,7 @@ try:
     has_sql = True
     Session = orm.scoped_session(orm.sessionmaker())
     Base = declarative_base()
-    if conf['log']:
+    if conf.DB.log:
         for l in ('sqlalchemy.engine','sqlalchemy.orm'):
             alog = logging.getLogger(l)
             for h in logger.handlers:
@@ -45,9 +44,9 @@ def createdb(url=None):
     opens a temporary file for storage.
     """
     if url is None:
-        url = conf['url']
+        url = conf.DB.url
     if has_sql:
-        logflag = conf['log']
+        logflag = conf.DB.log
         engine = sql.create_engine(url,echo=logflag,echo_pool=logflag,logging_name=__name__)
         Session.configure(bind=engine)
         Case.metadata.create_all(bind=engine)

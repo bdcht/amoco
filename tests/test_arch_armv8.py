@@ -4,7 +4,7 @@ from amoco.arch.arm import cpu_armv8 as cpu
 from amoco.arch.arm.v8.env64 import *
 
 from amoco.ui import render
-render.conf['formatter'] = 'Null'
+render.conf.UI.formatter = 'Null'
 
 def test_decoder_000():
   c = b'\x67\x0a\x00\xd0'

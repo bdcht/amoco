@@ -653,10 +653,10 @@ class lbackward(fforward):
                 return
         # create func object:
         f = code.func(node.c)
-        alf = code.mapper.assume_no_aliasing
-        code.mapper.assume_no_aliasing = not self.policy['frame-aliasing']
-        cxl = code.op.threshold()
-        code.op.limit(self.policy['complexity'])
+        alf = conf.Cas.noaliasing
+        conf.Cas.noaliasing = not self.policy['frame-aliasing']
+        cxl = conf.Cas.complexity
+        conf.Cas.complexity = self.policy['complexity']
         SIG_FUNC.emit(args=f)
         m = f.makemap()
         # get pc @ node:
@@ -691,8 +691,8 @@ class lbackward(fforward):
                 e = cn.c.add_edge(cfg.link(cn,fn))
                 logger.verbose('edge %s added'%str(e))
                 T.extend(_target(cnpc,e.v[1]).expand())
-        code.mapper.assume_no_aliasing = alf
-        code.op.limit(cxl)
+        conf.Cas.noaliasing = alf
+        conf.Cas.complexity = cxl
         self.spool.extend(T)
 
     def get_targets(self,node,parent):
@@ -710,15 +710,15 @@ class lbackward(fforward):
               the PC expression evaluated from current node map.
         """
         pc = self.prog.cpu.PC()
-        alf = code.mapper.assume_no_aliasing
-        cxl = code.op.threshold()
-        code.op.limit(self.policy['complexity'])
-        code.mapper.assume_no_aliasing = not self.policy['frame-aliasing']
+        alf = conf.Cas.noaliasing
+        cxl = conf.Cas.complexity
+        conf.Cas.complexity = self.policy['complexity']
+        conf.Cas.noaliasing = not self.policy['frame-aliasing']
         # make pc value explicit in every block:
         node.data.map = node.data.map.use((pc,node.data.address))
         # try fforward:
         T = super(lbackward,self).get_targets(node,parent)
-        code.mapper.assume_no_aliasing = alf
-        code.op.limit(cxl)
+        conf.Cas.noaliasing = alf
+        conf.Cas.complexity = cxl
         return T
 

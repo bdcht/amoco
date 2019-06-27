@@ -30,7 +30,7 @@ It features:
 
 setup(
     name = 'amoco',
-    version = '2.6.3',
+    version = '2.7.0',
     description = 'yet another binary analysis framework',
     long_description = long_descr,
     # Metadata
@@ -53,7 +53,7 @@ setup(
     url = 'https://github.com/bdcht/amoco',
     setup_requires=['pytest-runner',],
     tests_require=['pytest',],
-    install_requires = ['grandalf>=0.6', 'crysp>0.9', 'pyparsing','future'],
+    install_requires = ['grandalf>=0.6', 'crysp>=1.0', 'pyparsing','traitlets','future'],
     extras_require={
         'app' : ['pygments','SQLAlchemy','Click','z3-solver'],
     },

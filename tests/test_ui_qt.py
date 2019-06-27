@@ -4,7 +4,7 @@ import amoco
 #load_engine()
 #from amoco.ui.graphics.qt_.engine import app
 #from amoco.ui.graphics.qt_.mainwin import MainWindow
-#amoco.conf.sections['ui']['graphics'] = 'qt'
+#amoco.conf.UI.graphics = 'qt'
 
 @pytest.mark.skipif(True,reason="work-in-progress")
 def test_graph():

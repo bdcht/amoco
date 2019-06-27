@@ -19,16 +19,16 @@ import operator
 from amoco.logger import Log
 logger = Log(__name__)
 
-from amoco.config import conf_proxy
-conf = conf_proxy('cas')
+from amoco.config import conf
 
 from amoco.ui import render
 
 try:
     IntType = (int,long)
-    conf['unicode']=False
 except NameError:
     IntType = (int,)
+else:
+    conf.Cas.unicode=False
 
 # decorators:
 #------------
@@ -150,8 +150,8 @@ class exp(object):
         return self
 
     def __unicode__(self):
-        if self._is_def is 0: return u'\u22A4%d'%self.size if conf['unicode'] else 'T%d'%self.size
-        if self._is_def is False: return u'\u22A5%d'%self.size if conf['unicode'] else '_%d'%self.size
+        if self._is_def is 0: return u'\u22A4%d'%self.size if conf.Cas.unicode else 'T%d'%self.size
+        if self._is_def is False: return u'\u22A5%d'%self.size if conf.Cas.unicode else '_%d'%self.size
         raise ValueError("void expression")
 
     def __str__(self):
@@ -1341,14 +1341,6 @@ class op(exp):
         if self.l._is_eqn: self.prop |= self.l.prop
         if self.r._is_eqn : self.prop |= self.r.prop
 
-    @staticmethod
-    def threshold():
-        return conf['complexity']
-
-    @staticmethod
-    def limit(v):
-        conf['complexity'] = v
-
     def eval(self,env):
         # single-operand :
         l = self.l.eval(env)
@@ -1452,7 +1444,7 @@ class uop(exp):
 # operators:
 #-----------
 
-if conf['unicode']:
+if conf.Cas.unicode:
     OP_ADD  = u'+'
     OP_MIN  = u'-'
     OP_MUL  = u'*'
@@ -1597,9 +1589,6 @@ class _operator(object):
 # basic simplifier:
 #------------------
 
-if conf['complexity']:
-    op.limit(conf['complexity'])
-
 def symbols_of(e):
     if e is None: return []
     if e._is_cst: return []
@@ -1663,8 +1652,9 @@ def eqn1_helpers(e,**kargs):
 # expressions. See tests/test_cas_exp.py for details.
 from amoco.cas.utils import get_lsb_msb, ismask
 def eqn2_helpers(e,bitslice=False,widening=False):
-    if complexity(e.r)>e.threshold(): e.r = top(e.r.size)
-    if complexity(e.l)>e.threshold(): e.l = top(e.l.size)
+    threshold = conf.Cas.complexity
+    if complexity(e.r)>threshold: e.r = top(e.r.size)
+    if complexity(e.l)>threshold: e.l = top(e.l.size)
     if not (e.r._is_def and e.l._is_def):
         return top(e.size)
     # if e := ((a l.op cst) e.op r)
@@ -1847,7 +1837,7 @@ class vec(exp):
         if widening:
             return vecw(self)
         cl = [complexity(x) for x in self.l]
-        if sum(cl,0.)>op.threshold():
+        if sum(cl,0.)>conf.Cas.complexity:
             return top(self.size)
         return self
 

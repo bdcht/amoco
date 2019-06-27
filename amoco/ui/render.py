@@ -5,8 +5,7 @@ try:
 except ImportError:
     from io import BytesIO as StringIO
 
-from amoco.config import conf_proxy
-conf = conf_proxy('ui')
+from amoco.config import conf
 
 from amoco.logger import Log
 logger = Log(__name__)
@@ -85,7 +84,7 @@ else:
     }
 
 def highlight(toks,formatter=None,outfile=None):
-    formatter = formatter or Formats.get(conf['formatter'])
+    formatter = formatter or Formats.get(conf.UI.formatter)
     if isinstance(formatter,str): formatter = Formats[formatter]
     outfile = outfile or StringIO()
     formatter.format(toks,outfile)

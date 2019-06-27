@@ -42,7 +42,6 @@ class mapper(object):
         conds  : is the list of conditions that must be True for the mapper
         csi    : is the optional interface to a *concrete* state
     """
-    assume_no_aliasing = conf['noaliasing']
 
     __slots__ = ['__map','__Mem','conds', 'csi', 'view']
 
@@ -162,7 +161,7 @@ class mapper(object):
         """check if location k is possibly aliased by the mapper:
         i.e. the mapper writes to some other location expression
         after writing to k"""
-        if self.assume_no_aliasing: return 0
+        if conf.Cas.noaliasing: return 0
         K = list(self.__map.keys())
         n = self.__map.lastw
         try:

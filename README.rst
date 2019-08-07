@@ -36,7 +36,7 @@ It features:
 - a **symbolic** algebra module which allows to describe the semantics of
   every instructions and compute a functional representation of instruction
   blocks.
-- a generic execution model wich provides an abstract memory model to deal
+- a generic execution model which provides an abstract memory model to deal
   with concrete or symbolic values transparently, and other system-dependent
   features.
 - various classes implementing usual disassembly techniques like linear sweep,

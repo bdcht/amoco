@@ -198,6 +198,7 @@ def A_default(obj,i,Rn,imm3,imm8):
   obj.operands = [obj.n, obj.imm32]
   obj.type = type_data_processing
   obj.cond = env.CONDITION_AL
+  obj.stype = None
 
 @ispec("32[ 0 #imm3(3) 1111 #imm2(2) stype(2) Rm(4) 11101 01 1000 1 Rn(4) ]", mnemonic="CMN")
 @ispec("32[ 0 #imm3(3) 1111 #imm2(2) stype(2) Rm(4) 11101 01 1101 1 Rn(4) ]", mnemonic="CMP")
@@ -205,7 +206,9 @@ def A_default(obj,i,Rn,imm3,imm8):
 @ispec("32[ 0 #imm3(3) 1111 #imm2(2) stype(2) Rm(4) 11101 01 0000 1 Rn(4) ]", mnemonic="TST")
 def A_sreg(obj,i,Rn,imm3,imm2,stype,Rm):
   obj.n = env.regs[Rn]
-  obj.m = DecodeShift(stype,env.regs[Rm],imm3<<2+imm2)
+  obj.m = env.regs[Rm]
+  obj.stype = stype
+  obj.shift = imm3<<2+imm2
   if Rn==15 or BadReg(Rm): raise InstructionError(obj)
   obj.operands = [obj.n, obj.m]
   obj.type = type_data_processing
@@ -297,7 +300,9 @@ def A_deref(obj,U,Rt,imm12):
   obj.t = env.regs[Rt]
   if Rt==15: raise InstructionError(obj) # see PLDxx
   obj.imm32 = env.cst(imm12,32)
+  obj.index = True
   obj.add = (U==1)
+  obj.wback = False
   obj.operands = [obj.t, obj.n, obj.imm32]
   obj.type = type_data_processing
   obj.cond = env.CONDITION_AL

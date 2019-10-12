@@ -13,6 +13,7 @@ class ELF(CoreExec):
 
     def __init__(self,p):
         CoreExec.__init__(self,p,cpu)
+        self.load_binary()
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):
@@ -23,26 +24,12 @@ class ELF(CoreExec):
               ms = p.loadsegment(s,PAGESIZE)
               if ms!=None:
                   vaddr,data = list(ms.items())[0]
-                  self.mmap.write(vaddr,data)
-            # create the dynamic segments:
-            self.load_shlib()
+                  self.state.mmap.write(vaddr,data)
         # create the stack zone:
-        self.mmap.newzone(cpu.sp)
-
-    # call dynamic linker to populate mmap with shared libs:
-    # for now, the external libs are seen through the elf dynamic section:
-    def load_shlib(self):
-        for k,f in self.bin._Elf32__dynamic(None).items():
-            self.mmap.write(k,cpu.ext(f,size=32))
-
-    def initenv(self):
-        from amoco.cas.mapper import mapper
-        m = mapper()
+        self.state.mmap.newzone(cpu.sp)
         e = self.bin.entrypoints[0]
         for k,v in ((cpu.pc , cpu.cst(e,32)),
                     (cpu.npc, cpu.cst(e+4,32)),
                     (cpu.sp , cpu.cst(0xc0000000,32)),
                     (cpu.fp , cpu.cst(0xc0000000,32))):
-            m[k] = v
-        return m
-
+            self.state[k] = v

@@ -416,7 +416,7 @@ class HABstub(RawExec):
     IVT_offset = 0x400
 
     def __init__(self,filename):
-        from amoco.system.loader import read_program
+        from amoco.system.core import read_program
         self.rom = read_program(filename)
         self.ivt = IVT(self.rom,offset=self.IVT_offset)
         assert self.ivt.self!=0
@@ -425,17 +425,13 @@ class HABstub(RawExec):
         start = self.ivt.self - self.IVT_offset
         self.relocate(start)
         if self.ivt.boot_data:
-            self.boot_data = BootData(self.mmap,self.ivt.boot_data)
+            self.boot_data = BootData(self.state.mmap,self.ivt.boot_data)
             off = self.boot_data.start - start
             data = self.rom[off:off+self.boot_data.size]
-        self.mmap.write(self.boot_data.start,data)
-        assert self.ivt.csf
-        self.csf = CSF(self.mmap,self.ivt.csf)
-
-    def initenv(self):
-        from amoco.cas.mapper import mapper
-        m = mapper()
-        m[self.cpu.apsr] = self.cpu.cst(0,32)
-        m.setmemory(self.mmap)
-        return m
+        self.state.mmap.write(self.boot_data.start,data)
+        if self.ivt.csf!=0:
+            self.csf = CSF(self.state.mmap,self.ivt.csf)
+        else:
+            self.csf = None
+        self.state[self.cpu.apsr] = self.cpu.cst(0,32)
 

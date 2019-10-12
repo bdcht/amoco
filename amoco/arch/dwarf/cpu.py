@@ -18,3 +18,6 @@ disassemble = disassembler([spec],iclass=instruction_dwarf)
 disassemble.maxlen = 21
 def PC():
     return op_ptr
+
+def get_data_endian():
+    return 1

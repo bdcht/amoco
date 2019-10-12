@@ -20,3 +20,6 @@ disassemble = disassembler([spec_pic18],iclass=instruction_f46k22)
 
 def PC():
     return pc
+
+def get_data_endian():
+    return 1

@@ -13,9 +13,10 @@ Intel HEX or Motorola SREC, commonly used for programming MCU, EEPROMs, etc.
 """
 
 import struct
-from amoco.system.core import DataIO
+from amoco.system.core import DataIO,BinFormat
 from amoco.logger import *
 logger = Log(__name__)
+logger.debug('loading module')
 
 from amoco.ui.render import Token,highlight
 
@@ -73,17 +74,27 @@ with Consts('HEXcode'):
 
 #------------------------------------------------------------------------------
 
-class HEX(object):
+class HEX(BinFormat):
 
     def __init__(self,f,offset=0):
         self.L = []
+        self._filename = f.name
+        self._entrypoint = 0
         for line in f.readlines():
             l = HEXline(line)
             if l.HEXcode == StartSegmentAddress:
-                self.entrypoint = (l.cs,l.ip)
+                self._entrypoint = (l.cs,l.ip)
             elif l.HEXcode == StartLinearAddress:
                 self.entrypoint = l.eip
             self.L.append(l)
+
+    @property
+    def entrypoints(self):
+        return [self._entrypoint]
+
+    @property
+    def filename(self):
+        return self._filename
 
     def load_binary(self,mmap=None):
         seg  = 0
@@ -99,7 +110,7 @@ class HEX(object):
                 elif seg: address = (seg*16)+l.address
                 else: address = l.address
                 mem.append((address, l.data))
-        if mmap:
+        if mmap is not None:
             for k,v in mem:
                 mmap.write(k,v)
         return mem
@@ -113,6 +124,7 @@ class HEXline(object):
     def __init__(self,data):
         self.HEXcode = None
         self.set(data.strip())
+
     def set(self,line):
         try:
             assert line[0:1] == b':'
@@ -184,10 +196,12 @@ with Consts('SREC'):
 
 #------------------------------------------------------------------------------
 
-class SREC(object):
+class SREC(BinFormat):
 
     def __init__(self,f,offset=0):
         self.L = []
+        self._entrypoint = 0
+        self._filename = f.name
         for line in f.readlines():
             count = 0
             l = SRECline(line)
@@ -200,6 +214,14 @@ class SREC(object):
             else:
                 count += 1
             self.L.append(l)
+
+    @property
+    def entrypoints(self):
+        return [self._entrypoint]
+
+    @property
+    def filename(self):
+        return self._filename
 
     def load_binary(self,mmap=None):
         mem  = []

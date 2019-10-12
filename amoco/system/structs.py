@@ -71,16 +71,15 @@ This allows to decode and print the structure from provided data::
 """
 
 import struct
-import inspect
 import pyparsing as pp
-from datetime import datetime
 from collections import defaultdict
-import ctypes
 
 from amoco.logger import *
 logger = Log(__name__)
+logger.debug('loading module')
 
 from amoco.ui.render import Token,highlight
+from inspect import stack as _stack
 
 #------------------------------------------------------------------------------
 
@@ -91,11 +90,12 @@ class Consts(object):
     def __init__(self,name):
         self.name = name
     def __enter__(self):
-        where = inspect.stack()[1][0].f_globals
+        where = _stack()[1][0].f_globals
         self.globnames = set(where.keys())
-        self.All[self.name] = {}
+        if not self.name in self.All:
+            self.All[self.name] = {}
     def __exit__(self,exc_type,exc_value,traceback):
-        where = inspect.stack()[1][0]
+        where = _stack()[1][0]
         G = where.f_globals
         for k in set(G.keys())-self.globnames:
             self.All[self.name][G[k]] = k
@@ -117,6 +117,7 @@ def token_mask_fmt(k,x,cls=None):
 
 def token_name_fmt(k,x,cls=None):
     pfx = "%s."%cls if cls!=None else ""
+    if pfx+k in Consts.All: k = pfx+k
     ks = k
     try:
         return highlight([(Token.Name,Consts.All[ks][x])])
@@ -126,12 +127,14 @@ def token_name_fmt(k,x,cls=None):
 def token_flag_fmt(k,x,cls):
     s = []
     pfx = "%s."%cls if cls!=None else ""
+    if pfx+k in Consts.All: k = pfx+k
     ks = k
     for v,name in Consts.All[ks].items():
         if (x&v): s.append(highlight([(Token.Name,name)]))
     return ','.join(s) if len(s)>0 else token_mask_fmt(k,x)
 
 def token_datetime_fmt(k,x,cls=None):
+    from datetime import datetime
     return highlight([(Token.Date,str(datetime.utcfromtimestamp(x)))])
 
 #------------------------------------------------------------------------------
@@ -156,12 +159,12 @@ class Field(object):
         size () : number of bytes eaten by this field.
         format (): format string that allows to struct.(un)pack the field as a
                        string of bytes.
-        unpack (data,offset=0,order='<') : unpacks a data from given offset using
-            the provided byte ordering. Returns the object (if count is 0) or the
+        unpack (data,offset=0) : unpacks a data from given offset using
+            the field internal byte ordering. Returns the object (if count is 0) or the
             list of objects of type typename.
-        get (data,offset=0,order='<') : returns the field name and the unpacked value
+        get (data,offset=0) : returns the field name and the unpacked value
             for this field.
-        pack (value,order='<') : packs the value with the given order and returns the
+        pack (value) : packs the value with the internal order and returns the
             byte string according to type typename.
     """
     def __init__(self,ftype,fcount=0,fname=None,forder=None,falign=0,fcomment=''):
@@ -288,7 +291,8 @@ class RawField(Field):
         return res
     def pack(self,value):
         pfx = '%d'%self.count if self.count>0 else ''
-        res = struct.pack(self.order+pfx+self.typename,value)
+        order = self.ORDER if hasattr(self,'ORDER') else self.order
+        res = struct.pack(order+pfx+self.typename,value)
         return res
     def __repr__(self):
         fmt = self.typename
@@ -544,7 +548,7 @@ class StructCore(object):
         o = 0
         for f in self.fields:
             if f.name==name: return o
-            o = f.align(o)
+            o = f.align(o)+f.size()
         raise AttributeError(name)
 
 class StructFormatter(StructCore):

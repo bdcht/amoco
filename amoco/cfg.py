@@ -17,10 +17,13 @@ It is based essentially on classes provided by the `grandalf`_ package.
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 
 from grandalf.graphs import Vertex,Edge,Graph
+from amoco.cas.mapper import mapper
+from amoco.system.memory import MemoryZone
 
-from amoco.system.core import MemoryZone
+from amoco.code import defaultdict,_code_misc_default
 
 #------------------------------------------------------------------------------
 class node(Vertex):
@@ -37,8 +40,11 @@ class node(Vertex):
             node. In amoco, edges and vertices are called links and nodes.
         c (graph_core): reference to the connected component that contains this
             node.
+        view: the block or func view object associated with our data.
+        map(mapper): the map object associated with out data.
 
     Methods:
+        cut(address): reduce the block size up to given address if data is block.
         deg(): returns the *degree* of this node (number of its links).
 
         N(dir=0): provides a list of *neighbor* nodes, all if *dir* parameter is 0,
@@ -63,18 +69,31 @@ class node(Vertex):
 
     def __init__(self,acode):
         Vertex.__init__(self,data=acode)
-
-    @property
-    def name(self):
-        """name (str): name property of the node's code object.
-        """
-        return self.data.name
+        pre = 'blck_' if acode._is_block else 'func_'
+        self.name = '{}{}'.format(pre,str(self.data.address))
+        self._map = None
+        self.misc = defaultdict(_code_misc_default)
 
     @property
     def view(self):
         """view : view property of the node's code object.
         """
         return self.data.view
+
+    @property
+    def map(self):
+        if self._map:
+            return self._map
+        else:
+            if self.data._is_block:
+                self._map = mapper(self.data.instr)
+            return self._map
+
+    def cut(self,address):
+        if self.data._is_block:
+            nl = self.data.cut(address)
+            self._map = None
+            return nl
 
     def __repr__(self):
         return u'<%s [%s] at 0x%x>'%(self.__class__.__name__,self.name,id(self))
@@ -98,10 +117,11 @@ class node(Vertex):
         return res
 
     def __getstate__(self):
-        return (self.index,self.data)
+        return (self.index,self.data,self.name)
 
     def __setstate__(self,state):
-        self.__index,self.data = state
+        self.__index,self.data,self.name = state
+        self._map = None
         self.c = None
         self.e = []
 
@@ -146,8 +166,8 @@ class link(Edge):
 
     @property
     def name(self):
-        n0 = self.v[0].data.address
-        n1 = self.v[1].data.address
+        n0 = self.v[0].name
+        n1 = self.v[1].name
         return u"%s -> %s"%(n0,n1)
 
     def __cmp__(self,e):
@@ -172,7 +192,7 @@ class link(Edge):
 #------------------------------------------------------------------------------
 class graph(Graph):
     """a :ref:`<grandalf:Graph>` that represents a set of functions as its
-    individual components.
+    individual connected components.
 
     Args:
         V (iterable[node]) : the set of (possibly detached) nodes.
@@ -192,9 +212,6 @@ class graph(Graph):
 
         get_with_address(vaddr): get the node that contains the given *vaddr*
             :class:`~cas.expressions.cst` expression.
-
-        signature(): returns the full signature string of all connected
-            components.
 
         add_vertex(v,[support=None]): add node v to the graph and declare
             node support in the default MemoryZone or the overlay zone if
@@ -243,33 +260,31 @@ class graph(Graph):
     def __cut_add_vertex(self,v,mz,vaddr,mo):
         oldnode = mo.data.val
         if oldnode==v: return oldnode
-        # so v cuts an existing node/block:
-        # repair oldblock and fix self
-        childs = oldnode.N(+1)
-        oldblock = oldnode.data
-        # if vaddr is aligned with an oldblock instr, cut it:
-        # this reduces oldblock up to vaddr if the cut is possible.
-        cutdone = oldblock.cut(vaddr)
-        oldblock.misc['cut'] = cutdone
+        # so v cuts an existing block:
+        # if vaddr matches an oldblock instr, cut it:
+        cutdone = oldnode.cut(vaddr)
         if not cutdone:
             if mz is self.overlay:
                 logger.warning(u"double overlay block at %s"%vaddr)
                 v = super(graph,self).add_vertex(v)
-                v.data.misc[u'double-overlay'] = 1
+                v.misc[u'double-overlay'] = 1
                 return v
             overlay = self.overlay or MemoryZone()
             return self.add_vertex(v,support=overlay)
         else:
+            oldnode.misc['cut'] = cutdone
             v = super(graph,self).add_vertex(v) # ! avoid recursion for add_edge
             mz.write(vaddr,v)
             self.add_edge(link(oldnode,v))
-            for n in childs:
+            for n in oldnode.N(+1):
                 self.add_edge(link(v,n))
                 self.remove_edge(oldnode.e_to(n))
             return v
 
     def add_vertex(self,v,support=None):
-        if len(v)==0: return super(graph,self).add_vertex(v)
+        if v.data._is_func:
+            return super(graph,self).add_vertex(v)
+        # insert block:
         vaddr=v.data.address
         if support is None:
             support=self.support
@@ -277,6 +292,7 @@ class graph(Graph):
             logger.verbose(u"add overlay block at %s"%vaddr)
             self.overlay = support
         i = support.locate(vaddr)
+        # check if block intersects others:
         if i is not None:
             mo = support._map[i]
             if vaddr in mo:
@@ -290,12 +306,17 @@ class graph(Graph):
                 else:
                     nextnode = nextmo.data.val
                     if vaddr+len(v)>nextnode.data.address:
-                        cutdone = v.data.cut(nextnode.data.address)
+                        #nextnode is inside v...
+                        #try to cut v at nextnode bound:
+                        cutdone = v.cut(nextnode.data.address)
                         if not cutdone:
+                            # nextnode address does not match an instruction in v...
+                            # thats an overlay:
                             if support is self.overlay:
+                                # we already are in overlay...
                                 logger.warning(u"double overlay block at %s"%vaddr)
                                 v = super(graph,self).add_vertex(v)
-                                v.data.misc[u'double-overlay'] = 1
+                                v.misc[u'double-overlay'] = 1
                                 return v
                             support = self.overlay or MemoryZone()
         v = super(graph,self).add_vertex(v) # before support write !!
@@ -315,9 +336,6 @@ class graph(Graph):
                 return mo.data.val
         return None
 
-    def signature(self):
-        return u''.join([signature(g) for g in self.C])
-
     def to_dot(self,name=None,full=True):
         dot  = "digraph G {\n"
         dot += '    graph [orientation=landscape, labeljust=left];\n'
@@ -335,20 +353,3 @@ class graph(Graph):
         dot += '}\n'
         return dot
 
-#------------------------------------------------------------------------------
-
-def signature(g):
-    """compute the signature of a :ref:`graph_core <grandalf:graph_core>` component
-    based on :meth:`block.sig` value of nodes in every partion of the graph.
-
-    Returns:
-        str: the signature string.
-    """
-    P = g.partition()
-    S = []
-    for p in P:
-        s = []
-        for n in p:
-            s.append(n.data.sig())
-        S.append(u''.join(s))
-    return u'{[%s]}'%u'] ['.join(S)

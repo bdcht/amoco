@@ -9,7 +9,7 @@
 
 from amoco.logger import Log
 logger = Log(__name__)
-
+logger.debug('loading module')
 from amoco.arch.core import *
 from amoco.arch.dwarf import env
 from amoco.system.utils import read_leb128,read_sleb128

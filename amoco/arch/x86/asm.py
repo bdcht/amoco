@@ -9,7 +9,7 @@ from amoco.cas.utils import *
 
 from amoco.logger import Log
 logger = Log(__name__)
-
+logger.debug('loading module')
 #------------------------------------------------------------------------------
 # utils :
 def push(fmap,x):

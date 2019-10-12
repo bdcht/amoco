@@ -15,10 +15,12 @@ symbolic representation of the *union* of two mappers.
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 
 from .expressions import *
+
 from amoco.cas.tracker import generation
-from amoco.system.core import MemoryMap
+from amoco.system.memory import MemoryMap
 from amoco.arch.core   import Bits
 from amoco.ui.views import mapView
 
@@ -113,12 +115,13 @@ class mapper(object):
         self.__Mem = MemoryMap()
         self.conds = []
 
-    def memory(self):
+    def getmemory(self):
         "get the local :class:`MemoryMap` associated to the mapper"
         return self.__Mem
     def setmemory(self,mmap):
         "set the local :class:`MemoryMap` associated to the mapper"
         self.__Mem = mmap
+    mmap = property(getmemory,setmemory)
 
     def generation(self):
         return self.__map
@@ -188,6 +191,7 @@ class mapper(object):
         for p in res:
             plen = len(p)
             if isinstance(p,exp) and (p._is_def is False):
+                # p is "bottom":
                 if self.csi:
                     p = self.csi(mem(a,p.size,disp=cur,endian=endian))
                 else:
@@ -204,9 +208,8 @@ class mapper(object):
             locs = (ptr(l,a.seg,a.disp) for l in a.base.l)
         else:
             locs = (a,)
-        iswide = not a.base._is_def
         for l in locs:
-            self.__Mem.write(l,v,endian,deadzone=iswide)
+            self.__Mem.write(l,v,endian)
             if (l in self.__map): del self.__map[l]
 
     def __getitem__(self,k):
@@ -225,7 +228,7 @@ class mapper(object):
             try:
                 loc = k.addr(self)
             except TypeError:
-                logger.error('setitem ignored (invalid left-value expression)')
+                logger.error('setitem ignored (invalid left-value expression: %s)'%k)
                 return
         if k._is_slc and not loc._is_reg:
             raise ValueError('memory location slc is not supported')
@@ -271,7 +274,7 @@ class mapper(object):
            been replaced by there corresponding values in m.
         """
         mm = mapper(csi=self.csi)
-        mm.setmemory(self.memory())
+        mm.setmemory(self.mmap.copy())
         for c in self.conds:
             cc = c.eval(m)
             if not cc._is_def: continue
@@ -290,7 +293,7 @@ class mapper(object):
         """composition operator returns a new mapper
            corresponding to function x -> self(m(x))
         """
-        mcopy = m.use()
+        mm = m.use()
         for c in self.conds:
             cc = c.eval(m)
             if not cc._is_def: continue
@@ -298,12 +301,11 @@ class mapper(object):
             if cc==0:
                 logger.verbose("invalid mapper eval: cond %s is false"%c)
                 raise ValueError
-            mcopy.conds.append(cc)
-        mm = mcopy.use()
+            mm.conds.append(cc)
         for loc,v in self:
             if loc._is_ptr:
-                loc = mcopy(loc)
-            mm[loc] = mcopy(v)
+                loc = mm(loc)
+            mm[loc] = mm(v)
         return mm
 
     def __lshift__(self,m):

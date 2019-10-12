@@ -206,6 +206,7 @@ def A_default(obj,Rd,Rm):
 def A_default(obj,Rn,imm12):
   obj.n = env.regs[Rn]
   obj.imm32 = ARMExpandImm(imm12)
+  obj.stype = None
   obj.operands = [obj.n, obj.imm32]
   obj.type = type_data_processing
 
@@ -216,6 +217,9 @@ def A_default(obj,Rn,imm12):
 def A_sreg(obj,Rn,imm5,stype,Rm):
   obj.n = env.regs[Rn]
   obj.m = DecodeShift(stype,env.regs[Rm],env.cst(imm5,5))
+  obj.stype = stype
+  obj.shift = imm5
+  obj.m = env.regs[Rm]
   obj.operands = [obj.n,obj.m]
   obj.type = type_data_processing
 
@@ -227,6 +231,8 @@ def A_sreg(obj,Rn,Rs,stype,Rm):
   if 15 in (Rd,Rm,Rs): raise InstructionError(obj)
   obj.n = env.regs[Rn]
   obj.m = DecodeShift(stype,env.regs[Rm],env.regs[Rs])
+  obj.stype = None
+  obj.m = env.regs[Rm]
   obj.operands = [obj.n,obj.m]
   obj.type = type_data_processing
 

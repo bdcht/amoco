@@ -19,3 +19,6 @@ disassemble = disassembler([spec],iclass=instruction_v850)
 
 def PC():
     return pc
+
+def get_data_endian():
+    return 1

@@ -1,7 +1,6 @@
 from amoco.logger import Log
 logger = Log(__name__)
-
-import pdb
+logger.debug('loading module')
 import weakref
 import inspect
 import functools
@@ -237,4 +236,10 @@ class Signal(object):
            recv(self,ref,args=args)
 
 #------------------------------------------------------------------------------
+
+SIG_TRGT = Signal("#TRGT")
+SIG_NODE = Signal("#NODE")
+SIG_EDGE = Signal("#EDGE")
+SIG_BLCK = Signal("#BLCK")
+SIG_FUNC = Signal("#FUNC")
 

@@ -6,57 +6,60 @@
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 
-from amoco.system.core import CoreExec
+from amoco.system.core import DefineLoader,CoreExec
+from amoco.cas.mapper import mapper
 
+@DefineLoader('raw')
 class RawExec(CoreExec):
 
     def __init__(self,p,cpu=None):
         CoreExec.__init__(self,p,cpu)
-        if cpu is None:
-            logger.warning('a cpu module must be imported')
+        self.auto_load()
 
     # load the program into virtual memory (populate the mmap dict)
-    def load_binary(self):
+    def auto_load(self):
         p = self.bin
-        if p!=None:
-            try:
-                p.load_binary(self.mmap)
-            except AttributeError:
-                self.mmap.write(0,p.read())
+        if hasattr(p,'load_binary'):
+            p.load_binary(self.state.mmap)
+        else:
+            self.state.mmap.write(0,p[0:])
+        if self.cpu is None:
+            logger.warning('a cpu module must be imported')
+        else:
+            pc = self.cpu.PC()
+            entry = 0
+            if hasattr(p,'entrypoint'): entry = p.entrypoint
+            self.state[pc] = self.cpu.cst(entry,pc.size)
 
     def use_x86(self):
         from amoco.arch.x86 import cpu_x86
         self.cpu = cpu_x86
+        self.state[cpu_x86.eip] = cpu_x86.cst(0,32)
 
     def use_x64(self):
         from amoco.arch.x64 import cpu_x64
         self.cpu = cpu_x64
+        self.state[cpu_x64.rip] = cpu_x64.cst(0,32)
 
     def use_arm(self):
         from amoco.arch.arm import cpu_armv7
         self.cpu = cpu_armv7
+        self.state[cpu_armv7.pc_] = cpu_armv7.cst(0,32)
 
     def use_avr(self):
         from amoco.arch.avr import cpu
         self.cpu = cpu
-
-    def initenv(self):
-        try:
-            return self._initmap
-        except AttributeError:
-            return CoreExec.initenv()
+        self.state[cpu.pc] = cpu.cst(0,32)
 
     def relocate(self,vaddr):
-        from amoco.cas.mapper import mapper
-        m = mapper()
-        mz = self.mmap._zones[None]
+        m = self.state
+        mz = m.mmap._zones[None]
         for z in mz._map: z.vaddr += vaddr
         # force mmap cache update:
-        self.mmap.restruct()
+        m.restruct()
         # create _initmap with new pc as vaddr:
         pc = self.cpu.PC()
         m[pc] = self.cpu.cst(vaddr,pc.size)
-        self._initmap = m
-
 

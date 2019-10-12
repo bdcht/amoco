@@ -10,8 +10,9 @@
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 
-from .expressions import *
+from .expressions import oper,composer,bit0
 
 def Abs(x):
     if x.sf==False: return x

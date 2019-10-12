@@ -13,15 +13,9 @@ The system pe module implements the PE class which support both 32 and 64 bits
 executable formats.
 """
 
-import struct
-from datetime import datetime
-from amoco.system.core import DataIO
 from amoco.logger import *
 logger = Log(__name__)
-
-from collections import defaultdict
-from amoco.ui.render import Token,highlight
-
+logger.debug('loading module')
 
 # our exception handler:
 class PEError(Exception):
@@ -29,632 +23,12 @@ class PEError(Exception):
         self.message = message
     def __str__(self):
         return str(self.message)
-##
 
 #------------------------------------------------------------------------------
-# formatting facilities:
+from amoco.system.core import BinFormat,DataIO
 
-# init of reverse dict to get constant name from value.
-# This dict is updated by using 'with' statement of Consts.
-PE_CONSTS = defaultdict(dict)
-
-class Consts(object):
-    def __init__(self,name):
-        self.name = name
-    def __enter__(self):
-        PE_CONSTS[self.name] = {}
-        self.globnames = set(globals().keys())
-    def __exit__(self,exc_type,exc_value,traceback):
-        G = globals()
-        for k in set(G.keys())-self.globnames:
-            PE_CONSTS[self.name][G[k]] = k
-
-def default_formatter():
-    return token_default_fmt
-
-def token_default_fmt(k,x,cls=None):
-    if 'RVA'  in k: return token_address_fmt(k,x)
-    if 'flags' in k: return token_flag_fmt(k,x)
-    return highlight([(Token.Literal,str(x))])
-
-def token_address_fmt(k,x,cls=None):
-    return highlight([(Token.Address,hex(x))])
-
-def token_constant_fmt(k,x,cls=None):
-    return highlight([(Token.Constant,str(x))])
-
-def token_name_fmt(k,x,cls=None):
-    try:
-        return highlight([(Token.Name,PE_CONSTS[k][x])])
-    except KeyError:
-        return token_constant_fmt(k,x)
-
-def token_flag_fmt(k,x,cls):
-    s = []
-    for v,name in PE_CONSTS["%s%s"%(cls,k)].items():
-        if (x&v): s.append(highlight([(Token.Name,name)]))
-    return ','.join(s)
-
-
-#------------------------------------------------------------------------------
-class PEcore(object):
-    order = '<' #le
-    pfx = ''
-    ksz = 20
-    fkeys = defaultdict(default_formatter)
-    def __init__(self,data,offset=0):
-        self.set(data[offset:offset+len(self)])
-    def set(self,data):
-        S = struct.unpack(self.order+self.fmt,data)
-        self.__dict__.update(zip(self.keys,S))
-    def pack(self):
-        return struct.pack(self.order+self.fmt,*(getattr(self,k) for k in self.keys))
-    @classmethod
-    def func_formatter(cls,**kargs):
-        for key,func in kargs.items():
-            cls.fkeys[key] = func
-    @classmethod
-    def address_formatter(cls,*keys):
-        for key in keys:
-            cls.fkeys[key] = token_address_fmt
-    @classmethod
-    def name_formatter(cls,*keys):
-        for key in keys:
-            cls.fkeys[key] = token_name_fmt
-    @classmethod
-    def flag_formatter(cls,*keys):
-        for key in keys:
-            cls.fkeys[key] = token_flag_fmt
-    def strkey(self,k,cname):
-        fmt = u'%%s%%-%ds:%%s'%self.ksz
-        return fmt%(self.pfx,k,self.fkeys[k](k,getattr(self,k),cls=cname))
-    def __str__(self):
-        cname = self.__class__.__name__
-        s = u'\n'.join(self.strkey(k,cname) for k in self.keys)
-        return u"[%s]\n%s"%(cname,s)
-    def __len__(self):
-        return struct.calcsize(self.fmt)
-
-
-# The PE file header(s).
-#------------------------------------------------------------------------------
-
-with Consts('Signature'):
-    IMAGE_DOS_SIGNATURE=0x5A4D
-    IMAGE_OS2_SIGNATURE=0x454E
-    IMAGE_OS2_SIGNATURE_LE=0x454C
-    IMAGE_VXD_SIGNATURE=0x454C
-    IMAGE_NT_SIGNATURE=0x00004550
-
-class DOSHdr(PEcore):
-    fmt = 'H58xI'
-    keys = ('e_magic', 'e_lfanew')
-    def __init__(self,data,offset=0):
-        if data[offset:offset+2]!=b'MZ': raise PEError('no DOS Header found')
-        PEcore.__init__(self,data,offset)
-
-IMAGE_NUMBEROF_DIRECTORY_ENTRIES=16
-IMAGE_ORDINAL_FLAG=0x80000000
-IMAGE_ORDINAL_FLAG64=0x8000000000000000
-
-with Consts('Magic'):
-    OPTIONAL_HEADER_MAGIC_PE=0x10b
-    OPTIONAL_HEADER_MAGIC_PE_PLUS=0x20b
-
-with Consts('Machine'):
-    IMAGE_FILE_MACHINE_UNKNOWN=0
-    IMAGE_FILE_MACHINE_AM33=0x1d3
-    IMAGE_FILE_MACHINE_AMD64=0x8664
-    IMAGE_FILE_MACHINE_ARM=0x1c0
-    IMAGE_FILE_MACHINE_EBC=0xebc
-    IMAGE_FILE_MACHINE_I386=0x14c
-    IMAGE_FILE_MACHINE_IA64=0x200
-    IMAGE_FILE_MACHINE_MR32=0x9041
-    IMAGE_FILE_MACHINE_MIPS16=0x266
-    IMAGE_FILE_MACHINE_MIPSFPU=0x366
-    IMAGE_FILE_MACHINE_MIPSFPU16=0x466
-    IMAGE_FILE_MACHINE_POWERPC=0x1f0
-    IMAGE_FILE_MACHINE_POWERPCFP=0x1f1
-    IMAGE_FILE_MACHINE_R4000=0x166
-    IMAGE_FILE_MACHINE_SH3=0x1a2
-    IMAGE_FILE_MACHINE_SH3DSP=0x1a3
-    IMAGE_FILE_MACHINE_SH4=0x1a6
-    IMAGE_FILE_MACHINE_SH5=0x1a8
-    IMAGE_FILE_MACHINE_THUMB=0x1c2
-    IMAGE_FILE_MACHINE_WCEMIPSV2=0x169
-
-with Consts('COFFHdrCharacteristics'):
-    IMAGE_FILE_RELOCS_STRIPPED=0x0001
-    IMAGE_FILE_EXECUTABLE_IMAGE=0x0002
-    IMAGE_FILE_LINE_NUMS_STRIPPED=0x0004
-    IMAGE_FILE_LOCAL_SYMS_STRIPPED=0x0008
-    IMAGE_FILE_AGGRESIVE_WS_TRIM=0x0010
-    IMAGE_FILE_LARGE_ADDRESS_AWARE=0x0020
-    IMAGE_FILE_16BIT_MACHINE=0x0040
-    IMAGE_FILE_BYTES_REVERSED_LO=0x0080
-    IMAGE_FILE_32BIT_MACHINE=0x0100
-    IMAGE_FILE_DEBUG_STRIPPED=0x0200
-    IMAGE_FILE_REMOVABLE_RUN_FROM_SWAP=0x0400
-    IMAGE_FILE_NET_RUN_FROM_SWAP=0x0800
-    IMAGE_FILE_SYSTEM=0x1000
-    IMAGE_FILE_DLL=0x2000
-    IMAGE_FILE_UP_SYSTEM_ONLY=0x4000
-    IMAGE_FILE_BYTES_REVERSED_HI=0x8000
-
-class COFFHdr(PEcore):
-    fmt = 'IHHIIIHH'
-    keys = (
-        'Signature',
-        'Machine',
-        'NumberOfSections',
-        'TimeDateStamp',
-        'PointerToSymbolTable',
-        'NumberOfSymbols',
-        'SizeOfOptionalHeader',
-        'Characteristics')
-    def __init__(self,data,offset=0):
-        if data[offset:offset+2]!=b'PE': raise PEError('no PE Header found')
-        PEcore.__init__(self,data,offset)
-        self.name_formatter('Signature','Machine')
-        self.flag_formatter('Characteristics')
-        self.func_formatter(TimeDateStamp = (lambda k,x,cls: str(datetime.utcfromtimestamp(x))))
-
-class OptionalHdr(PEcore):
-    fmt = 'HBBIIIIII'+'IIIHHHHHHIIIIHH'+'IIII'+'II'
-    keys = (
-        'Magic',
-        'MajorLinkerVersion',
-        'MinorLinkerVersion',
-        'SizeOfCode',
-        'SizeOfInitializedData',
-        'SizeOfUninitializedData',
-        'AddressOfEntryPoint',
-        'BaseOfCode',
-        'BaseOfData',
-        'ImageBase',
-        'SectionAlignment',
-        'FileAlignment',
-        'MajorOperatingSystemVersion',
-        'MinorOperatingSystemVersion',
-        'MajorImageVersion',
-        'MinorImageVersion',
-        'MajorSubsystemVersion',
-        'MinorSubsystemVersion',
-        'Win32VersionValue',
-        'SizeOfImage',
-        'SizeOfHeaders',
-        'CheckSum',
-        'Subsystem',
-        'DllCharacteristics',
-        'SizeOfStackReserve',
-        'SizeOfStackCommit',
-        'SizeOfHeapReserve',
-        'SizeOfHeapCommit',
-        'LoaderFlags',
-        'NumberOfRvaAndSizes',
-        )
-    def __init__(self,data,offset=0):
-        magic = data[offset:offset+2]
-        if magic==b'\x0b\x01':
-            logger.verbose('PE32 Magic found')
-        elif magic==b'\x0b\x02':
-            logger.verbose('PE32+ Magic found')
-            l = list(self.fmt)
-            l.pop(8)
-            for x in (8,23,24,25,26):
-                l[x] = 'Q'
-            self.fmt = ''.join(l)
-            k = list(self.keys)
-            k.pop(8)
-            self.keys = tuple(k)
-        elif magic==b'\x07\x01':
-            logger.info('ROM Magic found (unsupported)')
-        else:
-            logger.error('unknown Magic')
-        self.name_formatter('Magic')
-        self.address_formatter('AddressOfEntryPoint','BaseOfCode','BaseOfData','ImageBase')
-        self.address_formatter('Checksum')
-        self.flag_formatter('DllCharacteristics','LoaderFlags')
-        # parse structure
-        self.DataDirectories = {}
-        PEcore.__init__(self,data,offset)
-        l = offset+len(self)
-        dnames = ('ExportTable','ImportTable','ResourceTable','ExceptionTable',
-                  'CertificateTable','BaseRelocationTable','Debug','Architecture',
-                  'GlobalPtr','TLSTable','LoadConfigTable','BoundImport','IAT',
-                  'DelayImportDescriptor','CLRRuntimeHeader','Reserved')
-        for dn in range(min(self.NumberOfRvaAndSizes,len(dnames))):
-            d = DataDirectory(data,l)
-            self.DataDirectories[dnames[dn]] = d
-            l += len(d)
-
-    def __len__(self):
-        dirslen = sum(map(len,self.DataDirectories.values()))
-        return struct.calcsize(self.fmt)+dirslen
-##
-
-IMAGE_DIRECTORY_ENTRY_EXPORT=0
-IMAGE_DIRECTORY_ENTRY_IMPORT=1
-IMAGE_DIRECTORY_ENTRY_RESOURCE=2
-IMAGE_DIRECTORY_ENTRY_EXCEPTION=3
-IMAGE_DIRECTORY_ENTRY_SECURITY=4
-IMAGE_DIRECTORY_ENTRY_BASERELOC=5
-IMAGE_DIRECTORY_ENTRY_DEBUG=6
-IMAGE_DIRECTORY_ENTRY_COPYRIGHT=7
-IMAGE_DIRECTORY_ENTRY_GLOBALPTR=8
-IMAGE_DIRECTORY_ENTRY_TLS=9
-IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG=10
-IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT=11
-IMAGE_DIRECTORY_ENTRY_IAT=12
-IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT=13
-IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR=14
-IMAGE_DIRECTORY_ENTRY_RESERVED=15
-
-class DataDirectory(PEcore):
-    fmt = 'II'
-    keys = ('RVA','Size')
-
-# PE Sections
-#------------------------------------------------------------------------------
-
-with Consts('SectionHdrCharacteristics'):
-    IMAGE_SCN_CNT_CODE=0x00000020
-    IMAGE_SCN_CNT_INITIALIZED_DATA=0x00000040
-    IMAGE_SCN_CNT_UNINITIALIZED_DATA=0x00000080
-    IMAGE_SCN_LNK_OTHER=0x00000100
-    IMAGE_SCN_LNK_INFO=0x00000200
-    IMAGE_SCN_LNK_REMOVE=0x00000800
-    IMAGE_SCN_LNK_COMDAT=0x00001000
-    IMAGE_SCN_MEM_FARDATA=0x00008000
-    IMAGE_SCN_MEM_PURGEABLE=0x00020000
-    IMAGE_SCN_MEM_16BIT=0x00020000
-    IMAGE_SCN_MEM_LOCKED=0x00040000
-    IMAGE_SCN_MEM_PRELOAD=0x00080000
-    IMAGE_SCN_ALIGN_1BYTES=0x00100000
-    IMAGE_SCN_ALIGN_2BYTES=0x00200000
-    IMAGE_SCN_ALIGN_4BYTES=0x00300000
-    IMAGE_SCN_ALIGN_8BYTES=0x00400000
-    IMAGE_SCN_ALIGN_16BYTES=0x00500000
-    IMAGE_SCN_ALIGN_32BYTES=0x00600000
-    IMAGE_SCN_ALIGN_64BYTES=0x00700000
-    IMAGE_SCN_ALIGN_128BYTES=0x00800000
-    IMAGE_SCN_ALIGN_256BYTES=0x00900000
-    IMAGE_SCN_ALIGN_512BYTES=0x00A00000
-    IMAGE_SCN_ALIGN_1024BYTES=0x00B00000
-    IMAGE_SCN_ALIGN_2048BYTES=0x00C00000
-    IMAGE_SCN_ALIGN_4096BYTES=0x00D00000
-    IMAGE_SCN_ALIGN_8192BYTES=0x00E00000
-    IMAGE_SCN_ALIGN_MASK=0x00F00000
-    IMAGE_SCN_LNK_NRELOC_OVFL=0x01000000
-    IMAGE_SCN_MEM_DISCARDABLE=0x02000000
-    IMAGE_SCN_MEM_NOT_CACHED=0x04000000
-    IMAGE_SCN_MEM_NOT_PAGED=0x08000000
-    IMAGE_SCN_MEM_SHARED=0x10000000
-    IMAGE_SCN_MEM_EXECUTE=0x20000000
-    IMAGE_SCN_MEM_READ=0x40000000
-    IMAGE_SCN_MEM_WRITE=0x80000000
-
-class SectionHdr(PEcore):
-    fmt = '8sIIIIIIHHI'
-    keys = ('Name',
-            'VirtualSize',
-            'RVA',
-            'SizeOfRawData',
-            'PointerToRawData',
-            'PointerToRelocations',
-            'PointerToLineNumbers',
-            'NumberOfRelocations',
-            'NumberOfLineNumbers',
-            'Characteristics')
-    def __init__(self,data,offset=0):
-        PEcore.__init__(self,data,offset)
-        try:
-            self.Name = self.Name.decode('utf-8').strip('\0')
-        except UnicodeDecodeError:
-            logger.info('SectionHdr: Name string decode error %s'%repr(self.Name))
-        self.name_formatter('Name')
-        self.address_formatter('RVA')
-        self.flag_formatter('Characteristics')
-
-    def group(self):
-        return self.Name.partition('$')
-
-# COFF Relocations
-#------------------------------------------------------------------------------
-class COFFRelocation(PEcore):
-    fmt = 'IIH'
-    keys = ('RVA',
-            'SymbolTableIndex',
-            'Type')
-
-class COFFLineNumber(PEcore):
-    fmt = 'IH'
-    keys = ('Type',
-            'LineNumber')
-
-    @property
-    def SymbolTableIndex(self):
-        if self.LineNumber==0:
-            return self.Type
-        else:
-            logger.warning('invalid COFF Line Number entry')
-
-IMAGE_SYM_UNDEF=0
-IMAGE_SYM_ABSOLUTE=-1
-IMAGE_SYM_DEBUG=-2
-
-# COFF Symbol table
-#------------------------------------------------------------------------------
-
-class COFFSymbolTable(object):
-    def __init__(self,data=None):
-        self.symbols = []
-        if data is None: data=''
-        if len(data)>0:
-            self.build(data)
-
-    def build(self,data):
-        q,r = divmod(len(data),18)
-        assert r==0
-        while len(data)>0:
-            self.symbols.append(StdSymbolRecord(data))
-            data = data[len(self.symbols[-1]):]
-        assert len(self.symbols)==q
-
-    def __len__(self):
-        return sum(map(len,self.symbols))
-
-class StdSymbolRecord(PEcore):
-    fmt = '8siHHBB'
-    keys = ('_Name',
-            'Value',
-            'SectionNumber',
-            'Type',
-            'StorageClass',
-            'NumberOfAuxSymbols')
-    def __init__(self,data):
-        PEcore.__init__(self,data)
-        self.func_formatter(_Name=lambda k,x,cls: highlight([(Token.Name,self.Name)]))
-        self.func_formatter(StorageClass=lambda k,x,cls: highlight([(Token.Name,self.classname())]))
-        self.AuxSymbols = []
-        data = data[len(self):]
-        if self.Type>>8==0x20 and self.StorageClass==2 and self.SectionNumber>IMAGE_SYM_UNDEF:
-            auxclass = AuxFunctionDefinition
-        elif self.StorageClass==101 and (self.Name=='.bf' or self.Name=='.ef'):
-            auxclass = Aux_bf_ef
-        elif self.StorageClass==2 and self.SectionNumber==IMAGE_SYM_UNDEF and Self.Value==0:
-            auxclass = AuxWeakExternal
-        elif self.StorageClass==103:
-            assert self.Name == '.file'
-            auxclass = AuxFile
-        elif self.StorageClass==3:
-            auxclass = AuxSectionDefinition
-        else:
-            auxclass = AuxSymbolRecord
-        for x in range(self.NumberOfAuxSymbols):
-            self.AuxSymbols.append(auxclass(data))
-            data = data[len(self):]
-
-    def __len__(self):
-        return sum(map(len,self.AuxSymbols),struct.calcsize(self.fmt))
-
-    @property
-    def Name(self):
-        if self._Name.startswith('\0'*4):
-            index = struct.unpack('I',self._Name[4:8])[0]
-            return index
-        else:
-            try:
-                return self._Name.decode('utf-8').strip('\0')
-            except UnicodeDecodeError:
-                logger.info('StdSymbolHdr: Name decode error %s'%repr(self._Name))
-                return self._Name
-
-    def typename(self):
-        try:
-            t1 = ['NULL'  , 'VOID' , 'CHAR' , 'SHORT' ,
-                  'INT'   , 'LONG' , 'FLOAT', 'DOUBLE',
-                  'STRUCT', 'UNION', 'ENUM' , 'MOE'   ,
-                  'BYTE'  , 'WORD' , 'UINT' , 'DWORD' ][self.Type&0xff]
-            t2 = ['NULL','POINTER','FUNC','ARRAY'][self.Type>>8]
-            return (t1,t2)
-        except IndexError:
-            logger.warning('invalid Type field (was: %d)'%self.Type)
-
-    def classname(self):
-        c = {0xff: 'END_OF_FUNCTION',
-             0   : 'NULL',
-             1   : 'AUTOMATIC',
-             2   : 'EXTERNAL',
-             3   : 'STATIC',
-             4   : 'REGISTER',
-             5   : 'EXTERNAL_DEF',
-             6   : 'LABEL',
-             6   : 'UNDEFINED_LABEL',
-             8   : 'MEMBER_OF_STRUCT',
-             9   : 'ARGUMENT',
-             10  : 'STRUCT_TAG',
-             11  : 'MEMBER_OF_UNION',
-             12  : 'UNION_TAG',
-             13  : 'TYPE_DEF',
-             14  : 'UNDEFINED_STATIC',
-             15  : 'ENUM_TAG',
-             16  : 'MEMBER_OF_ENUM',
-             17  : 'REGISTER_PARAM',
-             18  : 'BITFIELD',
-             100 : 'BLOCK',
-             101 : 'FUNCTION',
-             102 : 'END_OF_STRUCT',
-             103 : 'FILE',
-             104 : 'SECTION',
-             105 : 'WEAK_EXTERNAL',
-             107 : 'CLR_TOKEN' }.get(self.StorageClass,None)
-        return c
-
-class AuxSymbolRecord(PEcore):
-    fmt = '18s'
-    keys = ('data')
-    def __init__(self,data):
-        self.set(data[:len(self)])
-
-class AuxFunctionDefinition(AuxSymbolRecord):
-    fmt = 'IIII2x'
-    keys = ('TagIndex','TotalSize',
-            'PointerToLineNumber','PointerToNextFunction')
-
-class Aux_bf_ef(AuxSymbolRecord):
-    fmt = '4xH6xI2x'
-    keys = ('LineNumber', 'PointerToNextFunction')
-
-class AuxWeakExternal(AuxSymbolRecord):
-    fmt = 'II10x'
-    keys = ('TagIndex', 'Characteristics')
-
-class AuxFile(AuxSymbolRecord):
-    fmt = '18s'
-    keys = ('Filename')
-
-class AuxSectionDefinition(AuxSymbolRecord):
-    fmt = 'IHHIHB3x'
-    keys = ('Length',
-            'NumberOfRelocations',
-            'NumberOfLineNumbers',
-            'CheckSum',
-            'Number',
-            'Selection')
-
-# COFF String table
-#------------------------------------------------------------------------------
-class COFFStringTable(object):
-    def __init__(self,data=None):
-        if data is None: data=struct.pack('I',4)
-        self.length = struct.unpack('I',data[:4])
-        self.strings = data[4:self.length].split('\0')
-        self.strings.pop()
-
-#------------------------------------------------------------------------------
-class AttributeCertificateTable(object):
-    NotImplementedError
-
-class AttributeCertificate(PEcore):
-    fmt = ''
-    keys = tuple()
-
-#------------------------------------------------------------------------------
-class DelayLoadImportTable(object):
-    def __init__(self,data):
-        raise NotImplementedError
-
-class DelayLoadDirectoryTable(PEcore):
-    fmt = 'IIIIIIII'
-    keys = ('Attributes',
-            'Name',
-            'ModuleHandle',
-            'DelayImportAddressTable',
-            'DelayImportNameTable',
-            'BoundDelayImportTable',
-            'UnloadDelayImportTable',
-            'TimeStamp')
-
-#------------------------------------------------------------------------------
-class ExportTable(PEcore):
-    fmt = 'IIHHIIIIIII'
-    keys = ('Flags',
-            'TimeStamp',
-            'MajorVersion',
-            'MinorVersion',
-            'NameRVA'
-            'OrdinalBase',
-            'AddressTableEntries',
-            'NumberOfNamePointers',
-            'ExportAddressTableRVA',
-            'NamePointerRVA',
-            'OrdinalTableRVA')
-
-#------------------------------------------------------------------------------
-class ImportTable(object):
-    def __init__(self,data):
-        self.dlls = []
-        e = None
-        while len(data)>0:
-            e = ImportTableEntry(data)
-            if e.isNULL(): return
-            self.dlls.append(e)
-            data = data[len(e):]
-        logger.warning('NULL Import entry not found')
-
-class ImportTableEntry(PEcore):
-    fmt = 'IIIII'
-    keys = ('ImportLookupTableRVA',
-            'TimeStamp',
-            'ForwarderChain',
-            'NameRVA',
-            'ImportAddressTableRVA')
-    def isNULL(self):
-        res=0
-        for k in self.keys:
-            res = res | getattr(self,k)
-        return res==0
-
-class ImportLookupTable(object):
-    def __init__(self,data,magic):
-        size = {0x20b:64, 0x10b:32}[magic]
-        self.elsize = size//8
-        self.fmt = 'Q' if size==64 else 'I'
-        self.readimports(data)
-
-    def readimports(self,data):
-        self.imports = []
-        fshift = (self.elsize*8)-1
-        while len(data)>=self.elsize:
-            v = struct.unpack(self.fmt,data[:self.elsize])[0]
-            if v==0: return
-            flag = v>>fshift
-            if   flag==1: self.imports.append([flag,v&0xffff])
-            elif flag==0: self.imports.append([flag,v&0x7fffffff])
-            data = data[self.elsize:]
-
-class NameTableEntry(object):
-    def __init__(self,data):
-        hint = struct.unpack('H',data[:2])
-        s,_,_ = data[2:].partition(b'\0')
-        self.hint = hint
-        self.symbol = str(s.decode())
-
-#------------------------------------------------------------------------------
-class TLSTable(PEcore):
-    fmt = 'IIIIII'
-    keys = ('RawDataStartVA',
-            'RawDataEndVA',
-            'AddressOfIndex',
-            'AddressOfCallbacks',
-            'SizeOfZeroFill',
-            'Characteristics')
-    def __init__(self,data,magic):
-        size = {0x20b:64, 0x10b:32}[magic]
-        self.elsize = size//8
-        if magic==0x20b:
-            self.fmt='Q'*len(self.keys)
-        PEcore.__init__(self,data)
-
-    def readcallbacks(self,data):
-        self.callbacks = []
-        while len(data)>=self.elsize:
-            v = struct.unpack(self.fmt[0],data[:self.elsize])[0]
-            if v==0: return
-            self.callbacks.append(v)
-            data = data[self.elsize:]
-#------------------------------------------------------------------------------
-
-class PE(PEcore):
-
-    basemap   = None
-    symtab    = None
-    strtab    = None
-    reltab    = None
-    functions = None
-    variables = None
-
+class PE(BinFormat):
+    is_PE = True
     @property
     def entrypoints(self):
         l = [ self.Opt.AddressOfEntryPoint + self.basemap ]
@@ -669,7 +43,10 @@ class PE(PEcore):
     def __init__(self,data):
         self.data = data
         # parse DOS header:
-        self.DOS  = DOSHdr(data)
+        try:
+            self.DOS  = DOSHdr(data)
+        except:
+            raise PEError('not a DOSHdr')
         # parse PE header:
         self.NT = COFFHdr(data,self.DOS.e_lfanew)
         # parse Optional Header:
@@ -829,5 +206,618 @@ class PE(PEcore):
             ss.append(str(s)); ss.append('---')
             s.pfx = tmp
         return '\n'.join(ss)
-## End of class PE
+
+class PEBuilder(PE):
+    def __init__(self):
+        self.data = DataIO(b'')
+
+#------------------------------------------------------------------------------
+from amoco.system.structs import *
+
+@StructDefine("""
+c*2 : e_magic
+x*58: unused
+I   : e_lfanew
+""")
+class DOSHdr(StructFormatter):
+    def __init__(self,data=None):
+        if data:
+            self.unpack(data)
+        if self.e_magic!=b'MZ':
+            raise PEError('no DOS Header found')
+
+IMAGE_NUMBEROF_DIRECTORY_ENTRIES=16
+IMAGE_ORDINAL_FLAG=0x80000000
+IMAGE_ORDINAL_FLAG64=0x8000000000000000
+
+@StructDefine("""
+I : Signature
+H : Machine
+H : NumberOfSections
+I : TimeDateStamp
+I : PointerToSymbolTable
+I : NumberOfSymbols
+H : SizeOfOptionalHeader
+H : Characteristics
+""")
+class COFFHdr(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        self.name_formatter('Signature','Machine')
+        self.flag_formatter('Characteristics')
+        self.func_formatter(TimeDateStamp = token_datetime_fmt)
+        if data:
+            self.unpack(data,offset)
+        if self.Signature != IMAGE_NT_SIGNATURE:
+            raise PEError('no PE header found')
+
+with Consts('Signature'):
+    IMAGE_DOS_SIGNATURE=0x5A4D
+    IMAGE_OS2_SIGNATURE=0x454E
+    IMAGE_OS2_SIGNATURE_LE=0x454C
+    IMAGE_VXD_SIGNATURE=0x454C
+    IMAGE_NT_SIGNATURE=0x00004550
+
+with Consts('Machine'):
+    IMAGE_FILE_MACHINE_UNKNOWN=0
+    IMAGE_FILE_MACHINE_AM33=0x1d3
+    IMAGE_FILE_MACHINE_AMD64=0x8664
+    IMAGE_FILE_MACHINE_ARM=0x1c0
+    IMAGE_FILE_MACHINE_EBC=0xebc
+    IMAGE_FILE_MACHINE_I386=0x14c
+    IMAGE_FILE_MACHINE_IA64=0x200
+    IMAGE_FILE_MACHINE_MR32=0x9041
+    IMAGE_FILE_MACHINE_MIPS16=0x266
+    IMAGE_FILE_MACHINE_MIPSFPU=0x366
+    IMAGE_FILE_MACHINE_MIPSFPU16=0x466
+    IMAGE_FILE_MACHINE_POWERPC=0x1f0
+    IMAGE_FILE_MACHINE_POWERPCFP=0x1f1
+    IMAGE_FILE_MACHINE_R4000=0x166
+    IMAGE_FILE_MACHINE_SH3=0x1a2
+    IMAGE_FILE_MACHINE_SH3DSP=0x1a3
+    IMAGE_FILE_MACHINE_SH4=0x1a6
+    IMAGE_FILE_MACHINE_SH5=0x1a8
+    IMAGE_FILE_MACHINE_THUMB=0x1c2
+    IMAGE_FILE_MACHINE_WCEMIPSV2=0x169
+
+with Consts('COFFHdr.Characteristics'):
+    IMAGE_FILE_RELOCS_STRIPPED=0x0001
+    IMAGE_FILE_EXECUTABLE_IMAGE=0x0002
+    IMAGE_FILE_LINE_NUMS_STRIPPED=0x0004
+    IMAGE_FILE_LOCAL_SYMS_STRIPPED=0x0008
+    IMAGE_FILE_AGGRESIVE_WS_TRIM=0x0010
+    IMAGE_FILE_LARGE_ADDRESS_AWARE=0x0020
+    IMAGE_FILE_16BIT_MACHINE=0x0040
+    IMAGE_FILE_BYTES_REVERSED_LO=0x0080
+    IMAGE_FILE_32BIT_MACHINE=0x0100
+    IMAGE_FILE_DEBUG_STRIPPED=0x0200
+    IMAGE_FILE_REMOVABLE_RUN_FROM_SWAP=0x0400
+    IMAGE_FILE_NET_RUN_FROM_SWAP=0x0800
+    IMAGE_FILE_SYSTEM=0x1000
+    IMAGE_FILE_DLL=0x2000
+    IMAGE_FILE_UP_SYSTEM_ONLY=0x4000
+    IMAGE_FILE_BYTES_REVERSED_HI=0x8000
+
+@StructDefine("""
+H : Magic
+B : MajorLinkerVersion
+B : MinorLinkerVersion
+I : SizeOfCode
+I : SizeOfInitializedData
+I : SizeOfUninitializedData
+I : AddressOfEntryPoint
+I : BaseOfCode
+I : BaseOfData
+I : ImageBase
+I : SectionAlignment
+I : FileAlignment
+H : MajorOperatingSystemVersion
+H : MinorOperatingSystemVersion
+H : MajorImageVersion
+H : MinorImageVersion
+H : MajorSubsystemVersion
+H : MinorSubsystemVersion
+I : Win32VersionValue
+I : SizeOfImage
+I : SizeOfHeaders
+I : CheckSum
+H : Subsystem
+H : DllCharacteristics
+I : SizeOfStackReserve
+I : SizeOfStackCommit
+I : SizeOfHeapReserve
+I : SizeOfHeapCommit
+I : LoaderFlags
+I : NumberOfRvaAndSizes
+""")
+class OptionalHdr(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        self.name_formatter('Magic')
+        self.address_formatter('AddressOfEntryPoint','BaseOfCode','BaseOfData','ImageBase')
+        self.address_formatter('Checksum')
+        self.flag_formatter('DllCharacteristics','LoaderFlags')
+        if data:
+            self.unpack(data,offset)
+    def unpack(self,data,offset=0):
+        magic = data[offset:offset+2]
+        if magic==b'\x0b\x01':
+            logger.verbose('PE32 Magic found')
+        elif magic==b'\x0b\x02':
+            logger.verbose('PE32+ Magic found')
+            f = self.fields
+            f.pop(8)
+            for x in (8,23,24,25,26):
+                f[x].typename = 'Q'
+        elif magic==b'\x07\x01':
+            logger.info('ROM Magic found (unsupported)')
+        else:
+            logger.error('unknown Magic')
+        # parse structure
+        self.DataDirectories = {}
+        StructFormatter.unpack(self,data,offset)
+        l = offset+len(self)
+        dnames = ('ExportTable','ImportTable','ResourceTable','ExceptionTable',
+                  'CertificateTable','BaseRelocationTable','Debug','Architecture',
+                  'GlobalPtr','TLSTable','LoadConfigTable','BoundImport','IAT',
+                  'DelayImportDescriptor','CLRRuntimeHeader','Reserved')
+        for dn in range(min(self.NumberOfRvaAndSizes,len(dnames))):
+            d = DataDirectory(data,offset=l)
+            self.DataDirectories[dnames[dn]] = d
+            l += len(d)
+
+    def __len__(self):
+        baselen = StructFormatter.__len__(self)
+        dirslen = sum(map(len,self.DataDirectories.values()))
+        return baselen+dirslen
+
+with Consts('Magic'):
+    OPTIONAL_HEADER_MAGIC_PE=0x10b
+    OPTIONAL_HEADER_MAGIC_PE_PLUS=0x20b
+
+IMAGE_DIRECTORY_ENTRY_EXPORT=0
+IMAGE_DIRECTORY_ENTRY_IMPORT=1
+IMAGE_DIRECTORY_ENTRY_RESOURCE=2
+IMAGE_DIRECTORY_ENTRY_EXCEPTION=3
+IMAGE_DIRECTORY_ENTRY_SECURITY=4
+IMAGE_DIRECTORY_ENTRY_BASERELOC=5
+IMAGE_DIRECTORY_ENTRY_DEBUG=6
+IMAGE_DIRECTORY_ENTRY_COPYRIGHT=7
+IMAGE_DIRECTORY_ENTRY_GLOBALPTR=8
+IMAGE_DIRECTORY_ENTRY_TLS=9
+IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG=10
+IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT=11
+IMAGE_DIRECTORY_ENTRY_IAT=12
+IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT=13
+IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR=14
+IMAGE_DIRECTORY_ENTRY_RESERVED=15
+
+@StructDefine("""
+I : RVA
+I : Size
+""")
+class DataDirectory(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        self.address_formatter('RVA')
+        if data:
+            self.unpack(data,offset)
+
+#------------------------------------------------------------------------------
+# PE Sections
+
+@StructDefine("""
+s*8 : Name
+I   : VirtualSize
+I   : RVA
+I   : SizeOfRawData
+I   : PointerToRawData
+I   : PointerToRelocations
+I   : PointerToLineNumbers
+H   : NumberOfRelocations
+H   : NumberOfLineNumbers
+I   : Characteristics
+""")
+class SectionHdr(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        self.name_formatter('Name')
+        self.address_formatter('RVA')
+        self.address_formatter('PointerToRawData')
+        self.flag_formatter('Characteristics')
+        if data:
+            self.unpack(data,offset)
+    def group(self):
+        return self.Name.partition('$')
+
+with Consts('SectionHdr.Characteristics'):
+    IMAGE_SCN_CNT_CODE=0x00000020
+    IMAGE_SCN_CNT_INITIALIZED_DATA=0x00000040
+    IMAGE_SCN_CNT_UNINITIALIZED_DATA=0x00000080
+    IMAGE_SCN_LNK_OTHER=0x00000100
+    IMAGE_SCN_LNK_INFO=0x00000200
+    IMAGE_SCN_LNK_REMOVE=0x00000800
+    IMAGE_SCN_LNK_COMDAT=0x00001000
+    IMAGE_SCN_MEM_FARDATA=0x00008000
+    IMAGE_SCN_MEM_PURGEABLE=0x00020000
+    IMAGE_SCN_MEM_16BIT=0x00020000
+    IMAGE_SCN_MEM_LOCKED=0x00040000
+    IMAGE_SCN_MEM_PRELOAD=0x00080000
+    IMAGE_SCN_ALIGN_1BYTES=0x00100000
+    IMAGE_SCN_ALIGN_2BYTES=0x00200000
+    IMAGE_SCN_ALIGN_4BYTES=0x00300000
+    IMAGE_SCN_ALIGN_8BYTES=0x00400000
+    IMAGE_SCN_ALIGN_16BYTES=0x00500000
+    IMAGE_SCN_ALIGN_32BYTES=0x00600000
+    IMAGE_SCN_ALIGN_64BYTES=0x00700000
+    IMAGE_SCN_ALIGN_128BYTES=0x00800000
+    IMAGE_SCN_ALIGN_256BYTES=0x00900000
+    IMAGE_SCN_ALIGN_512BYTES=0x00A00000
+    IMAGE_SCN_ALIGN_1024BYTES=0x00B00000
+    IMAGE_SCN_ALIGN_2048BYTES=0x00C00000
+    IMAGE_SCN_ALIGN_4096BYTES=0x00D00000
+    IMAGE_SCN_ALIGN_8192BYTES=0x00E00000
+    IMAGE_SCN_ALIGN_MASK=0x00F00000
+    IMAGE_SCN_LNK_NRELOC_OVFL=0x01000000
+    IMAGE_SCN_MEM_DISCARDABLE=0x02000000
+    IMAGE_SCN_MEM_NOT_CACHED=0x04000000
+    IMAGE_SCN_MEM_NOT_PAGED=0x08000000
+    IMAGE_SCN_MEM_SHARED=0x10000000
+    IMAGE_SCN_MEM_EXECUTE=0x20000000
+    IMAGE_SCN_MEM_READ=0x40000000
+    IMAGE_SCN_MEM_WRITE=0x80000000
+
+# COFF Relocations
+#------------------------------------------------------------------------------
+@StructDefine("""
+I : RVA
+I : SymboleTableIndex
+H : Type
+""")
+class COFFRelocation(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        self.address_formatter('RVA')
+        if data:
+            self.unpack(data,offset)
+
+@StructDefine("""
+I : Type
+H : LineNumber
+""")
+class COFFLineNumber(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        if data:
+            self.unpack(data,offset)
+    @property
+    def SymbolTableIndex(self):
+        if self.LineNumber==0:
+            return self.Type
+        else:
+            logger.warning('invalid COFF Line Number entry')
+
+IMAGE_SYM_UNDEF=0
+IMAGE_SYM_ABSOLUTE=-1
+IMAGE_SYM_DEBUG=-2
+
+# COFF Symbol table
+#------------------------------------------------------------------------------
+
+class COFFSymbolTable(object):
+    def __init__(self,data=None):
+        self.symbols = []
+        if data is None: data=''
+        if len(data)>0:
+            self.build(data)
+
+    def build(self,data):
+        q,r = divmod(len(data),18)
+        assert r==0
+        while len(data)>0:
+            self.symbols.append(StdSymbolRecord(data))
+            data = data[len(self.symbols[-1]):]
+        assert len(self.symbols)==q
+
+    def __len__(self):
+        return sum(map(len,self.symbols))
+
+@StructDefine("""
+s*8 : _Name
+i   : Value
+H   : SectionNumber
+H   : Type
+B   : StorageClass
+B   : NumberOfAuxSymbols
+""")
+class StdSymbolRecord(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        self.func_formatter(_Name=lambda k,x,cls: highlight([(Token.Name,self.Name)]))
+        self.func_formatter(StorageClass=lambda k,x,cls: highlight([(Token.Name,self.classname())]))
+        self.AuxSymbols = []
+        if data:
+            self.unpack(data,offset)
+            offset += len(self)
+            if self.Type>>8==0x20 and self.StorageClass==2 and self.SectionNumber>IMAGE_SYM_UNDEF:
+                auxclass = AuxFunctionDefinition
+            elif self.StorageClass==101 and (self.Name=='.bf' or self.Name=='.ef'):
+                auxclass = Aux_bf_ef
+            elif self.StorageClass==2 and self.SectionNumber==IMAGE_SYM_UNDEF and Self.Value==0:
+                auxclass = AuxWeakExternal
+            elif self.StorageClass==103:
+                assert self.Name == '.file'
+                auxclass = AuxFile
+            elif self.StorageClass==3:
+                auxclass = AuxSectionDefinition
+            else:
+                auxclass = AuxSymbolRecord
+            for x in range(self.NumberOfAuxSymbols):
+                s = auxclass(data,offset)
+                self.AuxSymbols.append(s)
+                offset += len(s)
+
+    def __len__(self):
+        baselen = StructFormatter.__len__(self)
+        auxtlen = sum([len(s) for s in self.AuxSymbols],0)
+        return baselen + auxtlen
+
+    @property
+    def Name(self):
+        if self._Name.startswith('\0'*4):
+            index = struct.unpack('I',self._Name[4:8])[0]
+            return index.strip('\0')
+        else:
+            try:
+                return self._Name.decode('utf-8').strip('\0')
+            except UnicodeDecodeError:
+                logger.info('StdSymbolHdr: Name decode error %s'%repr(self._Name))
+                return self._Name
+
+    def typename(self):
+        try:
+            t1 = ['NULL'  , 'VOID' , 'CHAR' , 'SHORT' ,
+                  'INT'   , 'LONG' , 'FLOAT', 'DOUBLE',
+                  'STRUCT', 'UNION', 'ENUM' , 'MOE'   ,
+                  'BYTE'  , 'WORD' , 'UINT' , 'DWORD' ][self.Type&0xff]
+            t2 = ['NULL','POINTER','FUNC','ARRAY'][self.Type>>8]
+            return (t1,t2)
+        except IndexError:
+            logger.warning('invalid Type field (was: %d)'%self.Type)
+
+    def classname(self):
+        c = {0xff: 'END_OF_FUNCTION',
+             0   : 'NULL',
+             1   : 'AUTOMATIC',
+             2   : 'EXTERNAL',
+             3   : 'STATIC',
+             4   : 'REGISTER',
+             5   : 'EXTERNAL_DEF',
+             6   : 'LABEL',
+             6   : 'UNDEFINED_LABEL',
+             8   : 'MEMBER_OF_STRUCT',
+             9   : 'ARGUMENT',
+             10  : 'STRUCT_TAG',
+             11  : 'MEMBER_OF_UNION',
+             12  : 'UNION_TAG',
+             13  : 'TYPE_DEF',
+             14  : 'UNDEFINED_STATIC',
+             15  : 'ENUM_TAG',
+             16  : 'MEMBER_OF_ENUM',
+             17  : 'REGISTER_PARAM',
+             18  : 'BITFIELD',
+             100 : 'BLOCK',
+             101 : 'FUNCTION',
+             102 : 'END_OF_STRUCT',
+             103 : 'FILE',
+             104 : 'SECTION',
+             105 : 'WEAK_EXTERNAL',
+             107 : 'CLR_TOKEN' }.get(self.StorageClass,None)
+        return c
+
+@StructDefine("""
+s*18 : data
+""")
+class AuxSymbolRecord(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        if data:
+            self.unpack(data,offset)
+
+@StructDefine("""
+I  : TagIndex
+I  : TotalSize
+I  : PointerToLineNumber
+I  : PointerToNextFunction
+x*2: unused
+""")
+class AuxFunctionDefinition(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        if data:
+            self.unpack(data,offset)
+
+@StructDefine("""
+x*4: unused
+H*6: LineNumber
+x  : unused
+I  : PointerToNextFunction
+x*2: unused
+""")
+class Aux_bf_ef(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        if data:
+            self.unpack(data,offset)
+
+@StructDefine("""
+I   : TagIndex
+I   : Characteristics
+x*10: unused
+""")
+class AuxWeakExternal(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        if data:
+            self.unpack(data,offset)
+
+@StructDefine("""
+s*18 : Filename
+""")
+class AuxFile(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        if data:
+            self.unpack(data,offset)
+
+@StructDefine("""
+I   : length
+H   : NumberOfRelocations
+H   : NumberOfLineNumbers
+I   : Checksum
+H   : Number
+B   : Selection
+x*3 : unused
+""")
+class AuxSectionDefinition(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        if data:
+            self.unpack(data,offset)
+
+
+# COFF String table
+#------------------------------------------------------------------------------
+class COFFStringTable(object):
+    def __init__(self,data=None):
+        if data is None: data=struct.pack('I',4)
+        self.length = struct.unpack('I',data[:4])
+        self.strings = data[4:self.length].split('\0')
+        self.strings.pop()
+
+#------------------------------------------------------------------------------
+
+class AttributeCertificateTable(object):
+    NotImplementedError
+
+class AttributeCertificate(StructFormatter):
+    pass
+
+#------------------------------------------------------------------------------
+
+class DelayLoadImportTable(object):
+    def __init__(self,data):
+        raise NotImplementedError
+
+@StructDefine("""
+I : Attributes
+I : Name
+I : ModuleHandle
+I : DelayImportAddressTable
+I : DelayImportNameTable
+I : BoundDelayImportTable
+I : UnloadDelayImportTable
+I : TimeStamp
+""")
+class DelayLoadDirectoryTable(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        self.func_formatter(TimeStamp = token_datetime_fmt)
+        if data:
+            self.unpack(data,offset)
+
+#------------------------------------------------------------------------------
+
+@StructDefine("""
+I : Flags
+I : TimeStamp
+H : MajorVersion
+H : MinorVersion
+I : NameRVA
+I : OrdinalBase
+I : AddressTableEntries
+I : NumberOfNamePointers
+I : ExportAddressTableRVA
+I : NamePointerRVA
+I : OrdinalTableRVA
+""")
+class ExportTable(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        self.func_formatter(TimeStamp = token_datetime_fmt)
+        self.address_formatter('OrdinalBase','NameRVA')
+        self.address_formatter('ExportAddressTableRVA','NamePointerRVA')
+        self.address_formatter('OrdinalTableRVA')
+        if data:
+            self.unpack(data,offset)
+
+#------------------------------------------------------------------------------
+class ImportTable(object):
+    def __init__(self,data,offset=0):
+        self.dlls = []
+        e = None
+        while len(data)>0:
+            e = ImportTableEntry(data,offset)
+            if e.isNULL(): return
+            self.dlls.append(e)
+            offset += len(e)
+        logger.warning('NULL Import entry not found')
+
+@StructDefine("""
+I : ImportLookupTableRVA
+I : TimeStamp
+I : ForwarderChain
+I : NameRVA
+I : ImportAddressTableRVA
+""")
+class ImportTableEntry(StructFormatter):
+    def __init__(self,data=None,offset=0):
+        self.address_formatter('ImportLookupTableRVA','NameRVA')
+        self.address_formatter('ImportAddressTableRVA')
+        self.func_formatter(TimeStamp = token_datetime_fmt)
+        if data:
+            self.unpack(data,offset)
+    def isNULL(self):
+        res=0
+        for k in self.fields:
+            res = res | getattr(self,k.name)
+        return res==0
+
+class ImportLookupTable(object):
+    def __init__(self,data,magic):
+        size = {0x20b:64, 0x10b:32}[magic]
+        self.elsize = size//8
+        self.fmt = 'Q' if size==64 else 'I'
+        self.readimports(data)
+
+    def readimports(self,data):
+        self.imports = []
+        fshift = (self.elsize*8)-1
+        while len(data)>=self.elsize:
+            v = struct.unpack(self.fmt,data[:self.elsize])[0]
+            if v==0: return
+            flag = v>>fshift
+            if   flag==1: self.imports.append([flag,v&0xffff])
+            elif flag==0: self.imports.append([flag,v&0x7fffffff])
+            data = data[self.elsize:]
+
+class NameTableEntry(object):
+    def __init__(self,data):
+        hint = struct.unpack('H',data[:2])
+        s,_,_ = data[2:].partition(b'\0')
+        self.hint = hint
+        self.symbol = str(s.decode())
+
+#------------------------------------------------------------------------------
+@StructDefine("""
+I : RawDataStartVA
+I : RawDataEndVA
+I : AddressOfIndex
+I : AddressOfCallbacks
+I : SizeOfZeroFill
+I : Characteristics
+""")
+class TLSTable(StructFormatter):
+    def __init__(self,data,magic):
+        self.address_formatter('RawDataStartVA','RawDataEndVA')
+        size = {0x20b:64, 0x10b:32}[magic]
+        self.elsize = size//8
+        if magic==0x20b:
+            for f in self.fields: f.typename='Q'
+        if data:
+            self.unpack(data)
+
+    def readcallbacks(self,data):
+        self.callbacks = []
+        while len(data)>=self.elsize:
+            v = struct.unpack(self.fields[0].typename,data[:self.elsize])[0]
+            if v==0: return
+            self.callbacks.append(v)
+            data = data[self.elsize:]
+#------------------------------------------------------------------------------
 

@@ -9,6 +9,7 @@ from amoco.config import conf
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 
 import re
 try:

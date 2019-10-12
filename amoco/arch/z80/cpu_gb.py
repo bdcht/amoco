@@ -19,3 +19,6 @@ disassemble = disassembler([spec_gb],iclass=instruction_gb)
 
 def PC():
     return pc
+
+def get_data_endian():
+    return 1

@@ -28,9 +28,10 @@ import inspect
 import importlib
 from functools import reduce
 import codecs
+
 from amoco.logger import Log
 logger = Log(__name__)
-
+logger.debug('loading module')
 from amoco.ui.render import Token,highlight
 
 type_unpredictable     =  -1
@@ -189,10 +190,10 @@ class disassembler(object):
         self.indent += 2
         ind = ' '*self.indent
         # sort ispecs from high constrained to low constrained:
-        logger.debug('%scurrent subset count: %d',ind,len(ispecs))
+        #logger.debug('%scurrent subset count: %d',ind,len(ispecs))
         ispecs.sort(key=(lambda x: x.mask.hw()), reverse=True)
         if len(ispecs)<5:
-            logger.debug('%stoo small to divide',ind)
+            #logger.debug('%stoo small to divide',ind)
             self.indent -= 2
             return (0,ispecs)
         # find separating mask:
@@ -205,20 +206,20 @@ class disassembler(object):
             adjust = (lambda x: x.ival<<(maxsize-x.size))
         localmask = reduce(lambda x,y:x&y, [adjust(s.mask) for s in ispecs])
         if localmask==0:
-            logger.debug('%sno local mask',ind)
+            #logger.debug('%sno local mask',ind)
             self.indent -= 2
             return (0,ispecs)
         # subsetup:
         f = localmask
-        logger.debug('%slocal mask is %X',ind,f)
+        #logger.debug('%slocal mask is %X',ind,f)
         l = defaultdict(lambda:list())
         for s in ispecs:
             l[ adjust(s.fix) & f ].append(s)
         if len(l)==1: # if subtree has only 1 spec, we're done here
-            logger.debug('%sfound 1 branch: done',ind)
+            #logger.debug('%sfound 1 branch: done',ind)
             self.indent -=2
             return (0,list(l.values())[0])
-        logger.debug('%sfound %d branches',ind,len(l))
+        #logger.debug('%sfound %d branches',ind,len(l))
         for x,S in l.items():
             l[x] = self.setup(S)
         self.indent -=2
@@ -240,9 +241,10 @@ class disassembler(object):
                     try:
                         i = s.decode(bytestring,e,i=self.__i,iclass=self.iclass)
                     except (DecodeError,InstructionError):
-                        logger.debug(u'exception raised by disassembler:'
-                                     u'decoding %s with spec %s'%(codecs.encode(bytestring,'hex'),s.format))
+                        #logger.debug(u'exception raised by disassembler:'
+                        #             u'decoding %s with spec %s'%(codecs.encode(bytestring,'hex'),s.format))
                         continue
+                    # we found the instruction (or prefix)
                     if i.spec.pfx is True:
                         if self.__i is None: self.__i = i
                         return self(bytestring[s.mask.size//8:],**kargs)
@@ -252,6 +254,7 @@ class disassembler(object):
                     if 'address' in kargs:
                         i.address = kargs['address']
                     return i
+                logger.debug("no instruction spec matching '%s'"%(codecs.encode(bytestring,'hex')))
                 break
             else: # go deeper in the tree according to submask value of b
                 fl = l.get(b & f, None)

@@ -142,7 +142,6 @@ def A_label(obj,imm8):
   obj.imm32 = env.cst(imm8<<1,9).signextend(32)
   obj.operands = [obj.imm32]
   obj.type = type_control_flow
-  obj.cond = env.CONDITION_AL
 
 @ispec("16[ 11100 imm11(11) ]", mnemonic="B")
 def A_label(obj,imm11):
@@ -180,11 +179,12 @@ def A_default(obj,i,imm5,Rn):
 @ispec("16[ 010000 1011 Rm(3) Rn(3) ]", mnemonic="CMN")
 @ispec("16[ 010000 1010 Rm(3) Rn(3) ]", mnemonic="CMP")
 @ispec("16[ 010000 1000 Rm(3) Rn(3) ]", mnemonic="TST")
-def A_default(obj,i,Rm,Rn):
+def A_default(obj,Rm,Rn):
   obj.n = env.regs[Rn]
   obj.m = env.regs[Rm]
   obj.operands = [obj.n, obj.m]
   obj.type = type_data_processing
+  obj.stype = None
   obj.cond = env.CONDITION_AL
 
 @ispec("16[ 001 01 Rn(3) imm8(8) ]", mnemonic="CMP")
@@ -193,6 +193,7 @@ def A_default(obj,Rn,imm8):
   obj.imm32 = env.cst(imm8,32)
   obj.operands = [obj.n, obj.imm32]
   obj.type = type_data_processing
+  obj.stype = None
   obj.cond = env.CONDITION_AL
 
 @ispec("16[ 010001 01 N Rm(4) Rn(3) ]", mnemonic="CMP")
@@ -201,6 +202,7 @@ def A_default(obj,N,Rm,Rn):
   obj.m = env.regs[Rm]
   obj.operands = [obj.n, obj.m]
   obj.type = type_data_processing
+  obj.stype = None
   obj.cond = env.CONDITION_AL
 
 @ispec("16[ 1011 1111 .firstcond(4) .mask(4) ]", mnemonic="IT")

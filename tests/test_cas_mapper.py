@@ -84,6 +84,8 @@ def test_aliasing3(m,x,y,a):
     conf.Cas.noaliasing = al
 
 def test_compose1(m,x,y,z,w):
+    al = conf.Cas.noaliasing
+    conf.Cas.noaliasing = True
     mx = mem(x,32)
     my = mem(y,32)
     mxx = mem(x+2,32)
@@ -98,6 +100,7 @@ def test_compose1(m,x,y,z,w):
     cm = m<<mprev
     assert cm(my) == 0x4567babe
     assert cm(z) == 0x4567babe
+    conf.Cas.noaliasing = al
 
 def test_compose2(m,x,y,z,w):
     al = conf.Cas.noaliasing
@@ -191,7 +194,7 @@ def test_pickle_mapper(a,m):
     w = loads(p)
     assert w.conds[0]==(a==0)
     assert w(a)==(a+3)
-    M = w.memory()
+    M = w.mmap
     parts = M.read(ptr(w(a)),1)
     assert len(parts)==1
     assert parts[0]==x[0:8]

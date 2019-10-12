@@ -1,6 +1,7 @@
 future
-configparser
+traitlets
 pygments
 pyparsing
 grandalf
 crysp
+click

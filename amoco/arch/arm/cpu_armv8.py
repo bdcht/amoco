@@ -24,3 +24,6 @@ disassemble = disassembler([spec_armv8],endian=endian,iclass=instruction_armv8)
 
 def PC():
     return pc
+
+def get_data_endian():
+    return 1 if internals['endianstate']==0 else -1

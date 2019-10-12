@@ -9,6 +9,7 @@ import pyparsing as pp
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 #logger.level = 10
 
 from amoco.arch.sparc.cpu_v8 import instruction_sparc as instruction

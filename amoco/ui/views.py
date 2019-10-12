@@ -8,12 +8,31 @@ from amoco.config import conf
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 
 from amoco.cas.expressions import regtype
 from amoco.ui.graphics import Engine
 from amoco.ui.render import Token,vltable
 
+#-------------------------------------------------------------------------------
+
 class View(Engine):
+    """Class that implements common API for views.
+    A view represents an amoco element (either a block, a map or a function) as
+    a positionable "boxed" object, ie an object with (width,height) and (x,y)
+    coords. A view is bound to the configured graphics engine through its parent
+    Engine class and offers a common API to display its object.
+
+    Args:
+        of: the amoco element associated with this view.
+
+    Attributes:
+        of: the amoco element associated with this view.
+        obj: the engine's graphical object that represents "of".
+        w: the width of the view.
+        h: the height of the view.
+        xy (tuple[int]): the (x,y) coords of the view.
+    """
     _is_block = False
     _is_map   = False
     _is_func  = False
@@ -48,8 +67,14 @@ class View(Engine):
         return self.engine.getxy(self)
     xy = property(getxy,setxy)
 
+#-------------------------------------------------------------------------------
 
 class blockView(View):
+    """Class that implements view of code.block objects.
+    A blockView additionnally implements the _vltable method which allows to
+    pretty print the block through ui.render.highlight method.
+    The str() representation of a blockView instance uses this pretty printer.
+    """
     _is_block = True
 
     def __init__(self,block):
@@ -61,16 +86,18 @@ class blockView(View):
         for i in self.of.instr:
             ins2 = i.toks()
             if isinstance(ins2,str): ins2 = [(Token.Literal,ins2)]
+            b = [u"%02x"%x for x in bytes(i.bytes)]
             ins = [ (Token.Address,u'{:<20}'.format(str(i.address))),
                     (Token.Column,u''),
-                    (Token.Literal,u"'%s'"%(u''.join([u"%02x"%x for x in bytes(i.bytes)]))),
+                    (Token.Literal,u"'%s'"%(u''.join(b))),
                     (Token.Column,u'') ]
             T.addrow(ins+ins2)
         if conf.Code.bytecode:
             pad = conf.Code.padding
             T.colsize[1] += pad
         if conf.Code.header:
-            T.header = (u'# --- block %s ---' % self.of.name).ljust(T.width,'-')
+            th = u'# --- block %s ---'
+            T.header = (th % self.of.address).ljust(T.width,'-')
         if conf.Code.footer:
             T.footer = u'-'*T.width
         return T
@@ -78,7 +105,14 @@ class blockView(View):
     def __str__(self):
         return str(self._vltable())
 
+#-------------------------------------------------------------------------------
+
 class mapView(View):
+    """Class that implements view of mapper objects.
+    A mapView additionnally implements the _vltable method which allows to
+    pretty print the map through ui.render.highlight method.
+    The str() representation of a mapView instance uses this pretty printer.
+    """
     _is_map = True
 
     def __init__(self,m):
@@ -107,14 +141,31 @@ class mapView(View):
     def __str__(self):
         return self._vltable().__str__()
 
+#-------------------------------------------------------------------------------
+
 class funcView(View):
+    """Class that implements view of func objects.
+    A funcView additionnally implements the _vltable method which allows to
+    pretty print the function through ui.render.highlight method.
+    """
     _is_func = True
     def __init__(self,func):
         from grandalf.layouts import SugiyamaLayout
         super(funcView,self).__init__(of=func)
         self.layout = SugiyamaLayout(func.cfg)
 
+    def _vltable(self,**kargs):
+        t = vltable(**kargs)
+        w = t.width
+        th = u'[func %s, signature: %s]'
+        t.header = (th%(self.of,self.of.sig())).ljust(w,'-')
+        t.footer = u'_'*w
+
+#-------------------------------------------------------------------------------
+
 class xfuncView(View):
     _is_xfunc = True
     def __init__(self,xfunc):
         super(xfuncView,self).__init__(of=xfunc)
+
+#-------------------------------------------------------------------------------

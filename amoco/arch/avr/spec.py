@@ -9,7 +9,7 @@
 
 from amoco.logger import Log
 logger = Log(__name__)
-
+logger.debug('loading module')
 from amoco.arch.core import *
 from amoco.arch.avr import env
 

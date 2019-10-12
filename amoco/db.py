@@ -20,6 +20,7 @@ from amoco.config import conf
 
 from amoco.logger import Log,logging
 logger = Log(__name__)
+logger.debug('loading module')
 
 try:
     import sqlalchemy as sql

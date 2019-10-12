@@ -19,3 +19,6 @@ disassemble = disassembler([spec],iclass=instruction_avr)
 
 def PC():
     return pc
+
+def get_data_endian():
+    return 1 # LE

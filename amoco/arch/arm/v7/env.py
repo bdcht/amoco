@@ -35,6 +35,8 @@ regs = [r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15]
 sp = r13 ; sp.ref='sp'    # stack pointer
 lr = r14 ; lr.ref='lr'    # link register (return address)
 pc = r15 ; pc.ref='pc'    # program counter (instructions are always word-aligned)
+                          # pc is pc_+4 in Thumb mode and pc_+8 in ARM mode,
+pc_ = reg('pc_',32)       # current instruction pointer
 
 apsr   = reg('apsr',32)   # current program status register
 
@@ -46,6 +48,7 @@ Q = slc(apsr,27,1,ref='Q')   # overflow/saturation (DSP)
 
 is_reg_flags(apsr)
 is_reg_pc(pc)
+is_reg_pc(pc_)
 is_reg_stack(sp)
 
 CONDITION_EQ        = 0x0  # ==

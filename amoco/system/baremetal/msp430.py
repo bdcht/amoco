@@ -14,19 +14,15 @@ class MSP430(CoreExec):
 
     def __init__(self,p):
         CoreExec.__init__(self,p,cpu)
+        self.load_binary()
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):
         # use 32K RAM
-        self.mmap.write(0x0200,b'\0'*0x8000)
-        self.mmap.write(0x4400,self.bin)
-
-    def initenv(self):
-        from amoco.cas.mapper import mapper
-        m = mapper()
-        for r in self.cpu.R: m[r] = self.cpu.cst(0,16)
-        m[self.cpu.pc] = self.cpu.cst(0x4400,16)
-        return m
+        self.state.mmap.write(0x0200,b'\0'*0x8000)
+        self.state.mmap.write(0x4400,self.bin)
+        for r in self.cpu.R: self.state[r] = self.cpu.cst(0,16)
+        self.state[self.cpu.pc] = self.cpu.cst(0x4400,16)
 
     # optional codehelper method allows platform-specific analysis of
     # either a (raw) list of instruction, a block/func object (see amoco.code)

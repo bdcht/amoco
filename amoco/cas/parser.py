@@ -6,8 +6,9 @@
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 
-from .expressions import *
+from .expressions import bot,top,reg,ext
 
 # expression parser:
 #-------------------

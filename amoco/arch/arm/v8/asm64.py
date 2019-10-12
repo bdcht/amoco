@@ -6,7 +6,7 @@
 
 from amoco.logger import Log
 logger = Log(__name__)
-
+logger.debug('loading module')
 from .env64 import *
 from .utils import *
 from amoco.cas.utils import *
@@ -441,20 +441,19 @@ def i_MSUB(i,fmap):
 
 def i_MOVK(i,fmap):
     fmap[pc] = fmap[pc]+i.length
-    result = fmap(i.d)
+    result = comp(i.d.size)
+    result[0:i.d.size] = fmap(i.d)
     result[0:16] = i.imm
     fmap[i.d] = result
 
 def i_MOVZ(i,fmap):
     fmap[pc] = fmap[pc]+i.length
-    result = cst(0,i.d.size)
-    result[0:16] = i.imm
+    result = i.imm.zeroextend(i.d.size)
     fmap[i.d] = result
 
 def i_MOVN(i,fmap):
     fmap[pc] = fmap[pc]+i.length
-    result = cst(0,i.d.size)
-    result[0:16] = i.imm
+    result = i.imm.zeroextend(i.d.size)
     fmap[i.d] = ~result
 
 def i_MRS(i,fmap):

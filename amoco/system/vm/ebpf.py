@@ -5,18 +5,14 @@
 # published under GPLv2 license
 
 from amoco.system.raw import RawExec
-from amoco.system.core import CoreExec,stub
-from amoco.code import tag
+from amoco.system.core import StubDefine
 from amoco.arch.eBPF import cpu
+from amoco.cas.mapper import mapper
 
 class eBPF(RawExec):
     "This class allows to analyze new (e)bpf bytecodes"
 
-    def __init__(self,p):
-        RawExec.__init__(self,p,cpu)
-
     def initenv(self):
-        from amoco.cas.mapper import mapper
         m = mapper()
         m[cpu.r1] = cpu.reg('#ctx',64)
         m[cpu.pc] = cpu.cst(0,64)
@@ -58,7 +54,7 @@ def block_helper_(block,m):
 # HOOKS DEFINED HERE :
 #----------------------------------------------------------------------------
 
-@stub
+@StubDefine('BPF_MAP_CREATE')
 def BPF_MAP_CREATE(m,**kargs):
     pass
 

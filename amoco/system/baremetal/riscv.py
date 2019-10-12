@@ -4,20 +4,16 @@
 # Copyright (C) 2017 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from amoco.system.core import *
-from amoco.code import tag,xfunc
-
+from amoco.system.elf import *
+from amoco.system.core import CoreExec,DefineStub
+from amoco.code import tag
 import amoco.arch.riscv.cpu_rvi32 as cpu
 
-PAGESIZE = 4096
-
 class ELF(CoreExec):
-
+    PAGESIZE = 4096
     def __init__(self,p):
         CoreExec.__init__(self,p,cpu)
-        if self.bin:
-            self.symbols.update(self.bin.functions)
-            self.symbols.update(self.bin.variables)
+        self.load_binary()
 
     # load the program into virtual memory (populate the mmap dict)
     def load_binary(self):
@@ -25,27 +21,17 @@ class ELF(CoreExec):
         if p!=None:
             # create text and data segments according to elf header:
             for s in p.Phdr:
-                ms = p.loadsegment(s,PAGESIZE)
-                if ms!=None:
-                    vaddr,data = ms.popitem()
-                    self.mmap.write(vaddr,data)
-            # create the dynamic segments:
-            self.load_shlib()
+                if s.p_type == PT_INTERP:
+                    interp = p.readsegment(s).strip(b'\0')
+                elif s.p_type == PT_LOAD:
+                    ms = p.loadsegment(s,self.PAGESIZE)
+                    if ms!=None:
+                        vaddr,data = ms.popitem()
+                        self.state.mmap.write(vaddr,data)
         # create the stack zone:
-        self.mmap.newzone(cpu.sp)
-
-    # call dynamic linker to populate mmap with shared libs:
-    # for now, the external libs are seen through the elf dynamic section:
-    def load_shlib(self):
-        for k,f in self.bin._Elf32__dynamic(None).items():
-            self.mmap.write(k,cpu.ext(f,size=32))
-
-    def initenv(self):
-        from amoco.cas.mapper import mapper
-        m = mapper()
-        m[cpu.pc] = cpu.cst(self.bin.entrypoints[0],32)
-        for r in cpu.x[1:] : m[r] = cpu.cst(0,32)
-        return m
+        self.state.mmap.newzone(cpu.sp)
+        self.state[cpu.pc] = cpu.cst(self.bin.entrypoints[0],32)
+        for r in cpu.x[1:] : self.state[r] = cpu.cst(0,32)
 
     # seqhelper provides arch-dependent information to amoco.main classes
     def seqhelper(self,seq):
@@ -94,7 +80,6 @@ def block_helper_(block,m):
 # HOOKS DEFINED HERE :
 #----------------------------------------------------------------------------
 
-@stub_default
-def pop_pc(m,**kargs):
-    cpu.pop(m,cpu.pc)
-
+#@DefineStub('*',default=True)
+#def pop_pc(m,**kargs):
+#    cpu.pop(m,cpu.pc)

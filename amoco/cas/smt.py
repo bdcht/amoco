@@ -17,6 +17,7 @@ instances.
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 
 from .expressions import *
 from amoco.cas.mapper import mapper

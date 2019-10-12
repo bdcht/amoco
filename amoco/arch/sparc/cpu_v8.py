@@ -20,3 +20,6 @@ disassemble = disassembler([spec_v8],endian=lambda:-1,iclass=instruction_sparc)
 
 def PC():
     return pc
+
+def get_data_endian():
+    return -1

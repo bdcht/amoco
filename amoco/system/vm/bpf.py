@@ -5,9 +5,8 @@
 # published under GPLv2 license
 
 from amoco.system.raw import RawExec
-from amoco.system.core import CoreExec,stub
-from amoco.code import tag
 from amoco.arch.eBPF import cpu_bpf as cpu
+from amoco.cas.mapper import mapper
 
 class BPF(RawExec):
     "This class allows to analyze old bpf bytecodes"
@@ -16,7 +15,6 @@ class BPF(RawExec):
         RawExec.__init__(self,p,cpu)
 
     def initenv(self):
-        from amoco.cas.mapper import mapper
         m = mapper()
         m[cpu.pc] = cpu.cst(0,64)
         return m
@@ -48,4 +46,4 @@ def block_helper_(block,m):
     # update block.misc based on semantics:
     sta,sto = block.support
 
-from linux_x64 import IDT
+from linux64.x64 import IDT

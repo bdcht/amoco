@@ -19,3 +19,6 @@ disassemble = disassembler([spec_mostek],iclass=instruction_z80)
 
 def PC():
     return pc
+
+def get_data_endian():
+    return 1

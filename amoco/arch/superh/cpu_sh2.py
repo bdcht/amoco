@@ -19,3 +19,6 @@ disassemble = disassembler([spec_sh2],endian=lambda:-1,iclass=instruction_sh2)
 
 def PC():
     return pc
+
+def get_data_endian():
+    return -1

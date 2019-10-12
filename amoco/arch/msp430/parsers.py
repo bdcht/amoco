@@ -9,6 +9,7 @@ import pyparsing as pp
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 #logger.level = 10
 
 from amoco.arch.msp430.cpu import instruction_msp430 as instruction

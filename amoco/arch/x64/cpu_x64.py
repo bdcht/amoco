@@ -18,6 +18,9 @@ disassemble.maxlen = 15
 def PC():
     return rip
 
+def get_data_endian():
+    return 1
+
 def configure(**kargs):
     from amoco.config import conf
     # asm format:

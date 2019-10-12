@@ -14,6 +14,7 @@ The system dwarf module implements DWARF and C++ eh_frame* classes for executabl
 from amoco.ui.render import Token,highlight
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 
 from amoco.system.structs import Consts,StructDefine,StructFormatter
 

@@ -14,7 +14,7 @@ Amoco
 +-----------+--------------------------------------------------+
 | Location: | https://github.com/bdcht/amoco                   |
 +-----------+--------------------------------------------------+
-| Version:  | 2.6                                              |
+| Version:  | 2.9 (pre-3.0)                                    |
 +-----------+--------------------------------------------------+
 |  Doc:     | http://amoco.readthedocs.io/en/latest/index.html |
 +-----------+--------------------------------------------------+
@@ -36,7 +36,7 @@ It features:
 - a **symbolic** algebra module which allows to describe the semantics of
   every instructions and compute a functional representation of instruction
   blocks.
-- a generic execution model wich provides an abstract memory model to deal
+- a generic execution model which provides an abstract memory model to deal
   with concrete or symbolic values transparently, and other system-dependent
   features.
 - various classes implementing usual disassembly techniques like linear sweep,
@@ -77,6 +77,20 @@ Please see `LICENSE`_.
 
 Changelog
 =========
+
+- `v2.9.0`_
+
+  * add skeleton of emulator module (emul class)
+  * reorganize system modules into subpackages
+  * add System, OS, Task and DefineStub classes
+  * add AVR architecture
+  * modified block class => map attribute moved to cfg.node class
+  * moved memory classes in system.memory module
+  * moved cfg analysis classes in 'sa' subpackage
+  * improve debug logs
+  * improve PE/ELF parsers with amoco.structs module
+  * add checksec method in Elf class
+  * fix armv7 semantics and formats
 
 - `v2.6.3`_
 
@@ -292,6 +306,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.0: https://github.com/bdcht/amoco/releases/tag/v2.9.0
 .. _v2.6.3: https://github.com/bdcht/amoco/releases/tag/v2.6.3
 .. _v2.6.2: https://github.com/bdcht/amoco/releases/tag/v2.6.2
 .. _v2.6.1: https://github.com/bdcht/amoco/releases/tag/v2.6.1

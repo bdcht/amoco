@@ -13,6 +13,7 @@ except ImportError:
 
 from amoco.logger import Log
 logger = Log(__name__)
+logger.debug('loading module')
 #logger.level = 10
 
 from collections import OrderedDict

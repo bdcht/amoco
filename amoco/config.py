@@ -39,14 +39,18 @@ Attributes:
 
             - 'formatter' one of 'Null' (default), 'Terminal', "Terminal256', 'TerminalDark', 'TerminalLight', 'Html'
             - 'graphics' one of 'term' (default), 'qt' or 'gtk'
+            - 'console' one of 'python' (default), or 'ipython'
 
 """
 
-from os import getenv
 
 from traitlets.config import Configurable
-from traitlets.config import PyFileConfigLoader
 from traitlets import Integer, Unicode, Bool, observe
+
+try:
+    unicode('a')
+except NameError:
+    unicode = str
 
 #-----------------------
 
@@ -74,16 +78,13 @@ class Log(Configurable):
     "configurable parameters related to logging"
     level = Unicode('WARNING',config=True)
     filename = Unicode('',config=True)
-    tempfile = Bool(True,config=True)
-    @observe('level')
-    def _level_changed(self,change):
-        from amoco.logger import set_log_all
-        set_log_all(change.new)
+    tempfile = Bool(False,config=True)
 
 class UI(Configurable):
     "configurable parameters related to User Interface(s)"
     formatter = Unicode('Null',config=True)
     graphics  = Unicode('term',config=True)
+    console   = Unicode('python',config=True)
 
 class Arch(Configurable):
     assemble = Bool(False,config=True)
@@ -98,11 +99,19 @@ class Arch(Configurable):
         from amoco.arch.x64.cpu_x64 import configure
         configure(format=change.new)
 
+class System(Configurable):
+    pagesize  = Integer(4096,config=True)
+    aslr = Bool(False,config=True)
+    nx = Bool(False,config=True)
+
 class Config(object):
     _locations = ['.amoco/config', '.amocorc']
+    BANNER = "amoco (version 3.0)"
 
     def __init__(self,f=None):
         if f is None:
+            from os import getenv
+            from traitlets.config import PyFileConfigLoader
             for f in self._locations:
                 cl = PyFileConfigLoader(filename=f,path=('.',getenv('HOME')))
                 try:
@@ -119,6 +128,8 @@ class Config(object):
         self.Arch = Arch(config=c)
         self.Log = Log(config=c)
         self.Cas = Cas(config=c)
+        self.System = System(config=c)
+        self.src = c
 
     def __str__(self):
         s = []

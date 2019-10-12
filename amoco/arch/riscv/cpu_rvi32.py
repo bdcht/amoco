@@ -20,3 +20,6 @@ disassemble = disassembler([spec_rvi32],iclass=instruction_riscv)
 
 def PC():
     return pc
+
+def get_data_endian():
+    return 1 # LE

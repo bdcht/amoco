@@ -26,6 +26,12 @@ def reglist(i,pos=-1):
 def deref(i,pos=-2):
     assert len(i.operands)>2
     base,offset = i.operands[pos], i.operands[pos+1]
+    if base is pc:
+        if i.address is not None: base = i.address
+        if internals['isetstate']==0:
+            base = base+8
+        else:
+            base = (base+4) & 0xfffffffc
     sign = '+' if i.add else '-'
     if offset._is_cst:
         ostr = '#%c%d'%(sign,offset.value)

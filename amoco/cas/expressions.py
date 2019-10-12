@@ -11,17 +11,12 @@ The expressions module implements all above :class:`exp` classes.
 All symbolic representation of data in amoco rely on these expressions.
 """
 
-try:
-    from builtins import object
-except ImportError:
-    pass
-import operator
+from amoco.config import conf
 from amoco.logger import Log
 logger = Log(__name__)
-
-from amoco.config import conf
-
+logger.debug('loading module')
 from amoco.ui import render
+import operator
 
 try:
     IntType = (int,long)
@@ -187,6 +182,9 @@ class exp(object):
         return slicer(self,i.start,i.stop-i.start)
 
     # set item allows to insert the expression of a slice in the exp
+    # note: most child classes can't really inherit from this method
+    # since the method makes sense only by returning an comp object
+    # while __setitem__ is supposed to modify self...
     @_checkarg_slice
     def __setitem__(self,i,e)  :
         res = comp(self.size)
@@ -714,6 +712,7 @@ class ext(reg):
         self.sf = False
         self._reg__protect = False
         self.type = regtype.OTHER
+        self.stub = None
 
     def __unicode__(self):
         return u'@%s'%self.ref
@@ -725,25 +724,20 @@ class ext(reg):
     def __setattr__(self,a,v):
         exp.__setattr__(self,a,v)
 
-    @classmethod
-    def stub(cls,ref):
-        try:
-            return cls.stubs[ref]
-        except (AttributeError,KeyError):
-            logger.info('no stub defined for %s'%ref)
-            return (lambda env,**kargs:None)
-
     def call(self,env,**kargs):
         logger.info('stub %s explicit call'%self.ref)
         if not 'size' in kargs: kargs.update(size=self.size)
-        res = self.stub(self.ref)(env,**kargs)
+        try:
+            res = self.stub(env,**kargs)
+        except TypeError:
+            res = None
         if res is None: return top(self.size)
         return res[0:self.size]
 
     # used when the expression is a target used to build a block
     def __call__(self,env):
         logger.info('stub %s implicit call'%self.ref)
-        self.stub(self.ref)(env,**self._subrefs)
+        self.stub(env,**self._subrefs)
 ##
 
 #------------------------------------------------------------------------------
@@ -1015,8 +1009,8 @@ class mem(exp):
     def addr(self,env):
         return self.a.eval(env)
 
-    def bytes(self,b1=0,b2=None,endian=0):
-        s = slice(b1,b2)
+    def bytes(self,sta=0,sto=None,endian=0):
+        s = slice(sta,sto)
         l = self.length
         sta,sto,stp = s.indices(l)
         size = (sto-sta)*8

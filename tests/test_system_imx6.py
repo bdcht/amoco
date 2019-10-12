@@ -1,5 +1,5 @@
 import pytest
-from amoco.system.imx6 import *
+from amoco.system.baremetal.imx6 import *
 
 def test_header():
     h = HAB_Header(b"\xd1\x00\x20\x40")

@@ -73,7 +73,7 @@ def A_default(obj,Rm,Rn,Rd):
 @ispec("16[ 010001 00 DN Rm(4) Rdn(3) ]", mnemonic="ADD")
 def A_default(obj,DN,Rm,Rdn):
   obj.setflags = False
-  obj.n = env.regs[DN<<3+Rdn]
+  obj.n = env.regs[(DN<<3)+Rdn]
   obj.d = obj.n
   obj.m = env.regs[Rm]
   obj.operands = [obj.d,obj.n,obj.m]
@@ -101,7 +101,7 @@ def A_default(obj,imm7):
 
 @ispec("16[ 01000100 DM 1101 Rdm(3) ]", mnemonic="ADD")
 def A_default(obj,DM,Rdm):
-  obj.d = env.regs[DM<<3+Rdm]
+  obj.d = env.regs[(DM<<3)+Rdm]
   obj.n = env.sp
   obj.m = obj.d
   obj.operands = [obj.d,obj.n,obj.m]
@@ -198,7 +198,7 @@ def A_default(obj,Rn,imm8):
 
 @ispec("16[ 010001 01 N Rm(4) Rn(3) ]", mnemonic="CMP")
 def A_default(obj,N,Rm,Rn):
-  obj.n = env.regs[N<<3+Rn]
+  obj.n = env.regs[(N<<3)+Rn]
   obj.m = env.regs[Rm]
   obj.operands = [obj.n, obj.m]
   obj.type = type_data_processing

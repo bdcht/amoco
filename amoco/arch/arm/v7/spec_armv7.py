@@ -320,7 +320,7 @@ def A_deref(obj,P,U,W,Rn,Rt,imm4H,imm4L):
   obj.t = env.regs[Rt]
   obj.t2 = env.regs[Rt+1]
   if Rt==14 or Rt%2==1: raise InstructionError(obj)
-  obj.imm32 = env.cst(imm4H<<4+imm4L,32)
+  obj.imm32 = env.cst((imm4H<<4)+imm4L,32)
   obj.index = (P==1)
   obj.wback = (P==0)|(W==1)
   obj.add = (U==1)
@@ -384,7 +384,7 @@ def A_default(obj,Rn,Rd,Rt):
 def A_deref(obj,P,U,W,Rn,Rt,imm4H,imm4L):
   obj.n = env.regs[Rn]
   obj.t = env.regs[Rt]
-  obj.imm32 = env.cst(imm4H<<4+imm4L,32)
+  obj.imm32 = env.cst((imm4H<<4)+imm4L,32)
   if P==0 and W==1:
     obj.mnemonic += "T"
     obj.postindex = True
@@ -435,7 +435,7 @@ def A_default(obj,S,Rd,Ra,Rm,Rn):
 def A_default(obj,imm4,Rd,imm12):
   obj.setflags = False
   obj.d = env.regs[Rd]
-  obj.imm32 = ARMExpandImm(imm4<<12+imm12)
+  obj.imm32 = ARMExpandImm((imm4<<12)+imm12)
   obj.operands = [obj.d,obj.imm32]
   obj.type = type_data_processing
 
@@ -453,7 +453,7 @@ def A_default(obj,S,Rd,Rm):
 def A_default(obj,imm4,Rd,imm12):
   obj.d = env.regs[Rd]
   if Rd==15: raise InstructionError(obj)
-  obj.imm16 = env.cst(imm4<<12+imm12,16)
+  obj.imm16 = env.cst((imm4<<12)+imm12,16)
   obj.operands = [obj.d,obj.imm16]
   obj.type = type_data_processing
 

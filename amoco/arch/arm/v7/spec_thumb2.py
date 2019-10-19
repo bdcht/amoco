@@ -64,7 +64,7 @@ def A_sreg(obj,S,Rn,imm3,Rd,imm2,stype,Rm):
   obj.setflags = (S==1)
   obj.n = env.regs[Rn]
   obj.d = env.regs[Rd]
-  obj.m = DecodeShift(stype,env.regs[Rm],imm3<<2+imm2)
+  obj.m = DecodeShift(stype,env.regs[Rm],(imm3<<2)+imm2)
   if Rn==15 or BadReg(Rd) or BadReg(Rm): raise InstructionError(obj)
   obj.operands = [obj.d,obj.n,obj.m]
   obj.type = type_data_processing
@@ -89,7 +89,7 @@ def A_default(obj,S,imm3,Rd,imm2,Rm):
   obj.d = env.regs[Rd]
   obj.m = env.regs[Rm]
   if BadReg(Rd) or BadReg(Rm): raise InstructionError(obj)
-  obj.imm5 = env.cst(imm3<<2+imm2,5)
+  obj.imm5 = env.cst((imm3<<2)+imm2,5)
   obj.operands = [obj.d,obj.n,obj.imm5]
   obj.type = type_data_processing
   obj.cond = env.CONDITION_AL
@@ -131,7 +131,7 @@ def A_bits(obj,imm3,Rd,imm2,msb):
   obj.d = env.regs[Rd]
   if BadReg(Rd) : raise InstructionError(obj)
   obj.msbit = msb
-  obj.lsbit = imm3<<2+imm2
+  obj.lsbit = (imm3<<2)+imm2
   obj.operands = [obj.d, obj.lsbit, obj.msbit-obj.lsbit+1]
   obj.type = type_data_processing
   obj.cond = env.CONDITION_AL
@@ -142,7 +142,7 @@ def A_bits(obj,Rn,imm3,Rd,imm2,msb):
   obj.n = env.regs[Rn]
   if BadReg(Rd) or Rn==13: raise InstructionError(obj)
   obj.msbit = msb
-  obj.lsbit = imm3<<2+imm2
+  obj.lsbit = (imm3<<2)+imm2
   obj.operands = [obj.d, obj.n, obj.lsbit, obj.msbit-obj.lsbit+1]
   obj.type = type_data_processing
   obj.cond = env.CONDITION_AL
@@ -208,7 +208,7 @@ def A_sreg(obj,i,Rn,imm3,imm2,stype,Rm):
   obj.n = env.regs[Rn]
   obj.m = env.regs[Rm]
   obj.stype = stype
-  obj.shift = imm3<<2+imm2
+  obj.shift = (imm3<<2)+imm2
   if Rn==15 or BadReg(Rm): raise InstructionError(obj)
   obj.operands = [obj.n, obj.m]
   obj.type = type_data_processing
@@ -497,7 +497,7 @@ def A_default(obj,Rn,Rd,Rm):
 def A_default(obj,S,imm3,Rd,imm2,stype,Rm):
   obj.setflags = (S==1)
   obj.d = env.regs[Rd]
-  obj.m = DecodeShift(stype,env.regs[Rm],imm3<<2+imm2)
+  obj.m = DecodeShift(stype,env.regs[Rm],(imm3<<2)+imm2)
   if BadReg(Rd) or BadReg(Rm): raise InstructionError(obj)
   obj.operands = [obj.d,obj.m]
   obj.type = type_data_processing
@@ -507,7 +507,7 @@ def A_default(obj,S,imm3,Rd,imm2,stype,Rm):
 def A_default(obj,Rn,imm3,Rd,imm2,tb,Rm):
   obj.d = env.regs[Rd]
   obj.n = env.regs[Rn]
-  obj.m = DecodeShift(tb<<1,env.regs[Rm],imm3<<2+imm2)
+  obj.m = DecodeShift(tb<<1,env.regs[Rm],(imm3<<2)+imm2)
   if BadReg(Rd) or BadReg(Rn) or BadReg(Rm): raise InstructionError(obj)
   obj.tbform = (tb==1)
   obj.operands = [obj.d, obj.n, obj.m]
@@ -666,7 +666,7 @@ def A_default(obj,Rn,imm3,Rd,imm2,widthm1):
   obj.d = env.regs[Rd]
   obj.n = env.regs[Rn]
   if BadReg(Rd) or BadReg(Rn) : raise InstructionError(obj)
-  obj.lsbit = imm3<<2+imm2
+  obj.lsbit = (imm3<<2)+imm2
   obj.widthminus1 = widthm1
   obj.operands = [obj.d,obj.n,obj.lsb,obj.widthminus1+1]
   obj.type = type_data_processing
@@ -725,7 +725,7 @@ def A_default(obj,Rn,RdLo,RdHi,Rm):
 @ispec("32[ 0 imm3(3) Rd(4) imm2(2) 0 sat_imm(5) 11110 0 11 10 sh 0 Rn(4) ]", mnemonic="USAT")
 def A_default(obj,sh,Rn,imm3,Rd,imm2,sat_imm):
   obj.d = env.regs[Rd]
-  obj.n = DecodeShift(sh<<1,env.regs[Rn],imm3<<2+imm2)
+  obj.n = DecodeShift(sh<<1,env.regs[Rn],(imm3<<2)+imm2)
   if BadReg(Rd) or BadReg(Rn) : raise InstructionError(obj)
   obj.saturate_to = sat_imm+1
   obj.operands = [obj.d,obj.saturate_to,obj.n]

@@ -85,7 +85,7 @@ def DecodeShift(stype, reg, shift):
 
 def ARMExpandImm(x):
     v = cst(x&0xff,32)
-    return _ror2(v,x>>8)
+    return _ror2(v,(x>>8)&0xf)
 
 def ARMExpandImm_C(x):
     v = ARMExpandImm(x)
@@ -100,19 +100,19 @@ def ThumbExpandImm(imm12):
         elif s==0b01:
             if x&0xff==0: raise ValueError
             tmp = (x&0xff)
-            imm32 = tmp<<16 + tmp
+            imm32 = (tmp<<16) + tmp
         elif s==0b10:
             if x&0xff==0: raise ValueError
             tmp = (x&0xff)<<8
-            imm32 = tmp<<16 + tmp
+            imm32 = (tmp<<16) + tmp
         elif s==0b11:
             if x&0xff==0: raise ValueError
             tmp = (x&0xff)
-            tmp2 = tmp<<8 + tmp
-            imm32 = tmp2<<16 + tmp2
+            tmp2 = (tmp<<8) + tmp
+            imm32 = (tmp2<<16) + tmp2
         return cst(imm32,32)
     else:
-        v = cst(1<<7 + x&0x7f,32)
+        v = cst((1<<7) + x&0x7f,32)
         return _ror(v,(x>>7)&0x1f)
 
 def ITAdvance(itstate):

@@ -32,7 +32,11 @@ def A_default(obj,i,S,Rn,imm3,Rd,imm8):
   obj.setflags = (S==1)
   obj.n = env.regs[Rn]
   obj.d = env.regs[Rd]
-  if BadReg(Rd) or Rn==15: raise InstructionError(obj)
+  if Rn==13 and obj.mnemonic in ('ADD','SUB'):
+      if Rn==15 and S==0:
+          raise InstructionError(obj)
+  elif (BadReg(Rd) or Rn==15):
+      raise InstructionError(obj)
   obj.imm32 = ThumbExpandImm(i+imm3+imm8)
   obj.operands = [obj.d,obj.n,obj.imm32]
   obj.type = type_data_processing
@@ -44,8 +48,9 @@ def A_default(obj,i,Rn,imm3,Rd,imm8):
   obj.setflags = False
   obj.n = env.regs[Rn]
   obj.d = env.regs[Rd]
-  if BadReg(Rd) : raise InstructionError(obj)
-  obj.imm32 = ThumbExpandImm(i+imm3+imm8)
+  if Rd==15 : raise InstructionError(obj)
+  # note: i, imm3, imm8 are provided as "01..." strings
+  obj.imm32 = cst(int(i+imm3+imm8,2),32)
   obj.operands = [obj.d,obj.n,obj.imm32]
   obj.type = type_data_processing
   obj.cond = env.CONDITION_AL

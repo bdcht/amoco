@@ -357,6 +357,7 @@ def A_reglist(obj,P,register_list):
   obj.registers = [env.regs[i] for i,r in enumerate(register_list[::-1]+'0'*7+P) if r=='1']
   obj.operands = [obj.registers]
   obj.type = type_data_processing
+  if env.pc in obj.registers: obj.type = type_control_flow
   obj.cond = env.CONDITION_AL
 
 @ispec("16[ 1011 0 10 #M #register_list(8) ]", mnemonic="PUSH")

@@ -76,13 +76,16 @@ def specreg(i):
     if i.write_g: spec_reg += 'g'
     return [(Token.Register,'%s, %s'%(i.operands[0],spec_reg))]
 
+def reglistcomma(i):
+    return ', ' if len(i.operands)>1 else ''
+
 format_allregs = [lambda i: TokenListJoin(', ',regs(i))]
 format_default = [mnemo]+format_allregs
 format_sreg    = format_default
 format_label   = [mnemo, label]
 format_adr     = [mnemo, lambda i: regs(i,1), ', ', lambda i: label(i,1)]
 format_bits    = format_default
-format_reglist = [mnemo, (lambda i: TokenListJoin(', ',regs(i,-1))), ', ', reglist]
+format_reglist = [mnemo, (lambda i: TokenListJoin(', ',regs(i,-1))), reglistcomma, reglist]
 format_deref   = [mnemo, lambda i: TokenListJoin(', ',regs(i,-2)+deref(i,-2))]
 format_plx     = [plx]
 format_msr     = [mnemo, specreg]

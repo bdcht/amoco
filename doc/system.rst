@@ -9,7 +9,10 @@ stubs or high-level language structures.
 
 .. contents::
 
-.. automodule:: system.loader
+.. automodule:: system.core
+   :members:
+
+.. automodule:: system.memory
    :members:
 
 .. automodule:: system.elf
@@ -24,21 +27,21 @@ stubs or high-level language structures.
 .. automodule:: system.structs
    :members:
 
-.. automodule:: system.core
-   :members:
-
 .. automodule:: system.raw
    :members:
 
-.. automodule:: system.linux_x86
+.. automodule:: system.linux32
    :members:
 
-.. automodule:: system.linux_x64
+.. automodule:: system.linux64
    :members:
 
 .. automodule:: system.win32
    :members:
 
 .. automodule:: system.win64
+   :members:
+
+.. automodule:: system.baremetal
    :members:
 

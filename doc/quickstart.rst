@@ -23,43 +23,62 @@ function, providing an input filename or a bytestring.
 For example, from directory ``amoco/tests``, do::
 
    In [1]: import amoco
-   In [2]: p = amoco.system.loader.load_program(u'samples/x86/flow.elf')
+   In [2]: p = amoco.system.load_program(u'samples/x86/flow.elf')
    In [3]: print(p)
-   <amoco.system.linux_x86.ELF object at 0x7f834b4187d0>
+   <amoco.system.linux32.x86.Task object at 0x7f193a56cbf8>
+
    In [4]: print(p.bin.Ehdr)
-   ELF header:
-   [Elf32_Ehdr]
-   	e_ident     :ELF; ELFOSABI_SYSV; 1; ELFCLASS32; ELFDATA2LSB; 0; 127
-   	e_type      :ET_EXEC
-   	e_machine   :EM_386
-   	e_version   :EV_CURRENT
-   	e_entry     :0x8048380
-   	e_phoff     :52
-   	e_shoff     :4416
-   	e_flags     :0x0
-   	e_ehsize    :52
-   	e_phentsize :32
-   	e_phnum     :9
-   	e_shentsize :40
-   	e_shnum     :30
-   	e_shstrndx  :27
+   [Ehdr]
+   e_ident             :[IDENT]
+   ELFMAG0             :127
+   ELFMAG              :b'ELF'
+   EI_CLASS            :ELFCLASS32
+   EI_DATA             :ELFDATA2LSB
+   EI_VERSION          :1
+   EI_OSABI            :ELFOSABI_NONE
+   EI_ABIVERSION       :0
+   unused              :(0, 0, 0, 0, 0, 0, 0)
+   e_type              :ET_EXEC
+   e_machine           :EM_386
+   e_version           :EV_CURRENT
+   e_entry             :0x8048380
+   e_phoff             :52
+   e_shoff             :4416
+   e_flags             :0x0
+   e_ehsize            :52
+   e_phentsize         :32
+   e_phnum             :9
+   e_shentsize         :40
+   e_shnum             :30
+   e_shstrndx          :27
 
 If the binary data uses a supported executable format (currently :mod:`system.pe`, :mod:`system.elf` or an
 HEX/SREC format in :mod:`system.utils`) and targets a supported plateform (see :ref:`system <system>` and
 :ref:`arch <arch>` packages), the returned object is an *abstraction* of the memory mapped program::
 
-   In [5]: print(p.mmap)
+   In [5]: print(p.state)
+   eip <- { | [0:32]->0x8048380 | }
+   ebp <- { | [0:32]->0x0 | }
+   eax <- { | [0:32]->0x0 | }
+   ebx <- { | [0:32]->0x0 | }
+   ecx <- { | [0:32]->0x0 | }
+   edx <- { | [0:32]->0x0 | }
+   esi <- { | [0:32]->0x0 | }
+   edi <- { | [0:32]->0x0 | }
+   esp <- { | [0:32]->0x7ffff000 | }
+
+   In [6]: print(p.state.mmap)
    <MemoryZone rel=None :
-   	 <mo [08048000,08049000] data:'\x7fELF\x01\x01\x01\x00\x00\x00...'>
-   	 <mo [08049f14,08049ff0] data:'\xff\xff\xff\xff\x00\x00\x00\x0...'>
-   	 <mo [08049ff0,08049ff4] data:@__gmon_start__>
-   	 <mo [08049ff4,0804a000] data:'(\x9f\x04\x08\x00\x00\x00\x00\x...'>
-   	 <mo [0804a000,0804a004] data:@__stack_chk_fail>
-   	 <mo [0804a004,0804a008] data:@malloc>
-   	 <mo [0804a008,0804a00c] data:@__gmon_start__>
-   	 <mo [0804a00c,0804a010] data:@__libc_start_main>
-   	 <mo [0804a010,0804af14] data:'\x00\x00\x00\x00\x00\x00\x00\x0...'>>
-   <MemoryZone rel=esp :>
+     <mo [08048000,08049000] data:b'\x7fELF\x01\x01\x01\x00\x00\x0...'>
+     <mo [08049f14,08049ff0] data:b'\xff\xff\xff\xff\x00\x00\x00\x...'>
+     <mo [08049ff0,08049ff4] data:@__gmon_start__>
+     <mo [08049ff4,0804a000] data:b'(\x9f\x04\x08\x00\x00\x00\x00\...'>
+     <mo [0804a000,0804a004] data:@__stack_chk_fail>
+     <mo [0804a004,0804a008] data:@malloc>
+     <mo [0804a008,0804a00c] data:@__gmon_start__>
+     <mo [0804a00c,0804a010] data:@__libc_start_main>
+     <mo [0804a010,0804af14] data:b'\x00\x00\x00\x00\x00\x00\x00\x...'>
+     <mo [7fffd000,7ffff000] data:b'\x00\x00\x00\x00\x00\x00\x00\x...'>>
 
 Note that it is also possible to provide a *raw* bytes
 string as input and then manually load the architecture::
@@ -68,21 +87,24 @@ string as input and then manually load the architecture::
    In [2]: shellcode = (b"\xeb\x16\x5e\x31\xd2\x52\x56\x89\xe1\x89\xf3\x31\xc0\xb0\x0b\xcd"
                         b"\x80\x31\xdb\x31\xc0\x40\xcd\x80\xe8\xe5\xff\xff\xff\x2f\x62\x69"
                         b"\x6e\x2f\x73\x68")
-   In [3]: p = amoco.system.loader.load_program(shellcode)
+   In [3]: p = amoco.system.load_program(shellcode)
    amoco.system.loader: WARNING: unknown format
    amoco.system.raw: WARNING: a cpu module must be imported
+
    In [4]: from amoco.arch.x86 import cpu_x86
    In [5]: p.cpu = cpu_x86
+
    In [6]: print(p)
    <amoco.system.raw.RawExec object at 0x7f3dc3d1cef0>
-   In [7]: print(p.mmap)
+
+   In [7]: print(p.state.mmap)
    <MemoryZone rel=None :
          <mo [00000000,00000024] data:'\xeb\x16^1\xd2RV\x89\xe1\x89\xf...'>>
 
 The *shellcode* is mapped at address 0 by default, but can be relocated::
 
    In [8]: p.relocate(0x4000)
-   In [9]: print(p.mmap)
+   In [9]: print(p.state.mmap)
    <MemoryZone rel=None :
    	 <mo [00004000,00004024] data:'\xeb\x16^1\xd2RV\x89\xe1\x89\xf...'>>
 
@@ -110,11 +132,13 @@ Now, rather than manually adjusting the address to fetch the next instruction, w
 can use any of the code analysis strategies implemented in amoco to disassemble
 *basic blocks* directly::
 
-   In [1]: import amoco
-   In [2]: p = amoco.system.loader.load_program(u'samples/x86/flow.elf')
-   In [3]: z = amoco.lsweep(p)
+   In [1]: import amoco.sa
+   In [2]: p = amoco.system.load_program(u'samples/x86/flow.elf')
+   In [3]: z = amoco.sa.lsweep(p)
+
    In [4]: z.getblock(0x8048380)
-   Out[4]: <block object (0x8048380) at 0x7f1decec4c50>
+   Out[4]: <block object (0x8048380-0x80483a1) with 13 instructions> 
+
    In [5]: b=_
    In [6]: print(b.view)
    # --- block 0x8048380 ------------------------------------------
@@ -139,11 +163,13 @@ symbol table) or an absolute virtual address for branching instructions.
 Symbolic representations of blocks
 ==================================
 
-A :class:`block <code.block>` object provides instructions of the program located at some address in memory,
-but also allows to get a symbolic functional representation of what this sequence
+A :class:`block <code.block>` object provides instructions of the program located at some address in memory.
+A :class:`node <cfg.node>` object takes a block and
+allows to get a symbolic functional representation of what this block sequence
 of instructions is doing::
 
-   In [7]: print(b.map.view)
+   In [7]: n = amoco.cfg.node(b)
+   In [7]: print(n.map.view)
    eip                         <- (eip+-0x10)
    eflags:
    | cf                        <- 0x0
@@ -168,21 +194,21 @@ of instructions is doing::
    (((esp+0x4)&0xfffffff0)-32) <- 0x80484fd
    (((esp+0x4)&0xfffffff0)-36) <- (eip+0x21)
 
-Here we are with the *map* of the previous block.
+Here we are with the *map* of the block.
 Now what this :class:`mapper <cas.mapper.mapper>` object says is for example that once the block is executed ``esi`` register
 will be set to the 32 bits value pointed by ``esp``, that the carry flag will be 0, or
 that the top of the stack will hold value ``eip+0x21``.
 Rather than extracting the entire view of the mapper we can query any :mod:`expression <cas.expressions>` out if it::
 
-   In [8]: print(b.map(p.cpu.ecx))
+   In [8]: print(n.map(p.cpu.ecx))
    (esp+0x4)
 
 There are some caveats when it comes to query memory expressions but we will leave this
 for later (see :class:`cas.mapper.mapper`).
 
-The ``b.map`` object also provides a better way to see how the memory is modified by the block::
+The ``n.map`` object also provides a better way to see how the memory is modified by the block::
 
-   In [9]: print(b.map.memory())
+   In [9]: print(n.map.mmap)
    <MemoryZone rel=None :>
    <MemoryZone rel=((esp+0x4)&0xfffffff0) :
          <mo [-0000024,-0000020] data:(eip+0x21)>
@@ -203,14 +229,14 @@ before and even where the block is actually located.
 For any mapper object, we can get the lists of *input* and *output* expressions, and replace
 inputs by any chosen expression::
 
-   In [10]: for x in set(b.map.inputs()): print(x)
-   eip
+   In [10]: for x in set(n.map.inputs()): print(x)
+   M32(esp)
    esp
-   esp[0:8]
    eax
    edx
-   M32(esp)
-   In [11]: m = b.map.use(eip=0x8048380, esp=0x7fcfffff)
+   eip
+
+   In [11]: m = n.map.use(eip=0x8048380, esp=0x7fcfffff)
    In [12]: print(m.view)
    eip             <- 0x8048370
    eflags:
@@ -254,195 +280,6 @@ would branch to address ``0x80484fd`` (``#main``).
 Starting some analysis
 ======================
 
-Now that we can evaluate a path of blocks, we can get some insights about the expressions of
-registers or memory locations along a chosen path. This kind of evaluation however requires a
-known *control flow graph* (CFG) of the studied function path.
-
-There are several strategies to build the control flow graph of a program
-(i.e. the CFGs of all its functions) but none is perfect.
-Some strategies are implemented in module :mod:`main`, ranging from the simple
-:class:`main.lsweep` linear sweep method to a *link backward* method (see :class:`main.lbackward`)
-that evaluates the program's counter in backward until either a concrete value is obtained or
-the root node of the current CFG is reached::
-
-   In [1]: import amoco
-   In [2]: p = amoco.system.loader.load_program(u'samples/x86/flow.elf')
-   In [3]: amoco.set_log_all('VERBOSE')
-   In [4]: z = amoco.lbackward(p)
-   In [5]: z.getcfg()
-   amoco.main: VERBOSE: root node 0x8048380 added
-   amoco.main: VERBOSE: block 0x8048370 starts a new cfg component
-   amoco.cas.expressions: INFO: stub __libc_start_main implicit call
-   amoco.main: INFO: lbackward analysis stopped at node @__libc_start_main
-   amoco.main: INFO: lbackward: function 0x8048370{2} done
-   amoco.main: VERBOSE: edge 0x8048380 ---> .plt@__libc_start_main added
-   amoco.main: VERBOSE: block 0x80484fd starts a new cfg component
-   amoco.main: VERBOSE: block 0x8048434 starts a new cfg component
-   amoco.main: VERBOSE: block 0x8048483 starts a new cfg component
-   amoco.main: INFO: lbackward analysis stopped at node 0x8048483
-   amoco.main: INFO: lbackward: function 0x8048483{1} done
-   amoco.main: VERBOSE: edge 0x8048434 ---> fct_b:0x8048483 added
-   amoco.main: VERBOSE: edge fct_b:0x8048483 ---> 0x804845e added
-   amoco.main: VERBOSE: block 0x80484d4 starts a new cfg component
-   amoco.main: INFO: lbackward analysis stopped at node 0x80484d4
-   amoco.main: INFO: lbackward: function 0x80484d4{1} done
-   amoco.main: VERBOSE: edge 0x804845e ---> fct_e:0x80484d4 added
-   amoco.main: VERBOSE: edge fct_e:0x80484d4 ---> 0x804846d added
-   amoco.main: INFO: lbackward analysis stopped at node 0x804846d
-   amoco.main: INFO: lbackward: function 0x8048434{5} done
-   amoco.main: VERBOSE: edge 0x80484fd ---> fct_a:0x8048434 added
-   amoco.main: VERBOSE: edge fct_a:0x8048434 ---> 0x8048561 added
-   amoco.main: VERBOSE: function fct_b:0x8048483{1} called
-   amoco.main: VERBOSE: extending cfg of 0x80484fd{4} (new target found)
-   amoco.main: VERBOSE: edge fct_b:0x8048483 ---> 0x8048576 added
-   amoco.main: VERBOSE: block 0x8048490 starts a new cfg component
-   amoco.main: VERBOSE: block 0x80484ab starts a new cfg component
-   amoco.main: VERBOSE: block 0x8048350 starts a new cfg component
-   amoco.cas.expressions: INFO: stub malloc implicit call
-   amoco.main: INFO: lbackward analysis stopped at node @malloc
-   amoco.main: INFO: lbackward: function 0x8048350{2} done
-   amoco.main: VERBOSE: edge 0x80484ab ---> .plt@malloc added
-   amoco.main: VERBOSE: edge .plt@malloc ---> 0x80484c4 added
-   amoco.main: INFO: lbackward analysis stopped at node 0x80484c4
-   amoco.main: INFO: lbackward: function 0x80484ab{3} done
-   amoco.main: VERBOSE: edge 0x8048490 ---> fct_d:0x80484ab added
-   amoco.main: VERBOSE: edge fct_d:0x80484ab ---> 0x80484a1 added
-   amoco.main: INFO: lbackward analysis stopped at node 0x80484a1
-   amoco.main: INFO: lbackward: function 0x8048490{3} done
-   amoco.main: VERBOSE: edge 0x8048576 ---> fct_c:0x8048490 added
-   amoco.main: VERBOSE: edge fct_c:0x8048490 ---> 0x8048582 added
-   amoco.main: VERBOSE: edge 0x8048582 -?-> 0x804859d added
-   amoco.main: INFO: lbackward analysis stopped at node 0x804859d
-   amoco.main: VERBOSE: edge 0x8048582 -?-> 0x8048598 added
-   amoco.main: VERBOSE: block 0x8048340 starts a new cfg component
-   amoco.cas.expressions: INFO: stub __stack_chk_fail implicit call
-   amoco.main: INFO: lbackward analysis stopped at node @__stack_chk_fail
-   amoco.main: INFO: lbackward: function 0x8048340{2} done
-   amoco.main: VERBOSE: edge 0x8048598 ---> .plt@__stack_chk_fail added
-   amoco.main: VERBOSE: edge .plt@__stack_chk_fail ---> 0x804859d added
-   amoco.cas.expressions: VERBOSE: invalid mapper eval: cond 0x0 is false
-   amoco.code: VERBOSE: link 0x8048582 -?-> 0x8048598 ignored
-   amoco.main: INFO: lbackward: function 0x80484fd{10} done
-   amoco.main: VERBOSE: edge .plt@__libc_start_main ---> f:0x80484fd added
-   amoco.cas.expressions: INFO: stub exit implicit call
-   amoco.main: INFO: lbackward analysis stopped at node @exit
-   amoco.main: INFO: lbackward: function 0x8048380{4} done
-   Out[5]: <amoco.cfg.graph at 0x7f587a815080>
-
-Here we've used the :class:`lbackward` strategy to build the CFGs of functions of the very simple ``flow.elf``
-x86 sample program. This strategy does *not* assume that a call will always return and
-thus follows strictly the program's instruction pointer value. The CFG is build as a :class:`cfg.graph`
-instance (which inherits from the :class:`grandalf.graphs.Graph` class.)
-
-As shown by adjusting log messages to a more verbose level, method :meth:`getcfg <main.fforward.getcfg>`
-starts by default from the entrypoint (here ``0x8048370``) and creates new CFG components whenever a call is performed.
-Each one of these new :class:`graph component <grandalf.graphs.graph_core>` is a candidate for a :class:`code.func`
-object once all paths have reached an *end*.
-The collected functions created during the analysis are listed in attribute::
-
-   In [6]: z.functions
-   Out[6]:
-   [<func object (_start) at 0x7f58740244c8>,
-    <func object (.plt@__libc_start_main) at 0x7f587a6a86a8>,
-    <func object (f:0x80484fd) at 0x7f5874013ca8>,
-    <func object (fct_a:0x8048434) at 0x7f58740242e8>,
-    <func object (fct_b:0x8048483) at 0x7f58740130a8>,
-    <func object (fct_e:0x80484d4) at 0x7f58740139a8>,
-    <func object (fct_c:0x8048490) at 0x7f5874075b28>,
-    <func object (fct_d:0x80484ab) at 0x7f5874075468>,
-    <func object (.plt@malloc) at 0x7f5874024588>,
-    <func object (.plt@__stack_chk_fail) at 0x7f5874013a08>]
-   In [7]: f = z.functions[4]
-   In [8]: print(f.name)
-   fct_b:0x8048483
-   In [9]: print(f.cfg.sV)
-   0.| <node [0x8048483] at 0x7f3af028e7f0>
-   In [10]: n = f.cfg.sV[0]
-   In [11]: print(n.view)
-   # --- block 0x8048483 -----------------------------------
-   0x8048483           '55'        push        ebp
-   0x8048484           '89e5'      mov         ebp, esp
-   0x8048486           '8b450c'    mov         eax, [ebp+12]
-   0x8048489           '8b5508'    mov         edx, [ebp+8]
-   0x804848c           '01d0'      add         eax, edx
-   0x804848e           '5d'        pop         ebp
-   0x804848f           'c3'        ret
-   In [12]: print(n.data.map.view)
-   eip     <- M32(esp)
-   esp     <- (esp+0x4)
-   (esp-4) <- ebp
-   ebp     <- ebp
-   eax     <- (M32(esp+8)+M32(esp+4))
-   edx     <- M32(esp+4)
-   eflags:
-   | cf    <- ((M8(esp+11)[7:8]∧M8(esp+7)[7:8])∨((⌐(M32(esp+8)+M32(esp+4))[31:32])∧(M8(esp+11)[7:8]∨M8(esp+7)[7:8])))
-   | of    <- ((M8(esp+11)[7:8]⊕(M32(esp+8)+M32(esp+4))[31:32])∧(M8(esp+7)[7:8]⊕(M32(esp+8)+M32(esp+4))[31:32]))
-   | df    <- df
-   | sf    <- ((M32(esp+8)+M32(esp+4))<0x0)
-   | tf    <- tf
-   | zf    <- ((M32(esp+8)+M32(esp+4))==0x0)
-   | af    <- ⊤1
-   | pf    <- ⊤1
-
-A function's CFG can be walked and studied by accessing its nodes. The :attr:`sV <grandalf.graphs.graph_core.sV>` attribute
-is the list of unique nodes (vertices) and :attr:`sE <grandalf.graphs.graph_core.sE>` the list of *links* (edges) of the CFG.
-A function's CFG can be rendered for example in a Qt GUI with::
-
-   In [13]: from amoco.ui.graphics.qt_.engine import *
-   In [14]: amoco.ui.graphics.configure(graphics="qt")
-   In [15]: f = z.functions[2]
-   In [16]: gs = GraphScene(f.view.layout)
-   In [17]: gv = GraphView(gs)
-   In [18]: gs.Draw()
-   In [19]: gv.show()
-
-As shown below, once the "qt" ui is selected we can build a *QGraphicsScene* and *QGraphicsView*
-to display the CFG of function ``#main``:
-
-.. image:: amoco-flow-1.png
-
-Of course, in real life things are not so simple...
-
-Still, We can see that amoco can deal with simple loops::
-
-   In [1]: import amoco
-   In [2]: p = amoco.system.loader.load_program(u'samples/x86/loop_simple.elf')
-   In [3]: z = amoco.lbackward(p)
-   In [4]: z.getcfg()
-   Out[4]: <amoco.cfg.graph at 0x7fc271c16b10>
-   In [5]: f = z.functions[4]
-   In [6]: print(f.cfg.sV)
-   0.| <node [0x804849d] at 0x7f7260e15cc0>
-   1.| <node [0x80484d0] at 0x7f7260e15438>
-   2.| <node [0x80484ac] at 0x7f725efd4c50>
-   3.| <node [0x80484d8] at 0x7f725efdcbe0>
-   In [7]: print(f.cfg.sE)
-   0.| <link [0x804849d -> 0x80484d0] at 0x7f7260e15400>
-   1.| <link [0x80484d0 -> 0x80484ac] at 0x7f725efd4b38>
-   2.| <link [0x80484d0 -> 0x80484d8] at 0x7f725efdcc18>
-   3.| <link [0x80484ac -> 0x80484d0] at 0x7f725efdcc88>
-   In [8]: print(f.map.view)
-   eip                                          <- M32(esp)
-   esp                                          <- (esp+0x4)
-   (esp-4)                                      <- ebp
-   ebp                                          <- ebp
-   eflags:
-   | cf                                         <- [(M8(esp+7)[7:8]∨((-M32(esp+4))[31:32]∧(M8(esp+7)[7:8]∨0x1))), (M8(esp+7)[7:8]∨(((-M32(esp+4))+0x1)[31:32]∧(M8(esp+7)[7:8]∨0x1))), ⊤1, ...]
-   | of                                         <- [(M8(esp+7)[7:8]∧(-M32(esp+4))[31:32]), (M8(esp+7)[7:8]∧((-M32(esp+4))+0x1)[31:32]), ⊤1, ...]
-   | df                                         <- [df, df, ⊤1, ...]
-   | sf                                         <- [((-M32(esp+4))<0x0), (((-M32(esp+4))+0x1)<0x0), ⊤1, ...]
-   | tf                                         <- [tf, tf, ⊤1, ...]
-   | zf                                         <- [((-M32(esp+4))==0x0), (((-M32(esp+4))+0x1)==0x0), ⊤1, ...]
-   | af                                         <- [⊤1, ⊤1, ⊤1, ...]
-   | pf                                         <- [⊤1, ⊤1, ⊤1, ...]
-   (esp-8)                                      <- [0x0, 0x1, ...]
-   eax                                          <- ⊤32
-   edx                                          <- [edx, ({[ 0: 8] -> M8(M32(0x804a02c)), [ 8:32] -> 0x0}+0x1), ⊤32, ...]
-   (0x804a02c)                                  <- [M32(0x804a02c), (M32(0x804a02c)+0x1), ...]
-   ([M32(0x804a02c),(M32(0x804a02c)+0x1), ...]) <- [M8(M32(0x804a02c)), M8(M32(0x804a02c)+1), ⊤8, ...]
-
-Here the function has 4 blocks and a *loop*. By looking directly at the
-computed :class:`mapper <cas.mapper.mapper>` we can see that the loop counter variable is probably located at
-``(esp-8)`` and incremented from initial value 0. The global location ``0x804a02c`` is
-accessed and dereferenced sucessively byte-after-byte so it is likely to hold a pointer to a char.
+*** the merge with *emul* branch has broken the static-analysis module ***
+*** this is going to be fixed once the merge is fully integrated only  ***
 

@@ -100,19 +100,19 @@ def ThumbExpandImm(imm12):
         elif s==0b01:
             if x&0xff==0: raise ValueError
             tmp = (x&0xff)
-            imm32 = (tmp<<16) + tmp
+            imm32 = (tmp<<16) | tmp
         elif s==0b10:
             if x&0xff==0: raise ValueError
             tmp = (x&0xff)<<8
-            imm32 = (tmp<<16) + tmp
+            imm32 = (tmp<<16) | tmp
         elif s==0b11:
             if x&0xff==0: raise ValueError
             tmp = (x&0xff)
-            tmp2 = (tmp<<8) + tmp
-            imm32 = (tmp2<<16) + tmp2
+            tmp2 = (tmp<<8) | tmp
+            imm32 = (tmp2<<16) | tmp2
         return cst(imm32,32)
     else:
-        v = cst((1<<7) + x&0x7f,32)
+        v = cst((1<<7) | (x&0x7f),32)
         return _ror(v,(x>>7)&0x1f)
 
 def ITAdvance(itstate):
@@ -124,19 +124,19 @@ def ITAdvance(itstate):
         return it_hi | (it_lo<<1)
 
 def InITBlock(itstate):
-    return itstate&0xf != 0
+    return (itstate&0xf) != 0
 
 def LastInITBlock(itstate):
-    return itstate&0xf == 0b1000
+    return (itstate&0xf) == 0b1000
 
 def _ror(x,n):
     xx = x&0xffffffff
-    return (xx>>n | xx<<(32-n))&0xffffffff
+    return ((xx>>n) | (xx<<(32-n)))&0xffffffff
 
 def _ror2(x,n):
     xx = x&0xffffffff
     nn = n+n
-    return (xx>>nn | xx<<(32-nn))&0xffffffff
+    return ((xx>>nn) | (xx<<(32-nn)))&0xffffffff
 
 def BadReg(r):
     return (r==13 or r==15)

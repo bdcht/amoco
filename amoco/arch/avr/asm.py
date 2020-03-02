@@ -5,7 +5,7 @@
 # published under GPLv2 license
 
 from amoco.arch.avr.env import *
-from amoco.arch.cas.mapper import mapper
+from amoco.cas.mapper import mapper
 
 #------------------------------------------------------------------------------
 # low level functions :
@@ -18,7 +18,7 @@ def _pop_(fmap,_l):
   fmap[sp] = fmap[sp]+_l.length
 
 def __pc(f):
-  def pcnpc(ifmap):
+  def pcnpc(i,fmap):
     fmap[pc] = fmap[pc]+i.length
     if len(fmap.conds)>0:
       cond = fmap.conds.pop()
@@ -29,6 +29,9 @@ def __pc(f):
     else:
         f(i,fmap)
   return pcnpc
+
+def __nopc(f):
+    return f.__closure__[0].cell_contents
 
 # flags for arithmetic operations:
 def __setflags__A(i,fmap,a,b,x,neg=False):
@@ -113,7 +116,7 @@ def i_ADIW(i,fmap):
 def i_ADC(i,fmap):
   dst,src = i.operands
   _c=fmap[cf]
-  i_ADD(i,fmap)
+  __nopc(i_ADD)(i,fmap)
   a=fmap(dst)
   b=tst(_c,cst(1,a.size),cst(0,a.size))
   x=a+b
@@ -218,7 +221,7 @@ def i_CPC(i,fmap):
   a=fmap(dst)
   b=fmap(src)
   _c=fmap[cf]
-  i_CP(i,fmap)
+  __nopc(i_CP)(i,fmap)
   a=fmap(a-b)
   b=tst(_c,cst(1,a.size),cst(0,a.size))
   x=a-b
@@ -227,10 +230,8 @@ def i_CPC(i,fmap):
 @__pc
 def i_SBC(i,fmap):
   dst,src = i.operands
-  a=fmap(dst)
-  b=fmap(src)
   _c=fmap[cf]
-  i_SUB(i,fmap)
+  __nopc(i_SUB)(i,fmap)
   a=fmap(dst)
   b=tst(_c,cst(1,a.size),cst(0,a.size))
   x=a-b

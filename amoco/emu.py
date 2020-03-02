@@ -32,21 +32,48 @@ class emul(object):
         self.cpu = task.cpu
         self.pc = task.cpu.PC()
         self.psz = self.pc.size
+        self.hooks = []
+        self.handlers = {}
         if task.OS is not None:
             self.abi = task.OS.abi
         else:
             self.abi = None
 
     def stepi(self):
-        addr = self.task.state(self.pc)
+        addr = self.task.getx(self.pc)
         i = self.task.read_instruction(addr)
         if i is not None:
-            self.task.state.update(i)
+            self.task.state.safe_update(i)
         else:
             raise DecodeError(addr)
         return i
 
     def iterate(self):
+        lasti = None
         while True:
-            yield self.stepi()
+            if not self.checkstate(lasti):
+                break
+            try:
+                lasti = self.stepi()
+                yield lasti
+            except MemoryError as e:
+                lasti = None
+                if not self.exception_handler(e):
+                    break
+
+    def exception_handler(self,e):
+        te = type(e)
+        logger.debug('exception %s received'%te)
+        if te in self.handlers:
+            return self.handlers[te](self,e)
+        raise(e)
+
+    def checkstate(self,prev=None):
+        res = True
+        for f in self.hooks:
+            res &= f(self,prev)
+            if not res: break
+        return res
+
+
 

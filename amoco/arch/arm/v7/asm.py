@@ -116,7 +116,7 @@ def i_ADC(i,fmap):
     cond,dest,op1,op2 = __pre(i,fmap)
     result,cout,overflow = AddWithCarry(fmap(op1),fmap(op2),fmap(C))
     fmap[dest] = stst(cond,result,fmap(dest))
-    if dest is pc:
+    if dest == pc:
         __check_state(i,fmap)
     elif i.setflags:
         __setflags(fmap,cond,cout,result,overflow)
@@ -125,7 +125,7 @@ def i_ADD(i,fmap):
     cond,dest,op1,op2 = __pre(i,fmap)
     result,cout,overflow = AddWithCarry(fmap(op1),fmap(op2))
     fmap[dest] = stst(cond,result,fmap(dest))
-    if dest is pc:
+    if dest == pc:
         __check_state(i,fmap)
     elif i.setflags:
         __setflags(fmap,cond,cout,result,overflow)
@@ -303,7 +303,7 @@ def i_ROR(i,fmap):
     else:
         result,cout = ror(op1,op2), top(1)
     fmap[dest] = stst(cond,result,fmap(dest))
-    if dest is pc:
+    if dest == pc:
         __check_state(i,fmap)
     if i.setflags:
         __setflags(fmap,cond,cout,result)
@@ -472,7 +472,7 @@ def i_BFC(i,fmap):
     src  = fmap(dest)
     result = composer([src[0:lsb],cst(0,size),src[lsb+size:src.size]])
     fmap[dest] = stst(cond,result,fmap(dest))
-    if dest is pc:
+    if dest == pc:
         raise InstructionError(i)
 
 def i_BFI(i,fmap):
@@ -480,7 +480,7 @@ def i_BFI(i,fmap):
     src = fmap(src)
     result = composer([dest[0:lsb],src[lsb,lsb+size],dest[lsb+size:dest.size]])
     fmap[dest] = stst(cond,result,fmap(dest))
-    if dest is pc:
+    if dest == pc:
         raise InstructionError(i)
 
 def i_CLZ(i,fmap):

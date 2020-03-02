@@ -5,7 +5,7 @@
 # published under GPLv2 license
 
 from amoco.system.elf import *
-from amoco.system.core import CoreExec
+from amoco.system.core import IntType,CoreExec
 from amoco.code import tag
 import amoco.arch.arm.cpu_armv7 as cpu
 
@@ -189,6 +189,7 @@ class OS(object):
             self.ASLR     = conf.aslr
             self.NX       = conf.nx
         self.tasks = []
+        self.abi = None
 
     @classmethod
     def loader(cls,bprm,conf=None):
@@ -243,7 +244,35 @@ class OS(object):
 
 
 class Task(CoreExec):
-    pass
+    def setx(self,loc,val,size=0):
+        pc = self.cpu.PC()
+        if isinstance(loc,str):
+            x = getattr(self.cpu,loc)
+            size = x.size
+        elif isinstance(loc,int):
+            endian = self.cpu.get_data_endian()
+            psz = pc.size
+            x = self.cpu.mem(self.cpu.cst(loc,psz),size,endian=endian)
+        else:
+            x = loc
+            size = x.size
+        if isinstance(val,bytes):
+            if x._is_mem:
+                x.size = len(val) if size==0 else size
+                self.state._Mem_write(x.a,val)
+                return
+            else:
+                endian = self.cpu.get_data_endian()
+                v = self.cpu.cst(Bits(val[0:x.size:endian],bitorder=1).int(),x.size*8)
+        elif isinstance(val,IntType):
+            v = self.cpu.cst(val,size)
+        else:
+            v = val
+        if x==pc and v[0:1]==1:
+            self.cpu.internals['isetstate'] = 1
+            v = (v>>1)<<1
+        self.state[x] = v
+
 
 
 # LIBC HOOKS DEFINED HERE :

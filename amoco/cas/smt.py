@@ -27,7 +27,7 @@ try:
 except ImportError:
     logger.info('z3 package not found => solve() method is not implemented')
     class solver(object):
-        def __init__(self,eqns=None):
+        def __init__(self,eqns=None,tactics=None,timeout=None):
             raise NotImplementedError
     has_solver = False
 else:

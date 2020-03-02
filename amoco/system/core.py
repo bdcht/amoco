@@ -15,12 +15,17 @@ the :mod:`amoco.system` package.
 """
 
 from io import BytesIO
-
+from amoco.arch.core import Bits
 from amoco.system.memory import *
 
 from amoco.logger import Log
 logger = Log(__name__)
 logger.debug('loading module')
+
+try:
+    IntType = (int,long)
+except NameError:
+    IntType = (int,)
 
 #------------------------------------------------------------------------------
 
@@ -70,21 +75,25 @@ class CoreExec(object):
             logger.error('no cpu imported')
             raise ValueError
         maxlen = self.cpu.disassemble.maxlen
+        if isinstance(vaddr,IntType):
+            addr = self.cpu.cst(vaddr,self.cpu.PC().size)
+        else:
+            addr = vaddr
         try:
             istr = self.state.mmap.read(vaddr,maxlen)
         except MemoryError as e:
-            logger.verbose("vaddr %s is not mapped"%vaddr)
+            logger.verbose("vaddr %s is not mapped"%addr)
             raise MemoryError(e)
         else:
             if len(istr)<=0 or not isinstance(istr[0],bytes):
-                logger.verbose("failed to read instruction at %s"%vaddr)
+                logger.verbose("failed to read instruction at %s"%addr)
                 return None
         i = self.cpu.disassemble(istr[0],**kargs)
         if i is None:
-            logger.warning("disassemble failed at vaddr %s"%vaddr)
+            logger.warning("disassemble failed at vaddr %s"%addr)
             return None
         else:
-            if i.address is None: i.address = vaddr
+            if i.address is None: i.address = addr
             xsz = i.misc['xsz'] or 0
             if xsz>0:
                 xdata = self.state.mmap.read(vaddr+i.length,xsz)
@@ -100,12 +109,12 @@ class CoreExec(object):
             addr = self.cpu.cst(loc,psz)
             x = self.cpu.mem(addr,size,endian=endian)
         else:
-            raise ValueError('provided location should be a register name (str) or memory address (int)')
+            x = loc
         r = self.state(x)
         r.sf = sign
-        return r.value() if r._is_cst else r
+        return r.value if r._is_cst else r
 
-    def setx(self,loc,val,size=8):
+    def setx(self,loc,val,size=0):
         if isinstance(loc,str):
             x = getattr(self.cpu,loc)
             size = x.size
@@ -115,10 +124,15 @@ class CoreExec(object):
             x = self.cpu.mem(self.cpu.cst(addr,psz),size,endian=endian)
         else:
             x = loc
+            size = x.size
         if isinstance(val,bytes):
-            if x._is_reg: raise ValueError('register location should be set to an integer value')
-            x.size = len(val)
-            self.state._Mem_write(x.a,val)
+            if x._is_mem:
+                x.size = len(val) if size==0 else size
+                self.state._Mem_write(x.a,val)
+            else:
+                endian = self.cpu.get_data_endian()
+                v = self.cpu.cst(Bits(val[0:x.size:endian],bitorder=1).int(),x.size*8)
+                self.state[x] = v
         elif isinstance(val,IntType):
             self.state[x] = self.cpu.cst(val,size)
         else:
@@ -161,6 +175,7 @@ class DefineStub(object):
 class BinFormat(object):
     is_ELF    = False
     is_PE     = False
+    is_MachO  = False
     basemap   = None
     symtab    = None
     strtab    = None
@@ -285,15 +300,14 @@ class DataIO(BinFormat):
 #------------------------------------------------------------------------------
 def read_program(filename):
     '''
-    Identifies the program header (ELF/PE) and returns an ELF, PE or DataIO
-    instance.
+    Identifies the program header and returns an ELF, PE, Mach-O or DataIO.
 
     Args:
         filename (str): the program to read.
 
     Returns:
-        an instance of currently supported program format (ELF, PE)
-
+        an instance of currently supported program format
+        (ELF, PE, Mach-O, HEX, SREC)
     '''
 
     try:
@@ -322,6 +336,16 @@ def read_program(filename):
     except pe.PEError:
         f.seek(0)
         logger.debug('PEError raised for %s'%f.name)
+
+    try:
+        from amoco.system import macho
+        # open file as a Mach-O object:
+        p = macho.MachO(f)
+        logger.info("Mach-O format detected")
+        return p
+    except macho.MachOError:
+        f.seek(0)
+        logger.debug('MachOError raised for %s'%f.name)
 
     try:
         from amoco.system import utils

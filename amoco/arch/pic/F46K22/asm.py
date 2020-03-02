@@ -570,7 +570,7 @@ def i_SUBWFB(i,fmap):
     fmap[zf]  = (res==0)
     _post_(i,fmap)
 
-def i_SUBWFB(i,fmap):
+def i_SWAPF(i,fmap):
     fmap[pc] = fmap(pc)+i.length
     _pre_(i,fmap)
     src = i.src

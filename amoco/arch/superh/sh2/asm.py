@@ -153,17 +153,17 @@ def i_SWAP(ins,fmap):
     sz = ins.misc['sz']
     if sz==0:
         b0,b1 = src[0:8],src[8:16]
-        fmap[dst] = fmap(composer(b1,b0,src[16:32]))
+        fmap[dst] = fmap(composer([b1,b0,src[16:32]]))
     if sz==1:
         w0,w1 = src[0:16],src[16:32]
-        fmap[dst] = fmap(composer(w1,w0))
+        fmap[dst] = fmap(composer([w1,w0]))
 
 @__pc
 def i_XTRCT(ins,fmap):
     src,dst = ins.operands
     p1 = dst[16:32]
     p2 = src[0:16]
-    fmap[dst] = fmap(composer(p1,p2))
+    fmap[dst] = fmap(composer([p1,p2]))
 
 @__pc
 def i_ADD(ins,fmap):
@@ -327,7 +327,7 @@ def i_DIV1(ins,fmap):
     tmp0 = rn
     rn_11 = rn-fmap(Rm)
     tmp1 = rn_11>tmp0
-    newq1_1 = tst(q, tmp1, tmp1=bit0)
+    newq1_1 = tst(q, tmp1, tmp1==bit0)
     rn1 = tst(fmap(M),rn_11,rn_10)
     newq1 = tst(fmap(M),newq1_1,newq1_0)
     # div1 step result:

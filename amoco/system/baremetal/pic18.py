@@ -9,7 +9,7 @@ from amoco.code import tag
 
 import amoco.arch.pic.cpu_pic18f46k22 as cpu
 
-class PIC18(CoreExec):
+class PIC18(object):
 
     def __init__(self,p):
         self.cpu = cpu
@@ -50,7 +50,6 @@ class PIC18(CoreExec):
     def codehelper(self,**kargs):
         if 'seq' in kargs: return self.seqhelper(kargs['seq'])
         if 'block' in kargs: return self.blockhelper(kargs['block'])
-        if 'func' in kargs: return self.funchelper(kargs['func'])
 
     # seqhelper provides arch-dependent information to amoco.main classes
     def seqhelper(self,seq):

@@ -65,7 +65,7 @@ def bpf_ret_(obj,s,jt,jf,k):
 # BPF_MISC (0x7) instructions:
 @ispec("64>[ 111 s 0000 {00} jt(8) jf(8) ~k(32) ]", mnemonic="mov")
 def bpf_mov_(obj,s,jt,jf,k):
-    dst,src = env.X,env.A if s==0 else env.A,env.X
+    dst,src = (env.X,env.A) if s==0 else (env.A,env.X)
     obj.operands = [dst,src]
     obj.type = type_data_processing
 

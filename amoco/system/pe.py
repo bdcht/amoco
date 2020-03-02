@@ -587,7 +587,7 @@ class StdSymbolRecord(StructFormatter):
              4   : 'REGISTER',
              5   : 'EXTERNAL_DEF',
              6   : 'LABEL',
-             6   : 'UNDEFINED_LABEL',
+             7   : 'UNDEFINED_LABEL',
              8   : 'MEMBER_OF_STRUCT',
              9   : 'ARGUMENT',
              10  : 'STRUCT_TAG',

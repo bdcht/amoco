@@ -164,6 +164,7 @@ class OS(object):
             self.ASLR     = conf.aslr
             self.NX       = conf.nx
         self.tasks = []
+        self.abi = None
 
     @classmethod
     def loader(cls,bprm,conf=None):

@@ -13,10 +13,10 @@ encode and decode C structures (or unions) as well as formatters to print
 various fields according to given types like hex numbers, dates, defined
 constants, etc.
 This module extends capabilities of :mod:`struct` by allowing formats to
-include more than just the basic types and add *named* fields. 
+include more than just the basic types and add *named* fields.
 It extends :mod:`ctypes` as well by allowing formatted printing and
 "non-static" decoding where the way a field is decoded depends on
-previously decoded fields.   
+previously decoded fields.
 
 Module :mod:`system.imx6` uses these classes to decode HAB structures and
 thus allow for precise verifications on how the boot stages are verified.
@@ -85,7 +85,46 @@ from inspect import stack as _stack
 
 class Consts(object):
     """Provides a contextmanager to map constant values with their names in
-     order to build the associated reverse-dictionary."""
+order to build the associated reverse-dictionary.
+
+All revers-dict are stored inside the Consts class definition.
+For example if you declare variables in a Consts('example') with-scope,
+the reverse-dict will be stored in Consts.All['example'].
+When StructFormatter will lookup a variable name matching a given value
+for the attribute 'example', it will get Consts.All['example'][value].
+
+Note: To avoid attribute name conflicts, the lookup is always prepended
+the stucture class name (or the 'alt' field of the structure class).
+Hence, the above 'tag' constants could have been defined as::
+
+  with Consts('HAB_header.tag'):
+      HAB_TAG_IVT = 0xd1
+      HAB_TAG_DCD = 0xd2
+      HAB_TAG_CSF = 0xd4
+      HAB_TAG_CRT = 0xd7
+      HAB_TAG_SIG = 0xd8
+      HAB_TAG_EVT = 0xdb
+      HAB_TAG_RVT = 0xdd
+      HAB_TAG_WRP = 0x81
+      HAB_TAG_MAC = 0xac
+
+Or the structure definition could have define an 'alt' attribute::
+
+  @StructDefine(\"\"\"
+  B :  tag
+  H :> length
+  B :  version
+  \"\"\")
+  class HAB_Header(StructFormatter):
+      alt = 'hab'
+      [...]
+
+in which case the variables could have been defined with::
+
+  with Consts('hab.tag'):
+  [...]
+
+"""
     All = defaultdict(dict)
     def __init__(self,name):
         self.name = name
@@ -100,22 +139,39 @@ class Consts(object):
         for k in set(G.keys())-self.globnames:
             self.All[self.name][G[k]] = k
 
+#------------------------------------------------------------------------------
+
 def default_formatter():
     return token_default_fmt
 
 def token_default_fmt(k,x,cls=None):
+    """The default formatter just prints value 'x' of attribute 'k'
+    as a literal token python string
+    """
     return highlight([(Token.Literal,str(x))])
 
 def token_address_fmt(k,x,cls=None):
+    """The address formatter prints value 'x' of attribute 'k'
+    as a address token hexadecimal value
+    """
     return highlight([(Token.Address,hex(x))])
 
 def token_constant_fmt(k,x,cls=None):
+    """The constant formatter prints value 'x' of attribute 'k'
+    as a constant token decimal value
+    """
     return highlight([(Token.Constant,str(x))])
 
 def token_mask_fmt(k,x,cls=None):
+    """The mask formatter prints value 'x' of attribute 'k'
+    as a constant token hexadecimal value
+    """
     return highlight([(Token.Constant,hex(x))])
 
 def token_name_fmt(k,x,cls=None):
+    """The name formatter prints value 'x' of attribute 'k'
+    as a name token variable symbol matching the value
+    """
     pfx = "%s."%cls if cls!=None else ""
     if pfx+k in Consts.All: k = pfx+k
     ks = k
@@ -125,6 +181,10 @@ def token_name_fmt(k,x,cls=None):
         return token_constant_fmt(k,x)
 
 def token_flag_fmt(k,x,cls):
+    """The flag formatter prints value 'x' of attribute 'k'
+    as a name token variable series of symbols matching
+    the flag value
+    """
     s = []
     pfx = "%s."%cls if cls!=None else ""
     if pfx+k in Consts.All: k = pfx+k
@@ -134,6 +194,9 @@ def token_flag_fmt(k,x,cls):
     return ','.join(s) if len(s)>0 else token_mask_fmt(k,x)
 
 def token_datetime_fmt(k,x,cls=None):
+    """The date formatter prints value 'x' of attribute 'k'
+    as a date token UTC datetime string from timestamp value
+    """
     from datetime import datetime
     return highlight([(Token.Date,str(datetime.utcfromtimestamp(x)))])
 
@@ -406,13 +469,16 @@ class StructDefine(object):
                   'i':4, 'I':4, 'l':4, 'L':4, 'f':4,
                   'q':8, 'Q':8, 'd':8,
                   'P':8}
-    integer    = pp.Regex(r'[1-9][0-9]*')
+    integer    = pp.Regex(r'[0-9][0-9]*')
     integer.setParseAction(lambda r: int(r[0]))
+    bitslen    = pp.Group(pp.Suppress('#')+integer+pp.Suppress('.')+integer)
     symbol     = pp.Regex(r'[A-Za-z_][A-Za-z0-9_]*')
     comment    = pp.Suppress(';')+pp.restOfLine
-    fieldname  = pp.Suppress(':')+pp.Group(pp.Optional(pp.Literal('>')|pp.Literal('<'),default=None)+symbol)
+    fieldname  = pp.Suppress(':')+\
+                 pp.Group(pp.Optional(pp.Literal('>')|pp.Literal('<'),default=None)+\
+                          symbol)
     inf        = pp.Regex(r'~[bBhHiI]?')
-    length     = integer|symbol|inf
+    length     = integer|symbol|inf|bitslen
     typename   = pp.Group(symbol+pp.Optional(pp.Suppress('*')+length,default=0))
     structfmt  = pp.OneOrMore(pp.Group(typename+fieldname+pp.Optional(comment,default='')))
 
@@ -422,7 +488,7 @@ class StructDefine(object):
         self.packed = kargs.get('packed',False)
         if 'alignments' in kargs:
            self.alignments = kargs['alignments']
-        for l in self.structfmt.parseString(fmt,True):
+        for l in self.structfmt.parseString(fmt,True).asList():
             f_type,f_name,f_comment = l
             f_order,f_name = f_name
             f_type,f_count = f_type
@@ -445,7 +511,10 @@ class StructDefine(object):
         cls.fields = self.fields
         cls.source = self.source
         cls.packed = self.packed
+        cls.fkeys = defaultdict(default_formatter)
         return cls
+
+#------------------------------------------------------------------------------
 
 class UnionDefine(StructDefine):
     """UnionDefine is a decorator class based on StructDefine, used for defining unions.
@@ -458,6 +527,8 @@ class UnionDefine(StructDefine):
         cls.union  = s.index(max(s))
         return cls
 
+#------------------------------------------------------------------------------
+
 def TypeDefine(newname, typebase, typecount=0,align_value=0):
     if typebase in StructDefine.rawtypes:
         f_cls = RawField
@@ -467,6 +538,8 @@ def TypeDefine(newname, typebase, typecount=0,align_value=0):
         f_align = 0
     StructDefine.All[newname] = f_cls(typebase,fcount=typecount,falign=f_align,fname='typedef')
 
+#------------------------------------------------------------------------------
+
 class StructCore(object):
     """StructCore is a ParentClass for all user-defined structures based on a StructDefine format.
     This class contains essentially the packing and unpacking logic of the structure.
@@ -475,12 +548,26 @@ class StructCore(object):
     with no arguments.
     """
     packed = False
-    union = False
+    union  = False
 
     def __new__(cls,*args,**kargs):
         obj = super(StructCore,cls).__new__(cls)
         obj.fields = [f.copy() for f in cls.fields]
+        t = type('container',(object,),{})
+        obj._v = t()
         return obj
+
+    def __getitem__(self,fname):
+        return getattr(self._v,fname)
+
+    def __setitem__(self,fname,x):
+        setattr(self._v,fname,x)
+
+    def __getattr__(self,attr):
+        if attr not in self.__dict__:
+            return getattr(self._v,attr)
+        else:
+            return self.__dict__[attr]
 
     @classmethod
     def format(cls):
@@ -520,13 +607,13 @@ class StructCore(object):
         for f in self.fields:
             if self.union is False and not self.packed:
                 offset = f.align(offset)
-            setattr(self,f.name,f.unpack(data,offset))
+            setattr(self._v,f.name,f.unpack(data,offset))
             if self.union is False:
                 offset += f.size()
         return self
     def pack(self,data=None):
         if data is None:
-            data = [getattr(self,f.name) for f in self.fields]
+            data = [getattr(self._v,f.name) for f in self.fields]
         parts = []
         offset = 0
         for f,v in zip(self.fields,data):
@@ -552,17 +639,18 @@ class StructCore(object):
         raise AttributeError(name)
 
 class StructFormatter(StructCore):
-    """StructFormatter is the Parent Class for all user-defined structures based on a StructDefine format.
-    It inherits the core logic from StructCore Parent and provides all formatting facilities to pretty
-    print the structures based on wether the field is declared as a named constant, an integer of hex value,
+    """StructFormatter is the Parent Class for all user-defined structures
+    based on a StructDefine format.
+    It inherits the core logic from StructCore Parent and provides all
+    formatting facilities to pretty print the structures based on wether
+    the field is declared as a named constant, an integer of hex value,
     a pointer address, a string or a date.
 
-    Note: Since it inherits from StructCore, it is mandatory that any child class can be instanciated
-    with no arguments.
-    """
-    fkeys = defaultdict(default_formatter)
+    Note: Since it inherits from StructCore, it is mandatory that any child
+    class can be instanciated with no arguments.
+"""
     pfx   = ''
-    ksz   = 20
+    alt   = None
     @classmethod
     def func_formatter(cls,**kargs):
         for key,func in kargs.items():
@@ -580,17 +668,24 @@ class StructFormatter(StructCore):
         for key in keys:
             cls.fkeys[key] = token_flag_fmt
 
-    def strkey(self,k,cname):
-        fmt = u'%%s%%-%ds:%%s'%self.ksz
-        if hasattr(self,k):
-            val = getattr(self,k)
+    def strkey(self,k,cname,ksz=20):
+        fmt = u'%%s%%-%ds:%%s'%ksz
+        if hasattr(self._v,k):
+            val = getattr(self._v,k)
             return fmt%(self.pfx,k,self.fkeys[k](k,val,cls=cname))
         else:
             return fmt%(self.pfx,k,"None")
     def __str__(self):
-        cname = self.__class__.__name__
-        s = u'\n'.join(self.strkey(f.name,cname) for f in self.fields)
-        return u"[%s]\n%s"%(cname,s)
+        cname = self.alt or self.__class__.__name__
+        ksz = max((len(f.name) for f in self.fields))
+        s = []
+        for f in self.fields:
+            fs = self.strkey(f.name,cname,ksz)
+            if fs.count('\n')>0:
+                fs = fs.replace('\n','\n '+' '*ksz)
+            s.append(fs)
+        s = u'\n'.join(s)
+        return u"[%s]\n%s"%(self.__class__.__name__,s)
 
 #------------------------------------------------------------------------------
 

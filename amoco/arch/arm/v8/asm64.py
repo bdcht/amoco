@@ -268,7 +268,7 @@ def i_ERET(i,fmap):
 def i_EXTR(i,fmap):
     fmap[pc] = fmap[pc]+i.length
     dst, op1, op2, lsb = i.operands
-    concat = composer(fmap(op2),fmap(op1))
+    concat = composer([fmap(op2),fmap(op1)])
     result = concat[lsb:lsb+i.datasize]
     fmap[dst] = result
 
@@ -318,9 +318,9 @@ def i_STLR(i,fmap):
     if i.pair:
         if not i.excl: raise InstructionError(i)
         if internals['endianstate']==0:
-            data = composer(i.t,i.t2)
+            data = composer([i.t,i.t2])
         else:
-            data = composer(i.t2,i.t)
+            data = composer([i.t2,i.t])
     else:
         data = i.t
     if i.excl:

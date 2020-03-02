@@ -156,9 +156,13 @@ class Elf(BinFormat):
                     data = c[offset:]
         return data,0,base+offset
 
-    def getfileoffset(self,addr):
+    def getfileoffset(self,target):
         s,offset,base = self.getinfo(target)
-        return S.p_offset+offset
+        if s!=None:
+            result = s.p_offset+offset
+        else:
+            result = None
+        return result
 
     def readsegment(self,S):
         self.__file.seek(S.p_offset)

@@ -228,7 +228,6 @@ IDT={
 217: "pivot_root",
 218: "mincore",
 219: "madvise",
-219: "madvise1",
 220: "getdents64",
 221: "fcntl64",
 224: "gettid",

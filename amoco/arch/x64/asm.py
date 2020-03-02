@@ -90,15 +90,6 @@ def i_RET(i,fmap):
 def i_HLT(i,fmap):
   fmap[rip] = top(64)
 
-def i_XLATB(i,fmap):
-  fmap[rip] = fmap[rip]+i.length
-  _table = bx if i.misc['opdsz']==16 else ebx
-  REX = i.misc['REX']
-  W = 0
-  if REX: W=REX[0]
-  if W==1: _table = rbx
-  fmap[al] = fmap(mem(_table+al.zeroextend(_table.size),8))
-
 #------------------------------------------------------------------------------
 def _ins_(i,fmap,l):
   counter = cx if i.misc['adrsz'] else rcx
@@ -356,7 +347,7 @@ def i_IN(i,fmap):
   fmap[rip] = fmap[rip]+i.length
   op1 = i.operands[0]
   op2 = fmap(i.operands[1])
-  x = ext('IN%s'%op2,op1.size).call(fmap)
+  x = ext('IN%s'%op2,size=op1.size).call(fmap)
   op1,x = _r32_zx64(op1,x)
   fmap[op1] = x
 

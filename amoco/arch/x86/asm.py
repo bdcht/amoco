@@ -1076,10 +1076,6 @@ def i_SFENCE(i,fmap):
    logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
 
-def i_MWAIT(i,fmap):
-   logger.verbose('%s semantic is not defined'%i.mnemonic)
-   fmap[eip] = fmap[eip]+i.length
-
 def i_LGDT(i,fmap):
    logger.verbose('%s semantic is not defined'%i.mnemonic)
    fmap[eip] = fmap[eip]+i.length
@@ -1262,9 +1258,6 @@ def i_MONITOR(i,fmap):
   fmap[eip] = fmap[eip]+i.length
 
 def i_XGETBV(i,fmap):
-  logger.verbose('%s semantic is not defined'%i.mnemonic)
-  fmap[eip] = fmap[eip]+i.length
-def i_XSETBV(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
 def i_XSETBV(i,fmap):

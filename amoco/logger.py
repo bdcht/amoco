@@ -146,4 +146,8 @@ def set_log_file(filename):
     for l in Log.loggers.values():
         l.addHandler(logfile)
 
+def flush_all():
+    for l in Log.loggers.values():
+        l.handlers[0].flush()
+
 Log.loggers = {}

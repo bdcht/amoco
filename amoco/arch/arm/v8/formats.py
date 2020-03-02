@@ -85,7 +85,6 @@ def alias_AND(i):
     return m.ljust(12) + ', '.join(r)
 
 def alias_BFM(i):
-    m = mnemo(i)
     r = regs(i)
     if i.imms<i.immr:
         r[3] = str(i.immr+1)

@@ -17,7 +17,7 @@ def jump(i):
     l = mn(m+s)
     adr = i.operands[0].value
     if i.address is None:
-        l.append((Token.Constant,'.%+'%adr))
+        l.append((Token.Constant,'.+%d'%adr))
     else:
         l.append((Token.Address,'*%s'%(i.address+adr+2)))
     return l

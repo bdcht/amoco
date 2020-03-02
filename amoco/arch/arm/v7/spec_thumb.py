@@ -82,6 +82,7 @@ def A_default(obj,DN,Rm,Rdn):
 
 @ispec("16[ 1010 1 Rd(3) imm8(8) ]", mnemonic="ADD")
 def A_default(obj,Rd,imm8):
+  obj.setflags = False
   obj.d = env.regs[Rd]
   obj.n = env.sp
   obj.imm32 = env.cst(imm8<<2,32)
@@ -92,6 +93,7 @@ def A_default(obj,Rd,imm8):
 @ispec("16[ 1011 0000 0 imm7(7) ]", mnemonic="ADD")
 @ispec("16[ 1011 0000 1 imm7(7) ]", mnemonic="SUB")
 def A_default(obj,imm7):
+  obj.setflags = False
   obj.d = env.sp
   obj.n = env.sp
   obj.imm32 = env.cst(imm7<<2,32)
@@ -101,6 +103,7 @@ def A_default(obj,imm7):
 
 @ispec("16[ 01000100 DM 1101 Rdm(3) ]", mnemonic="ADD")
 def A_default(obj,DM,Rdm):
+  obj.setflags = False
   obj.d = env.regs[(DM<<3)+Rdm]
   obj.n = env.sp
   obj.m = obj.d
@@ -110,6 +113,7 @@ def A_default(obj,DM,Rdm):
 
 @ispec("16[ 01000100 1 Rm(4) 101 ]", mnemonic="ADD")
 def A_default(obj,Rm):
+  obj.setflags = False
   obj.d = env.sp
   obj.n = env.sp
   obj.m = env.regs[Rm]
@@ -119,6 +123,7 @@ def A_default(obj,Rm):
 
 @ispec("16[ 1010 0 Rd(3) imm8(8) ]", mnemonic="ADR", add=True)
 def A_adr(obj,Rd,imm8):
+  obj.setflags = False
   obj.d = env.regs[Rd]
   obj.imm32 = env.cst(imm8<<2,32)
   obj.operands = [obj.d,obj.imm32]
@@ -139,12 +144,14 @@ def A_default(obj,imm5,Rm,Rd):
 
 @ispec("16[ 1101 .cond(4) imm8(8) ]", mnemonic="B")
 def A_label(obj,imm8):
+  obj.setflags = False
   obj.imm32 = env.cst(imm8<<1,9).signextend(32)
   obj.operands = [obj.imm32]
   obj.type = type_control_flow
 
 @ispec("16[ 11100 imm11(11) ]", mnemonic="B")
 def A_label(obj,imm11):
+  obj.setflags = False
   obj.imm32 = env.cst(imm11<<1,12).signextend(32)
   obj.operands = [obj.imm32]
   obj.type = type_control_flow
@@ -153,6 +160,7 @@ def A_label(obj,imm11):
 @ispec("16[ 1101 1110 imm8(8) ]", mnemonic="BKPT")
 @ispec("16[ 1101 1111 imm8(8) ]", mnemonic="SVC")
 def A_default(obj,imm8):
+  obj.setflags = False
   obj.imm32 = env.cst(imm8,32)
   obj.operands = [obj.imm32]
   obj.type = type_cpu_state
@@ -161,6 +169,7 @@ def A_default(obj,imm8):
 @ispec("16[ 010001 11 0 Rm(4) 000 ]", mnemonic="BX")
 @ispec("16[ 010001 11 1 Rm(4) 000 ]", mnemonic="BLX")
 def A_default(obj,Rm):
+  obj.setflags = False
   obj.m = env.regs[Rm]
   if Rm==15 and obj.mnemonic=='BLX': raise InstructionError(obj)
   obj.operands = [obj.m]
@@ -170,6 +179,7 @@ def A_default(obj,Rm):
 @ispec("16[ 1011 0 0 #i 1 #imm5(5) Rn(3) ]", mnemonic="CBZ")
 @ispec("16[ 1011 1 0 #i 1 #imm5(5) Rn(3) ]", mnemonic="CBNZ")
 def A_default(obj,i,imm5,Rn):
+  obj.setflags = False
   obj.n = env.regs[Rn]
   obj.imm32 = env.cst(int(i+imm5+'0',2),32)
   obj.operands = [obj.n, obj.imm32]
@@ -180,6 +190,7 @@ def A_default(obj,i,imm5,Rn):
 @ispec("16[ 010000 1010 Rm(3) Rn(3) ]", mnemonic="CMP")
 @ispec("16[ 010000 1000 Rm(3) Rn(3) ]", mnemonic="TST")
 def A_default(obj,Rm,Rn):
+  obj.setflags = False
   obj.n = env.regs[Rn]
   obj.m = env.regs[Rm]
   obj.operands = [obj.n, obj.m]
@@ -189,6 +200,7 @@ def A_default(obj,Rm,Rn):
 
 @ispec("16[ 001 01 Rn(3) imm8(8) ]", mnemonic="CMP")
 def A_default(obj,Rn,imm8):
+  obj.setflags = False
   obj.n = env.regs[Rn]
   obj.imm32 = env.cst(imm8,32)
   obj.operands = [obj.n, obj.imm32]
@@ -198,6 +210,7 @@ def A_default(obj,Rn,imm8):
 
 @ispec("16[ 010001 01 N Rm(4) Rn(3) ]", mnemonic="CMP")
 def A_default(obj,N,Rm,Rn):
+  obj.setflags = False
   obj.n = env.regs[(N<<3)+Rn]
   obj.m = env.regs[Rm]
   obj.operands = [obj.n, obj.m]
@@ -207,11 +220,13 @@ def A_default(obj,N,Rm,Rn):
 
 @ispec("16[ 1011 1111 .firstcond(4) .mask(4) ]", mnemonic="IT")
 def A_default(obj):
+  obj.setflags = False
   obj.type = type_cpu_state
   obj.cond = env.CONDITION_AL
 
 @ispec("16[ 1100 1 Rn(3) ~register_list(8) ]", mnemonic="LDM")
 def A_reglist(obj,Rn,register_list):
+  obj.setflags = False
   obj.n = env.regs[Rn]
   obj.registers = [env.regs[i] for i,r in enumerate(register_list) if r==1]
   if len(obj.registers)<1: raise InstructionError(obj)
@@ -222,6 +237,7 @@ def A_reglist(obj,Rn,register_list):
 
 @ispec("16[ 1100 0 Rn(3) ~register_list(8) ]", mnemonic="STM")
 def A_reglist(obj,Rn,register_list):
+  obj.setflags = False
   obj.n = env.regs[Rn]
   obj.registers = [env.regs[i] for i,r in enumerate(register_list) if r==1]
   obj.wback = True
@@ -236,6 +252,7 @@ def A_reglist(obj,Rn,register_list):
 @ispec("16[ 100 0 0 imm5(5) Rn(3) Rt(3) ]", mnemonic="STRH",_s=1)
 @ispec("16[ 011 0 0 imm5(5) Rn(3) Rt(3) ]", mnemonic="STR", _s=2)
 def A_deref(obj,imm5,Rn,Rt,_s):
+  obj.setflags = False
   obj.n = env.regs[Rn]
   obj.t = env.regs[Rt]
   obj.imm32 = env.cst(imm5<<_s,32)
@@ -249,6 +266,7 @@ def A_deref(obj,imm5,Rn,Rt,_s):
 @ispec("16[ 1001 1 Rt(3) imm8(8) ]", mnemonic="LDR")
 @ispec("16[ 1001 0 Rt(3) imm8(8) ]", mnemonic="STR")
 def A_deref(obj,Rt,imm8):
+  obj.setflags = False
   obj.n = env.sp
   obj.t = env.regs[Rt]
   obj.imm32 = env.cst(imm8<<2,32)
@@ -261,6 +279,7 @@ def A_deref(obj,Rt,imm8):
 
 @ispec("16[ 01001 Rt(3) imm8(8) ]", mnemonic="LDR")
 def A_deref(obj,Rt,imm8):
+  obj.setflags = False
   obj.n = env.pc
   obj.t = env.regs[Rt]
   obj.imm32 = env.cst(imm8<<2,32)
@@ -280,6 +299,7 @@ def A_deref(obj,Rt,imm8):
 @ispec("16[ 0101 010 Rm(3) Rn(3) Rt(3) ]", mnemonic="STRB")
 @ispec("16[ 0101 001 Rm(3) Rn(3) Rt(3) ]", mnemonic="STRH")
 def A_deref(obj,Rm,Rn,Rt):
+  obj.setflags = False
   obj.n = env.regs[Rn]
   obj.t = env.regs[Rt]
   obj.m = env.regs[Rm]
@@ -349,11 +369,13 @@ def A_default(obj,Rm,Rd):
 @ispec("16[ 1011 1111 0011 0000 ]", mnemonic="WFI")
 @ispec("16[ 1011 1111 0001 0000 ]", mnemonic="YIELD")
 def A_default(obj):
+  obj.setflags = False
   obj.type = type_cpu_state
   obj.cond = env.CONDITION_AL
 
 @ispec("16[ 1011 1 10 #P #register_list(8) ]", mnemonic="POP")
 def A_reglist(obj,P,register_list):
+  obj.setflags = False
   obj.registers = [env.regs[i] for i,r in enumerate(register_list[::-1]+'0'*7+P) if r=='1']
   obj.operands = [obj.registers]
   obj.type = type_data_processing
@@ -362,6 +384,7 @@ def A_reglist(obj,P,register_list):
 
 @ispec("16[ 1011 0 10 #M #register_list(8) ]", mnemonic="PUSH")
 def A_reglist(obj,M,register_list):
+  obj.setflags = False
   obj.registers = [env.regs[i] for i,r in enumerate(register_list[::-1]+'0'*6+M+'0') if r=='1']
   obj.operands = [obj.registers]
   obj.type = type_data_processing
@@ -379,6 +402,7 @@ def A_default(obj,Rn,Rd):
 
 @ispec("16[ 1011 0110 010 1 E 000 ]", mnemonic="SETEND")
 def instr_SETEND(obj,E):
+  obj.setflags = False
   obj.set_bigend = (E==1)
   obj.operands = [obj.set_bigend]
   obj.type = type_cpu_state

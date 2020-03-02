@@ -82,9 +82,16 @@ class Log(Configurable):
 
 class UI(Configurable):
     "configurable parameters related to User Interface(s)"
-    formatter = Unicode('Null',config=True)
-    graphics  = Unicode('term',config=True)
-    console   = Unicode('python',config=True)
+    formatter   = Unicode('Null',config=True)
+    graphics    = Unicode('term',config=True)
+    console     = Unicode('python',config=True)
+    completekey = Unicode('tab',config=True)
+    cli         = Unicode('cmdcli',config=True)
+
+class Server(Configurable):
+    "configurable parameters related to the Server mode"
+    wbsz = Integer(0x1000,config=True)
+    timeout = Integer(600,config=True)
 
 class Arch(Configurable):
     assemble = Bool(False,config=True)
@@ -129,6 +136,7 @@ class Config(object):
         self.Log = Log(config=c)
         self.Cas = Cas(config=c)
         self.System = System(config=c)
+        self.Server = Server(config=c)
         self.src = c
 
     def __str__(self):

@@ -70,7 +70,7 @@ class fbackward(lforward):
                 fsym = n.data.misc['callers'][0].data.misc['to'].ref
             except (IndexError,TypeError,AttributeError):
                 fsym = 'f'
-            func = code.func(n.c,name="%s:%s"%(fsym,n.name))
+            func = code.func(n.c)
             logger.verbose("function %s created"%func)
             if mpc._is_mem and len(mpc.mods)>0:
                 pol = '(assume_no_aliasing)' if self.policy['frame-aliasing']==False else ''

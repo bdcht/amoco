@@ -55,7 +55,8 @@ class reference(object):
                 logger.debug('ref to regular function %s'%name)
             elif hasattr(obj,'__qualname__'):
                 qn = obj.__qualname__.split('.')
-                assert qn.pop(-1)==name
+                assert qn[-1]==name
+                qn.pop()
                 while len(qn)>0:
                     ctx = getattr(ctx,qn.pop(0))
                 assert inspect.isclass(ctx)

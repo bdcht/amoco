@@ -1640,11 +1640,19 @@ def eqn1_helpers(e,**kargs):
             return OP_CONDT[notop](e.r.l,e.r.r)
     return e
 
+def get_lsb_msb(v):
+    msb = v.bit_length()-1
+    lsb = (v & -v).bit_length()-1
+    return (lsb,msb)
+
+def ismask(v):
+    i1,i2 = get_lsb_msb(v)
+    return ((1<<(i2+1))-1) ^ ((1<<i1)-1) == v
+
 # helpers for binary expressions:
 # reminder: be careful not to modify the internal structure of
 # e.l or e.r because these objects might be used also in other
 # expressions. See tests/test_cas_exp.py for details.
-from amoco.cas.utils import get_lsb_msb, ismask
 def eqn2_helpers(e,bitslice=False,widening=False):
     threshold = conf.Cas.complexity
     if complexity(e.r)>threshold: e.r = top(e.r.size)
@@ -1811,7 +1819,8 @@ class vec(exp):
         t.append((render.Token.Literal,u']'))
         return t
 
-    def simplify(self,widening=False):
+    def simplify(self,**kargs):
+        widening = kargs.get('widening',False)
         l = []
         for e in self.l:
             ee = e.simplify()

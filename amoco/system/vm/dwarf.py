@@ -326,7 +326,7 @@ class DwarfExec(CoreExec):
                self.varid += 1
            print("% 2d: %s"%(x,v.pp()))
 
-    def setvar(m,idx,name):
+    def setvar(self,m,idx,name):
         x = m(self.cpu.mem(self.cpu.sp+idx*8,64))
         self.VAR[name] = x
         m[self.cpu.mem(self.cpu.sp+idx*8,64)] = self.cpu.reg(name,64)

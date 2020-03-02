@@ -594,8 +594,8 @@ class UFS(object):
         # third-indirect blocks:
         if sz<i.ic_lsize:
             indir2 = getindir(i.ic_ib[2]*S.fs_fsize, self.data, S.fs_bsize, S.order)
-            for ind1 in [getindir(pos,self.data,S.fs_bsize,S.order) for pos in indir2]:
-                for ind0 in [getindir(pos,self.data,S.fs_bsize,S.order) for pos in indir1]:
+            for indir1 in [getindir(pos1,self.data,S.fs_bsize,S.order) for pos1 in indir2]:
+                for ind0 in [getindir(pos0,self.data,S.fs_bsize,S.order) for pos0 in indir1]:
                     l, isz = getblks(ind0, self.data, S.fs_fsize, i.ic_lsize-sz)
                     f.extend(l)
                     sz += isz

@@ -23,37 +23,52 @@ ISPECS = []
 @ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 0 0010 S Rn(4) ]", mnemonic="ORR")
 @ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 0 0011 S Rn(4) ]", mnemonic="ORN")
 @ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 0 0100 S Rn(4) ]", mnemonic="EOR")
-@ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 0 1000 S Rn(4) ]", mnemonic="ADD")
 @ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 0 1010 S Rn(4) ]", mnemonic="ADC")
 @ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 0 1011 S Rn(4) ]", mnemonic="SBC")
-@ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 0 1101 S Rn(4) ]", mnemonic="SUB")
 @ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 0 1110 S Rn(4) ]", mnemonic="RSB")
 def A_default(obj,i,S,Rn,imm3,Rd,imm8):
-  obj.setflags = (S==1)
-  obj.n = env.regs[Rn]
-  obj.d = env.regs[Rd]
-  if Rn==13 and obj.mnemonic in ('ADD','SUB'):
-      if Rn==15 and S==0:
-          raise InstructionError(obj)
-  elif (BadReg(Rd) or Rn==15):
-      raise InstructionError(obj)
-  obj.imm32 = ThumbExpandImm(i+imm3+imm8)
-  obj.operands = [obj.d,obj.n,obj.imm32]
-  obj.type = type_data_processing
-  obj.cond = env.CONDITION_AL
+    obj.setflags = (S==1)
+    obj.n = env.regs[Rn]
+    obj.d = env.regs[Rd]
+    if (BadReg(Rd) or Rn==15):
+        raise InstructionError(obj)
+    obj.imm32 = ThumbExpandImm(i+imm3+imm8)
+    obj.operands = [obj.d,obj.n,obj.imm32]
+    obj.type = type_data_processing
+    obj.cond = env.CONDITION_AL
+
+@ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 1 0000 1 Rn(4) ]", mnemonic="ADD")
+@ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 1 0101 1 Rn(4) ]", mnemonic="SUB")
+def A_default(obj,i,Rn,imm3,Rd,imm8):
+    obj.setflags = True
+    obj.n = env.regs[Rn]
+    obj.d = env.regs[Rd]
+    if (Rd==15) or (Rn==13):
+        raise InstructionError(obj)
+    obj.imm32 = ThumbExpandImm(i+imm3+imm8)
+    obj.operands = [obj.d,obj.n,obj.imm32]
+    if (Rd==13) or (Rn==15):
+        obj.type = type_unpredictable
+    else:
+        obj.type = type_data_processing
+    obj.cond = env.CONDITION_AL
 
 @ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 1 0000 0 Rn(4) ]", mnemonic="ADD")
 @ispec("32[ 0 #imm3(3) Rd(4) #imm8(8) 11110 #i 1 0101 0 Rn(4) ]", mnemonic="SUB")
 def A_default(obj,i,Rn,imm3,Rd,imm8):
-  obj.setflags = False
-  obj.n = env.regs[Rn]
-  obj.d = env.regs[Rd]
-  if Rd==15 : raise InstructionError(obj)
-  # note: i, imm3, imm8 are provided as "01..." strings
-  obj.imm32 = cst(int(i+imm3+imm8,2),32)
-  obj.operands = [obj.d,obj.n,obj.imm32]
-  obj.type = type_data_processing
-  obj.cond = env.CONDITION_AL
+    obj.setflags = False
+    if BadReg(Rn) : raise InstructionError(obj)
+    obj.n = env.regs[Rn]
+    obj.d = env.regs[Rd]
+    # TODO: manual says its a ZeroExtend here, but need to double check with gdb
+    # cause its looks weird...
+    obj.imm32 = cst(int(i+imm3+imm8,2),32)
+    obj.operands = [obj.d,obj.n,obj.imm32]
+    if BadReg(Rd):
+        obj.type = type_unpredictable
+    else:
+        obj.type = type_data_processing
+    obj.cond = env.CONDITION_AL
 
 @ispec("32[ 0 imm3(3) Rd(4) imm2(2) stype(2) Rm(4) 11101 01 0000 S Rn(4) ]", mnemonic="AND")
 @ispec("32[ 0 imm3(3) Rd(4) imm2(2) stype(2) Rm(4) 11101 01 0001 S Rn(4) ]", mnemonic="BIC")
@@ -454,7 +469,7 @@ def A_default(obj,S,Rd,Rm):
   obj.m = env.regs[Rm]
   obj.operands = [obj.d, obj.m]
   obj.type = type_data_processing
-  if obj.mnemonic=="MOV" and (obj.d is env.pc):
+  if obj.mnemonic=="MOV" and (obj.d == env.pc):
     obj.type = type_control_flow
   if obj.mnemonic=="RRX":
       if BadReg(Rd) or BadReg(Rm): raise InstructionError(obj)

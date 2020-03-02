@@ -98,8 +98,13 @@ def test_compose1(m,x,y,z,w):
     mprev[y] = z
     mprev[w] = z
     cm = m<<mprev
+    # x == y in prev so mx==my:
+    assert cm(mx) == 0x4567babe
     assert cm(my) == 0x4567babe
-    assert cm(z) == 0x4567babe
+    # no aliasing is assumed so z
+    # receives mem(w) BEFORE m,
+    # i.e mem(z):
+    assert cm(z) == mem(z,32)
     conf.Cas.noaliasing = al
 
 def test_compose2(m,x,y,z,w):
@@ -116,8 +121,15 @@ def test_compose2(m,x,y,z,w):
     mprev = mapper()
     mprev[x] = z
     mprev[y] = z
+    mprev[w] = z
     cm = m<<mprev
+    # x==y in prev so mx==my:
+    assert cm(mx) == 0x4567babe
     assert cm(my) == 0x4567babe
+    # aliasing is possible so z
+    # receives mem(z) AFTER the 2
+    # memory writes in mx/my,
+    # i.e cm(my):
     assert cm(w)==cm(my)
     conf.Cas.noaliasing = al
 

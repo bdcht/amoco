@@ -19,10 +19,10 @@ def address(a):
     l = reg_or_imm(a.l)
     op = a.op.symbol
     r = reg_or_imm(a.r)
-    return '{0}{1}{2}'.format(l,op,r)
+    return l+[(Token.Literal,op)]+r
 
 def deref(a):
-    return [(Token.Memory,'[%s]%s'%(address(a.base+a.disp),a.seg))]
+    return [(Token.Memory,'[')]+address(a.base+a.disp)+[(Token.Memory,']%s'%a.seg)]
 
 def mnemo_icc(i):
     s = i.mnemonic
@@ -170,10 +170,10 @@ format_ld     = [mnemo,     lambda i: TokenListJoin(', ', deref(i.operands[0])+r
 format_st     = [mnemo,     lambda i: TokenListJoin(', ', regn(i,0)+deref(i.operands[1]))]
 format_logic  = [mnemo_icc, lambda i: TokenListJoin(', ', regn(i,0)+reg_or_imm(i.operands[1],'%#x')+regn(i,2))]
 format_sethi  = [mnemo,     lambda i: TokenListJoin(', ', reg_or_imm(i.operands[0])+regn(i,1))]
-format_arith  = [mnemo_icc, lambda i: TokenListJoin('n ', regn(i,0)+reg_or_imm(i.operands[1],'%d')+regn(i,2))]
+format_arith  = [mnemo_icc, lambda i: TokenListJoin(', ', regn(i,0)+reg_or_imm(i.operands[1],'%d')+regn(i,2))]
 format_xb     = [mnemo_cond, label]
 format_call   = [mnemo,     lambda i: TokenListJoin(', ', label(i)+[(Token.Constant,'0')])]
-format_jmpl   = [mnemo,     lambda i: TokenListJoin(', ', address(i.operands[0]), regn(i,1))]
+format_jmpl   = [mnemo,     lambda i: address(i.operands[0])+ [(Token.Literal,', ')]+regn(i,1)]
 format_addr   = [mnemo,     lambda i: address(i.operands[0])]
 format_t      = [lambda i: [(Token.Mnemonic, CONDT[i.cond])]+reg_or_imm(i.operands[0])]
 format_rd     = format_regs

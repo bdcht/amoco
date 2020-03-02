@@ -78,6 +78,13 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.9.1`_
+
+  * add Mach-O loader and system.osx skeleton
+  * improve emulator module
+  * add server and basic client cmdcli ui
+  * fix various errors/warnings
+
 - `v2.9.0`_
 
   * add skeleton of emulator module (emul class)
@@ -306,6 +313,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.1: https://github.com/bdcht/amoco/releases/tag/v2.9.1
 .. _v2.9.0: https://github.com/bdcht/amoco/releases/tag/v2.9.0
 .. _v2.6.3: https://github.com/bdcht/amoco/releases/tag/v2.6.3
 .. _v2.6.2: https://github.com/bdcht/amoco/releases/tag/v2.6.2

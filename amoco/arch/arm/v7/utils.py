@@ -74,7 +74,8 @@ def Shift_C(x, stype, shift, carry_in):
     if   stype==0: return LSL_C(x,shift)
     elif stype==1: return LSR_C(x,shift)
     elif stype==2: return ASR_C(x,shift)
-    elif stype==3: return RRX_C(x,carry_in) if shift==0 else ROR_C(x,shift)
+    elif stype==3: return ROR_C(x,shift)
+    elif stype==4: return RRX_C(x,carry_in)
 
 # reg is an instance of reg expression, shift is an integer or reg.
 def DecodeShift(stype, reg, shift):

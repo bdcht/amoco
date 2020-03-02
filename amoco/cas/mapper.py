@@ -253,8 +253,20 @@ class mapper(object):
         self.__map[loc] = r
 
     def update(self,instr):
-        "update the current mapper with the provided instruction"
+        "opportunistic update of the self mapper with instruction"
         instr(self)
+
+    def safe_update(self,instr):
+        "update of the self mapper with instruction *only* if no exception occurs"
+        try:
+            m = mapper()
+            instr(m)
+            mm = self>>m
+        except Exception as e:
+            logger.error("instruction @ %s raises exception %s"%(instr.address,e))
+            raise e
+        else:
+            self.update(instr)
 
     def __call__(self,x):
         """evaluation of expression x in this map:
@@ -304,8 +316,8 @@ class mapper(object):
             mm.conds.append(cc)
         for loc,v in self:
             if loc._is_ptr:
-                loc = mm(loc)
-            mm[loc] = mm(v)
+                loc = m(loc)
+            mm[loc] = m(v)
         return mm
 
     def __lshift__(self,m):

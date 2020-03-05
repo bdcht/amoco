@@ -10,11 +10,9 @@ Amoco is a pure python package which depends on the following packages:
 - pygments_ (optional) used for pretty printing of assembly code and expressions
 - ply_ (optional), for parsing *GNU as* files
 - sqlalchemy_ (optional), provides analysis results as well as persistence of amoco objects in a database
-- pyqt5_ or pyside2_ (optional), for the graphical user interface
+- pyside2_ (optional), for the graphical user interface
 
-Installation is straightforward for most packages using pip_/pip3.
-Note that for python2, the future_ package is now required to support new
-python3 *bytes* when needed.
+Installation is straightforward for most packages using pip_.
 
 Grandalf and crysp are mandatory, while most others are optional.
 The z3_ SMT solver is highly recommended (follow instructions from z3_ doc,

@@ -26,7 +26,7 @@ logger = Log(__name__)
 logger.debug('loading module')
 
 from bisect import bisect_left
-from amoco.cas.expressions import exp,top
+from amoco.cas.expressions import exp
 
 #------------------------------------------------------------------------------
 class MemoryMap(object):
@@ -122,7 +122,7 @@ class MemoryMap(object):
         res = self.read(address,sto-address)
         try:
             return b''.join(res)
-        except:
+        except Exception:
             return res
 
     def restruct(self):

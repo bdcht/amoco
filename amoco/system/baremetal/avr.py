@@ -4,9 +4,7 @@
 # Copyright (C) 2017 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from amoco.system.core import *
-from amoco.code import tag
-
+from amoco.system.core import CoreExec
 from amoco.arch.avr import cpu
 
 PAGESIZE = 4096

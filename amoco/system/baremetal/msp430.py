@@ -4,7 +4,7 @@
 # Copyright (C) 2014 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from amoco.system.core import *
+from amoco.system.core import CoreExec
 
 from amoco.arch.msp430 import cpu
 
@@ -32,3 +32,4 @@ class MSP430(CoreExec):
         if block is not None: return block
         if func is not None: return func
 
+__all__ = ['MSP430']

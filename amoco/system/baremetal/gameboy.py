@@ -4,8 +4,8 @@
 # Copyright (C) 2012 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from amoco.system.core import *
-
+import struct
+from amoco.system.memory import MemoryMap
 from amoco.arch.z80 import cpu_gb as cpu
 
 #define gameboy system:

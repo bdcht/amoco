@@ -73,7 +73,7 @@ class Elf(BinFormat):
                         self.Shdr.append(S)
                     else:
                         logger.verbose('unknown sh_type: %d'%S.sh_type)
-            except :
+            except Exception:
                 logger.verbose(u'exception raised while parsing section(s)')
 
         # read section's name string table:
@@ -114,7 +114,7 @@ class Elf(BinFormat):
             except ValueError:
                 for a,f in iter(self.functions.items()):
                     if f[0]==target: addr = int(a,16); break
-        elif isinstance(target,IntType):
+        elif isinstance(target,int):
             addr = target
         if addr is None:
             # target is propably a symbol not found in functions
@@ -190,7 +190,7 @@ class Elf(BinFormat):
                 if st.name==sect:
                     S=st
                     break
-        elif isinstance(sect,IntType):
+        elif isinstance(sect,int):
             S = self.Shdr[sect]
         else:
             S = sect
@@ -332,8 +332,7 @@ class Elf(BinFormat):
 
     def __dynamic(self,type=None):
         D = {}
-        if type is None: type = STT_FUNC
-        dynamic = self.readsection('.dynamic')
+        self.readsection('.dynamic')
         dynsym = self.readsection('.dynsym') or []
         dynstr = self.readsection('.dynstr')
         if dynstr:
@@ -393,12 +392,9 @@ class Elf(BinFormat):
             s.pfx = tmp
         return '\n'.join(ss)
 
-class ElfBuilder(Elf):
-    def __init__(self):
-        self.__file = DataIO(b'')
 
 #------------------------------------------------------------------------------
-from amoco.system.structs import *
+from amoco.system.structs import Consts,StructFormatter,StructDefine
 
 @StructDefine("""
 B  : ELFMAG0
@@ -714,11 +710,6 @@ with Consts('sh_flags'):
 
 # section group handling:
 GRP_COMDAT=0x1
-
-try:
-    IntType = (int,long)
-except NameError:
-    IntType = (int,)
 
 @StructDefine("""
 I : st_name

@@ -1,4 +1,4 @@
-from amoco.system.core import *
+from amoco.system.core import CoreExec
 from amoco.arch.sparc import cpu_v8 as cpu
 from amoco.system.elf import *
 

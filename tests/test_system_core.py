@@ -4,7 +4,7 @@ from amoco.cas.expressions import *
 
 @pytest.fixture(scope='module')
 def M():
-    from amoco.system.core import MemoryMap
+    from amoco.system.memory import MemoryMap
     return MemoryMap()
 
 @pytest.fixture

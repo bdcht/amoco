@@ -41,7 +41,6 @@ setup(
       'Development Status :: 3 - Alpha',
       'Intended Audience :: Developers',
       'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
-      'Programming Language :: Python :: 2.7',
       'Programming Language :: Python :: 3',
       'Topic :: Scientific/Engineering :: Information Analysis',
       'Topic :: Security',
@@ -57,7 +56,7 @@ setup(
                         'crysp>=1.0',
                         'pyparsing',
                         'traitlets',
-                        'future'],
+                       ],
     extras_require={
         'app' : ['click','pygments','SQLAlchemy','z3-solver'],
     },

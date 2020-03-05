@@ -8,7 +8,7 @@ def mnemo(i):
     m = i.mnemonic
     if hasattr(i,'setflags') and i.setflags:
         m += 'S'
-    if m is 'Bcond': m = 'B.%s'%(i.misc['cond'])
+    if m == 'Bcond': m = 'B.%s'%(i.misc['cond'])
     return '%s'%(m.lower()).ljust(12)
 
 def regs(i,limit=None):

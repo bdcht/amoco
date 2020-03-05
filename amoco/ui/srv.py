@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-import os
-import signal
 import ctypes
 import multiprocessing as mp
 import queue
+
 from amoco.config import conf
 from amoco.logger import Log, flush_all
 from amoco.ui.cli import cmdcli_builder
 logger = Log(__name__)
 logger.debug('loading module')
 
+from amoco.ui.cli import cmdcli_builder
 
 STOPPED = 0
 IDLE    = 1

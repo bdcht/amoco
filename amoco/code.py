@@ -19,16 +19,13 @@ all provide a common API with:
 
 """
 
-from heapq import heappush,heappop
-from collections import defaultdict
-from functools import reduce
-from amoco.cas.mapper import *
+from heapq import heappush
 
 from amoco.logger import Log
 logger = Log(__name__)
 logger.debug('loading module')
 
-from amoco.ui.views import blockView, funcView, xfuncView
+from amoco.ui.views import blockView, funcView
 
 #-------------------------------------------------------------------------------
 class acode(object):

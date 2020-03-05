@@ -14,7 +14,7 @@ The backward module of amoco implements backward CFG recovery strategies.
 # published under GPLv2 license
 
 from .forward import *
-
+from amoco.logger import Log
 logger = Log(__name__)
 logger.debug('loading module')
 

@@ -19,13 +19,6 @@ from amoco.logger import Log
 logger = Log(__name__)
 logger.debug('loading emu')
 
-try:
-    IntType = (int,long)
-except NameError:
-    IntType = (int,)
-else:
-    conf.Cas.unicode=False
-
 class emul(object):
     def __init__(self,task):
         self.task = task

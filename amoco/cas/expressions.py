@@ -264,18 +264,19 @@ class exp(object):
     # WARNING: comparison operators cmp returns a python bool
     # but any other operators always return an expression !
     def __hash__(self): return hash(u'%s'%self)+self.size
-    #@_checkarg_numeric
-    #def __cmp__(self,n): return cmp(hash(self),hash(n))
 
     # An expression defaults to False, and only bit1 will return True.
-    # __nonzero__ for python2, __bool__ for python3
-    def __nonzero__(self): return self.__bool__()
     def __bool__(self): return False
 
-    @_checkarg_numeric
     def __eq__(self,n):
+        #we inline checkarg_numeric only here:
+        if isinstance(n,IntType):
+                n = cst(n,self.size)
+        elif isinstance(n,(float)):
+                n = cfp(n,self.size)
         if hash(self)==hash(n): return bit1
         return oper(OP_EQ,self,n)
+
     @_checkarg_numeric
     def __ne__(self,n):
         if hash(self)==hash(n): return bit0
@@ -461,8 +462,6 @@ class cst(exp):
     def __rxor__(self,n): return n^self
 
     # the only atom that is considered True is the cst(1,1) (ie bit1 below)
-    # __nonzero__ for python2, __bool__ for python3
-    def __nonzero__(self): return self.__bool__()
     def __bool__(self):
         if self.size==1 and self.v==1: return True
         else: return False
@@ -504,7 +503,7 @@ bit0 = cst(0,1)
 bit1 = cst(1,1)
 assert bool(bit1)
 
-class sym(cst):
+class sym(cst): #lgtm [py/missing-equals]
     __slots__ = ['ref']
     __hash__ = cst.__hash__
 
@@ -518,7 +517,7 @@ class sym(cst):
 #---------------------------------
 # cfp holds float immediate values
 #---------------------------------
-class cfp(exp):
+class cfp(exp): #lgtm [py/missing-equals]
     __slots__ = ['v']
     __hash__ = exp.__hash__
     _is_def   = True
@@ -624,7 +623,7 @@ class cfp(exp):
 #------------------------------------------------------------------------------
 # reg holds 32-bit register reference (refname).
 #------------------------------------------------------------------------------
-class reg(exp):
+class reg(exp):                                       #lgtm [py/missing-equals]
     __slots__ = ['ref','type','_subrefs', '__protect']
     __hash__ = exp.__hash__
     _is_def   = True
@@ -769,7 +768,7 @@ def composer(parts):
 # each part is accessed by 'slicing' the comp to obtain another comp or atom.
 # comp is the only expression that can be built adaptively.
 #------------------------------------------------------------------------------
-class comp(exp):
+class comp(exp):                                      #lgtm [py/missing-equals]
     __slots__ = ['smask','parts']
     __hash__ = exp.__hash__
     _is_def   = True
@@ -963,7 +962,7 @@ class comp(exp):
 # The mods list allows to handle aliasing issues detected at fetching time
 # and adjust the eval result accordingly.
 #------------------------------------------------------------------------------
-class mem(exp):
+class mem(exp):                                       #lgtm [py/missing-equals]
     __slots__ = ['a', 'mods', 'endian']
     __hash__ = exp.__hash__
     _is_def   = True
@@ -1037,7 +1036,7 @@ class mem(exp):
 # ptr holds memory addresses with segment, base expressions and
 # displacement integer (offset relative to base).
 #------------------------------------------------------------------------------
-class ptr(exp):
+class ptr(exp):                                       #lgtm [py/missing-equals]
     __slots__ = ['base','disp','seg']
     __hash__ = exp.__hash__
     _is_def   = True
@@ -1162,7 +1161,7 @@ class slc(exp):
         subpart = [(render.Token.Literal,u'[%d:%d]'%(self.pos,self.pos+self.size))]
         return self.x.toks(**kargs)+subpart
 
-    def __hash__(self): return hash(self.raw())
+    def __hash__(self): return hash(self.raw())  #lgtm [py/equals-hash-mismatch]
 
     def depth(self): return 2*self.x.depth()
 
@@ -1764,10 +1763,10 @@ def eqn2_helpers(e,bitslice=False,widening=False):
     if u'%s'%(e.l)==u'%s'%(e.r):
         if e.op.symbol in (OP_NEQ,OP_LT,OP_GT): return bit0
         if e.op.symbol in (OP_EQ,OP_LE,OP_GE): return bit1
-        if e.op.symbol is OP_MIN : return cst(0,e.size)
-        if e.op.symbol is OP_XOR : return cst(0,e.size)
-        if e.op.symbol is OP_AND : return e.l
-        if e.op.symbol is OP_OR  : return e.l
+        if e.op.symbol == OP_MIN : return cst(0,e.size)
+        if e.op.symbol == OP_XOR : return cst(0,e.size)
+        if e.op.symbol == OP_AND : return e.l
+        if e.op.symbol == OP_OR  : return e.l
     return e
 
 # separate expression e into (e' + C) with C cst offset.
@@ -1865,8 +1864,6 @@ class vec(exp):
     def __contains__(self,x):
         return (x in self.l)
 
-    # __nonzero__ for python2, __bool__ for python3
-    def __nonzero__(self): return self.__bool__()
     def __bool__(self):
         return all([e.__bool__() for e in self.l])
 

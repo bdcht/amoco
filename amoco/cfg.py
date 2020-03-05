@@ -22,8 +22,8 @@ logger.debug('loading module')
 from grandalf.graphs import Vertex,Edge,Graph
 from amoco.cas.mapper import mapper
 from amoco.system.memory import MemoryZone
-
-from amoco.code import defaultdict,_code_misc_default
+from collections import defaultdict
+from amoco.code import _code_misc_default
 
 #------------------------------------------------------------------------------
 class node(Vertex):

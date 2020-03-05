@@ -31,6 +31,10 @@ from amoco import code
 from amoco.signals import SIG_TRGT,SIG_NODE,SIG_EDGE,SIG_BLCK,SIG_FUNC
 from amoco.arch.core import type_control_flow
 
+__all__ = ['cfg','code',
+           'SIG_TRGT','SIG_NODE','SIG_EDGE','SIG_BLCK','SIG_FUNC',
+           'lsweep']
+
 # -----------------------------------------------------------------------------
 class lsweep(object):
     """Linear sweep based analysis: a fast but somehow dumb way of

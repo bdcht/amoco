@@ -261,7 +261,7 @@ class mapper(object):
         try:
             m = mapper()
             instr(m)
-            mm = self>>m
+            _ = self>>m
         except Exception as e:
             logger.error("instruction @ %s raises exception %s"%(instr.address,e))
             raise e

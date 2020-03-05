@@ -4,7 +4,7 @@
 # Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from amoco.system.core import *
+from amoco.system.core import CoreExec
 import amoco.arch.sparc.cpu_v8 as cpu
 
 PAGESIZE = 4096
@@ -33,3 +33,6 @@ class ELF(CoreExec):
                     (cpu.sp , cpu.cst(0xc0000000,32)),
                     (cpu.fp , cpu.cst(0xc0000000,32))):
             self.state[k] = v
+
+
+__all__ = ['ELF']

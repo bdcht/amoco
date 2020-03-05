@@ -33,13 +33,13 @@ def getreg8(obj,x):
     if p is not None:
         if x == 0b110:
             return env.mem(p,8)
-        elif r is env.l:
-            if p is env.ix:
+        elif r == env.l:
+            if p == env.ix:
                 return env.ixl
             else:
                 return env.iyl
-        elif r is env.h:
-            if p is env.ix:
+        elif r == env.h:
+            if p == env.ix:
                 return env.ixh
             else:
                 return env.iyh

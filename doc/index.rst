@@ -4,7 +4,7 @@
 Amoco documentation
 ===================
 
-Amoco is a python (>=2.7, >=3.5) package dedicated to the static symbolic
+Amoco is a python (>=3.5) package dedicated to the static symbolic
 analysis of binary programs.
 
 It features:

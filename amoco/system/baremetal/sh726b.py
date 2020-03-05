@@ -4,7 +4,7 @@
 # Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from amoco.system.core import *
+from amoco.system.core import CoreExec
 import amoco.arch.superh.cpu_sh2 as cpu
 
 HIGH_SPEED_PAGE = 0x4000

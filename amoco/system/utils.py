@@ -14,7 +14,7 @@ Intel HEX or Motorola SREC, commonly used for programming MCU, EEPROMs, etc.
 
 import struct
 from amoco.system.core import DataIO,BinFormat
-from amoco.logger import *
+from amoco.logger import Log
 logger = Log(__name__)
 logger.debug('loading module')
 
@@ -253,7 +253,7 @@ class SRECline(object):
             self.size = l
             self.address = int(line[4:4+l],16)
             #data:
-            c = 4+l+2*self.count
+            #c = 4+l+2*self.count
             self.data = codecs.decode(line[4+l:-2],'hex')
             assert self.count == (l/2)+len(self.data)+1
             #checksum:

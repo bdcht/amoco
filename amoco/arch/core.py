@@ -20,7 +20,7 @@ for the definition of new cpu architectures:
 # Copyright (C) 2006-2014 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from crysp.bits import *
+from crysp.bits import Bits,pack,unpack
 import types
 from collections import defaultdict
 import pyparsing as pp
@@ -173,9 +173,9 @@ class disassembler(object):
         self.endian = endian
         # build ispecs tree for each set:
         logger.debug('building specs tree for modules %s',specmodules)
-        self.indent = 0
+        #self.indent = 0
         self.specs = [self.setup(m.ISPECS) for m in specmodules]
-        del self.indent
+        #del self.indent
         # some arch like x86 require a stateful decoding due to optional prefixes,
         # so we keep an __i instruction for decoding until a non prefix ispec is used.
         self.__i  = None
@@ -187,14 +187,14 @@ class disassembler(object):
         as possible). The output tree is (f,l) where f is the submask to check at this level
         and l is a defaultdict such that l[x] is the subtree of formats for which submask is x.
         """
-        self.indent += 2
-        ind = ' '*self.indent
+        #self.indent += 2
+        #ind = ' '*self.indent
         # sort ispecs from high constrained to low constrained:
         #logger.debug('%scurrent subset count: %d',ind,len(ispecs))
         ispecs.sort(key=(lambda x: x.mask.hw()), reverse=True)
         if len(ispecs)<5:
             #logger.debug('%stoo small to divide',ind)
-            self.indent -= 2
+            #self.indent -= 2
             return (0,ispecs)
         # find separating mask:
         adjust = lambda x:x.ival
@@ -207,7 +207,7 @@ class disassembler(object):
         localmask = reduce(lambda x,y:x&y, [adjust(s.mask) for s in ispecs])
         if localmask==0:
             #logger.debug('%sno local mask',ind)
-            self.indent -= 2
+            #self.indent -= 2
             return (0,ispecs)
         # subsetup:
         f = localmask
@@ -217,12 +217,12 @@ class disassembler(object):
             l[ adjust(s.fix) & f ].append(s)
         if len(l)==1: # if subtree has only 1 spec, we're done here
             #logger.debug('%sfound 1 branch: done',ind)
-            self.indent -=2
+            #self.indent -=2
             return (0,list(l.values())[0])
         #logger.debug('%sfound %d branches',ind,len(l))
         for x,S in l.items():
             l[x] = self.setup(S)
-        self.indent -=2
+        #self.indent -=2
         return (f,l)
 
     def __call__(self,bytestring,**kargs):

@@ -67,7 +67,7 @@ def i_MOVML(ins,fmap):
         assert src.a.base == R15
         assert dst._is_reg
         for r in R[:obj.m]:
-            if r is sp: r = PR
+            if r == sp: r = PR
             fmap[r] = fmap(src)
             fmap[R15] = fmap(R15)+4
     if ins.misc['decr']:
@@ -76,7 +76,7 @@ def i_MOVML(ins,fmap):
         assert dst._is_mem
         assert dst.a.base == R15
         for r in R[obj.m::-1]:
-            if r is sp: r = PR
+            if r == sp: r = PR
             fmap[R15] = fmap(R15)-4
             fmap[dst] = fmap(r)
 
@@ -89,7 +89,7 @@ def i_MOVMU(ins,fmap):
         assert src.a.base == R15
         assert dst._is_reg
         for r in R[obj.m:]:
-            if r is sp: r = PR
+            if r == sp: r = PR
             fmap[r] = fmap(src)
             fmap[R15] = fmap(R15)+4
     if ins.misc['decr']:
@@ -98,7 +98,7 @@ def i_MOVMU(ins,fmap):
         assert dst._is_mem
         assert dst.a.base == R15
         for r in R[obj.m:][::-1]:
-            if r is sp: r = PR
+            if r == sp: r = PR
             fmap[R15] = fmap(R15)-4
             fmap[dst] = fmap(r)
 
@@ -612,7 +612,7 @@ def i_RTV(ins,fmap):
 @__pc
 def i_LDC(ins,fmap):
     Rm,Rn = ins.operands
-    if Rn is SR: Rm = Rm&0x63F3
+    if Rn == SR: Rm = Rm&0x63F3
     fmap[Rn] = fmap(Rm)
     postincr(ins,fmap)
 

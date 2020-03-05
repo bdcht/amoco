@@ -4,21 +4,12 @@
 # Copyright (C) 2017 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from amoco.system.structs import *
-from amoco.system.win32.x86 import *
+from amoco.system.structs import Consts,StructFormatter
 
 class VB6Object(object):
     pass
 
-
-
 #------------------------------------------------------------------------------
-with Consts("dwThreadFlags"):
-    ApartmentModel = 0x1
-    RequireLicense = 0x2
-    Unattended     = 0x4
-    SingleThreaded = 0x8
-    Retained       = 0x10
 
 @StructDefine("""
 s*4  : szVbMagic
@@ -90,14 +81,14 @@ with Consts("fControlType"):
     PropertyPage = 0x200
     Document = 0x400
 
-#------------------------------------------------------------------------------
-
 with Consts("dwThreadFlags"):
     ApartmentModel = 0x1
     RequireLicense = 0x2
     Unattended     = 0x4
     SingleThreaded = 0x8
     Retained       = 0x10
+
+#------------------------------------------------------------------------------
 
 @StructDefine("""
 I    : bRegInfo

@@ -13,7 +13,7 @@ The system pe module implements the PE class which support both 32 and 64 bits
 executable formats.
 """
 
-from amoco.logger import *
+from amoco.logger import Log
 logger = Log(__name__)
 logger.debug('loading module')
 
@@ -45,7 +45,7 @@ class PE(BinFormat):
         # parse DOS header:
         try:
             self.DOS  = DOSHdr(data)
-        except:
+        except Exception:
             raise PEError('not a DOSHdr')
         # parse PE header:
         self.NT = COFFHdr(data,self.DOS.e_lfanew)
@@ -207,12 +207,10 @@ class PE(BinFormat):
             s.pfx = tmp
         return '\n'.join(ss)
 
-class PEBuilder(PE):
-    def __init__(self):
-        self.data = DataIO(b'')
-
 #------------------------------------------------------------------------------
-from amoco.system.structs import *
+from amoco.system.structs import struct,Consts,StructFormatter,StructDefine
+from amoco.system.structs import token_datetime_fmt
+from amoco.ui.render import Token,highlight
 
 @StructDefine("""
 c*2 : e_magic

@@ -4,7 +4,7 @@
 # Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from amoco.cas.expressions import *
+from amoco.cas.expressions import tst,comp,cst,ror
 
 def stst(*args,**kargs):
     return tst(*args,**kargs).simplify()

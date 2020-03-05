@@ -1,4 +1,3 @@
-future
 traitlets
 pygments
 pyparsing

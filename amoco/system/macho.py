@@ -14,6 +14,7 @@ from amoco.logger import Log
 logger = Log(__name__)
 logger.debug('loading module')
 
+from collections import defaultdict
 
 # our exception handler:
 class MachOError(Exception):
@@ -379,7 +380,8 @@ class MachO(BinFormat):
 
 
 #------------------------------------------------------------------------------
-from amoco.system.structs import *
+from amoco.system.structs import Consts,StructFormatter,default_formatter
+from amoco.system.structs import StructDefine,UnionDefine
 
 @StructDefine("""
 I  :> magic
@@ -401,11 +403,11 @@ I  :> align
 """)
 class struct_fat_arch(StructFormatter):
     alt = 'mh'
-    def __init__(self,data=None):
+    def __init__(self,data=None,offset=0):
         self.name_formatter('cputype')
         self.func_formatter(cpusubtype=self.subtype_fmt)
         if data:
-            self.unpack(data)
+            self.unpack(data,offset)
     def subtype_fmt(self,k,v,cls):
         alt2 = Consts.All['mh.cputype'].get(self.cputype&0xff,'')
         cls2 = "%s.%s"%(self.alt,alt2)
@@ -1052,7 +1054,7 @@ with Consts('lc.x86.flavor'):
     x86_DEBUG_STATE32     = 10
     x86_DEBUG_STATE64     = 11
     x86_DEBUG_STATE       = 12
-    THREAD_STATE_NONE     = 13
+    x86_THREAD_STATE_NONE = 13
     x86_AVX_STATE32       = 16
     x86_AVX_STATE64       = (x86_AVX_STATE32 + 1)
     x86_AVX_STATE         = (x86_AVX_STATE32 + 2)
@@ -1065,7 +1067,7 @@ with Consts('lc.arm.flavor'):
     ARM_VFP_STATE         = 2
     ARM_EXCEPTION_STATE   = 3
     ARM_DEBUG_STATE       = 4
-    THREAD_STATE_NONE     = 5
+    ARM_THREAD_STATE_NONE = 5
     ARM_THREAD_STATE64    = 6
     ARM_EXCEPTION_STATE64 = 7
     ARM_THREAD_STATE32    = 9

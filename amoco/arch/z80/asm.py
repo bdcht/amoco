@@ -59,7 +59,7 @@ def i_LD(i_,fmap):
   dst,src = i_.operands
   fmap[pc] = fmap[pc]+i_.length
   fmap[dst] = fmap(src)
-  if (src is i) or (src is r):
+  if (src == i) or (src == r):
       fmap[sf] = tst(fmap[src]<0,bit1,bit0)
       fmap[zf] = tst(fmap[src]==0,bit1,bit0)
       fmap[hf] = bit0

@@ -26,7 +26,8 @@ to assume that function calls always return to the *link address* of the call.
 # published under GPLv2 license
 
 from .lsweep import *
-
+from amoco.cas.mapper import mapper
+from amoco.logger import Log
 logger = Log(__name__)
 logger.debug('loading module')
 
@@ -148,7 +149,7 @@ class fforward(lsweep):
         Returns:
             :class:`target`: the evaluated PC expression.
         """
-        m = code.mapper()
+        m = mapper()
         pc = self.prog.cpu.PC()
         m[pc] = node.data.address
         pc = (node.map(pc)).eval(m)

@@ -47,11 +47,6 @@ Attributes:
 from traitlets.config import Configurable
 from traitlets import Integer, Unicode, Bool, observe
 
-try:
-    unicode('a')
-except NameError:
-    unicode = str
-
 #-----------------------
 
 
@@ -123,7 +118,7 @@ class Config(object):
                 cl = PyFileConfigLoader(filename=f,path=('.',getenv('HOME')))
                 try:
                     c = cl.load_config()
-                except:
+                except Exception:
                     c = None
                     self.f = None
                 else:
@@ -151,7 +146,7 @@ class Config(object):
                 v = getattr(c,t)
                 t = '{}.{}'.format(pfx,t)
                 mlen = max(mlen,len(t))
-                if isinstance(v,unicode): v="'%s'"%v
+                if isinstance(v,str): v="'%s'"%v
                 s.append((t,v))
         return u'\n'.join(('{:{mlen}} = {}'.format(t,v,mlen=mlen) for (t,v) in s))
 

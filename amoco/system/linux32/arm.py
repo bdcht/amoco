@@ -5,8 +5,7 @@
 # published under GPLv2 license
 
 from amoco.system.elf import *
-from amoco.system.core import IntType,CoreExec
-from amoco.code import tag
+from amoco.system.core import CoreExec
 import amoco.arch.arm.cpu_armv7 as cpu
 
 with Consts('e_flags'):
@@ -184,10 +183,9 @@ class OS(object):
         if conf is None:
             from amoco.config import System
             conf = System()
-        else:
-            self.PAGESIZE = conf.pagesize
-            self.ASLR     = conf.aslr
-            self.NX       = conf.nx
+        self.PAGESIZE = conf.pagesize
+        self.ASLR     = conf.aslr
+        self.NX       = conf.nx
         self.tasks = []
         self.abi = None
 
@@ -264,7 +262,7 @@ class Task(CoreExec):
             else:
                 endian = self.cpu.get_data_endian()
                 v = self.cpu.cst(Bits(val[0:x.size:endian],bitorder=1).int(),x.size*8)
-        elif isinstance(val,IntType):
+        elif isinstance(val,int):
             v = self.cpu.cst(val,size)
         else:
             v = val

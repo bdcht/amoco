@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import BytesIO as StringIO
+from io import BytesIO as StringIO
 
 from amoco.config import conf
 

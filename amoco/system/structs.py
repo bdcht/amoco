@@ -74,7 +74,7 @@ import struct
 import pyparsing as pp
 from collections import defaultdict
 
-from amoco.logger import *
+from amoco.logger import Log
 logger = Log(__name__)
 logger.debug('loading module')
 
@@ -400,7 +400,6 @@ class VarField(RawField):
         res = [struct.pack(self.order+self.typename,v) for v in value]
         return b''.join(res)
     def __repr__(self):
-        fmt = self.typename
         r = '<VarField %s [%s]'%(self.name,self.format())
         r += ' (%s)>'%self.comment if self.comment else '>'
         return r
@@ -434,7 +433,7 @@ class CntField(RawField):
     def size(self):
         try:
             return struct.calcsize(self.format())
-        except:
+        except Exception:
             return float('Infinity')
     def unpack(self,data,offset=0):
         if hasattr(self,'fcount'): self.count = self.fcount

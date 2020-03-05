@@ -8,7 +8,6 @@
 # These objects are wrapped and created by disasm.py.
 
 from amoco.arch.core import *
-
 from amoco.arch.arm.v7 import env
 from .utils import *
 

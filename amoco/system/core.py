@@ -16,7 +16,6 @@ the :mod:`amoco.system` package.
 
 from io import BytesIO
 from amoco.arch.core import Bits
-from amoco.system.memory import *
 
 from amoco.logger import Log
 logger = Log(__name__)
@@ -75,7 +74,7 @@ class CoreExec(object):
             logger.error('no cpu imported')
             raise ValueError
         maxlen = self.cpu.disassemble.maxlen
-        if isinstance(vaddr,IntType):
+        if isinstance(vaddr,int):
             addr = self.cpu.cst(vaddr,self.cpu.PC().size)
         else:
             addr = vaddr
@@ -133,7 +132,7 @@ class CoreExec(object):
                 endian = self.cpu.get_data_endian()
                 v = self.cpu.cst(Bits(val[0:x.size:endian],bitorder=1).int(),x.size*8)
                 self.state[x] = v
-        elif isinstance(val,IntType):
+        elif isinstance(val,int):
             self.state[x] = self.cpu.cst(val,size)
         else:
             self.state[x] = val
@@ -280,10 +279,6 @@ class DataIO(BinFormat):
         try:
             return self.f.name
         except AttributeError:
-            try:
-                from builtins import bytes
-            except ImportError:
-                pass
             s = bytes(self.f.getvalue())
             return '(sc-%s...)'%(''.join(["%02x"%x for x in s])[:8])
 

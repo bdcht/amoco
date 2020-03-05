@@ -11,17 +11,11 @@ system/dwarf.py
 The system dwarf module implements DWARF and C++ eh_frame* classes for executable format.
 """
 
-from amoco.ui.render import Token,highlight
 from amoco.logger import Log
 logger = Log(__name__)
 logger.debug('loading module')
 
 from amoco.system.structs import Consts,StructDefine,StructFormatter
-
-try:
-    IntType = (int,long)
-except NameError:
-    IntType = (int,)
 
 # ccrawl -b None -l ~/gcc.db show -f amoco "enum dwarf_location_atom"
 with Consts('dwarf_location_atom'):

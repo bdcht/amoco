@@ -1,4 +1,3 @@
-import os
 import click
 import multiprocessing as mp
 import queue

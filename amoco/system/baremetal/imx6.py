@@ -1,7 +1,7 @@
+from amoco.system.structs import struct,Consts,StructFormatter,StructDefine
 from amoco.arch.arm import cpu_armv7
 from amoco.system.core import DataIO
 from amoco.system.raw import RawExec
-from amoco.system.structs import *
 
 with Consts('tag'):
     HAB_TAG_IVT = 0xd1

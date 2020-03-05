@@ -26,10 +26,9 @@ class OS(object):
         if conf is None:
             from amoco.config import System
             conf = System()
-        else:
-            self.PAGESIZE = conf.pagesize
-            self.ASLR     = conf.aslr
-            self.NX       = conf.nx
+        self.PAGESIZE = conf.pagesize
+        self.ASLR     = conf.aslr
+        self.NX       = conf.nx
         self.tasks = []
 
     @classmethod
@@ -61,8 +60,7 @@ class OS(object):
         else:
             ssz = pe.Opt.SizeOfStackReserve
             stack_base = 0x00007fffffffffff & ~(self.PAGESIZE-1)
-            stack_size = pe.Opt.SizeOfStackReserve
-            p.state.mmap.write(stack_base-stack_size,b'\0'*stack_size)
+            p.state.mmap.write(stack_base-ssz,b'\0'*ssz)
             p.state[cpu.esp] = cpu.cst(stack_base,64)
         # create the dynamic segments:
         if len(pe.functions)>0:

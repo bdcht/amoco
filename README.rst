@@ -9,6 +9,11 @@ Amoco
     :target: http://amoco.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
+.. image:: https://img.shields.io/lgtm/grade/python/g/bdcht/amoco.svg?logo=lgtm&logoWidth=18
+    :target: https://lgtm.com/projects/g/bdcht/amoco/context:python
+    :alt: Code Quality
+
+
 +-----------+--------------------------------------------------+
 | Status:   | Under Development                                |
 +-----------+--------------------------------------------------+

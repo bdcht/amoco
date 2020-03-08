@@ -34,7 +34,7 @@ def A_default(obj,S,Rn,Rd,imm12):
   obj.imm32 = ARMExpandImm(imm12)
   obj.operands = [obj.d,obj.n,obj.imm32]
   obj.type = type_data_processing
-  if obj.d is env.pc: obj.type = type_control_flow
+  if obj.d == env.pc: obj.type = type_control_flow
 
 @ispec("32[ .cond(4) 00 0 0000 S Rn(4) Rd(4) imm5(5) stype(2) 0 Rm(4) ]", mnemonic="AND")
 @ispec("32[ .cond(4) 00 0 0001 S Rn(4) Rd(4) imm5(5) stype(2) 0 Rm(4) ]", mnemonic="EOR")
@@ -53,7 +53,7 @@ def A_sreg(obj,S,Rn,Rd,imm5,stype,Rm):
   obj.m = DecodeShift(stype,env.regs[Rm],env.cst(imm5,5))
   obj.operands = [obj.d,obj.n,obj.m]
   obj.type = type_data_processing
-  if obj.d is env.pc: obj.type = type_control_flow
+  if obj.d == env.pc: obj.type = type_control_flow
 
 @ispec("32[ .cond(4) 00 0 0000 S Rn(4) Rd(4) Rs(4) 0 stype(2) 1 Rm(4) ]", mnemonic="AND")
 @ispec("32[ .cond(4) 00 0 0001 S Rn(4) Rd(4) Rs(4) 0 stype(2) 1 Rm(4) ]", mnemonic="EOR")
@@ -82,7 +82,7 @@ def A_adr(obj,S,Rd,imm12):
   obj.imm32 = ARMExpandImm(imm12)
   obj.operands = [obj.d,obj.imm32]
   obj.type = type_data_processing
-  if obj.d is env.pc: obj.type = type_control_flow
+  if obj.d == env.pc: obj.type = type_control_flow
 
 @ispec("32[ .cond(4) 00 1 1101 S 0000 Rd(4) imm12(12) ]", mnemonic="MOV")
 @ispec("32[ .cond(4) 00 1 1111 S 0000 Rd(4) imm12(12) ]", mnemonic="MVN")
@@ -92,7 +92,7 @@ def A_default(obj,S,Rd,imm12):
   obj.imm32 = ARMExpandImm(imm12)
   obj.operands = [obj.d,obj.imm32]
   obj.type = type_data_processing
-  if obj.d is env.pc: obj.type = type_control_flow
+  if obj.d == env.pc: obj.type = type_control_flow
 
 @ispec("32[ .cond(4) 00 0 1101 S 0000 Rd(4) imm5(5) 100 Rm(4) ]", mnemonic="ASR")
 @ispec("32[ .cond(4) 00 0 1101 S 0000 Rd(4) imm5(5) 000 Rm(4) ]", mnemonic="LSL")
@@ -112,7 +112,7 @@ def A_default(obj,S,Rd,imm5,Rm):
   else:
       shift_n = imm5
   obj.operands = [obj.d,obj.m,env.cst(shift_n,5)]
-  if obj.d is env.pc: obj.type = type_control_flow
+  if obj.d == env.pc: obj.type = type_control_flow
 
 @ispec("32[ .cond(4) 00 0 1101 S 0000 Rd(4) Rm(4) 0101 Rn(4) ]", mnemonic="ASR")
 @ispec("32[ .cond(4) 00 0 1101 S 0000 Rd(4) Rm(4) 0001 Rn(4) ]", mnemonic="LSL")
@@ -285,7 +285,7 @@ def A_deref(obj,P,U,W,Rn,Rt,imm12):
   obj.add = (U==1)
   obj.operands = [obj.t,obj.n,obj.imm32]
   obj.type = type_data_processing
-  if obj.t is env.pc : obj.type = type_control_flow
+  if obj.t == env.pc : obj.type = type_control_flow
 
 @ispec("32[ .cond(4) 011 P U 0 W 1 Rn(4) Rt(4) imm5(5) stype(2) 0 Rm(4) ]", mnemonic="LDR")
 @ispec("32[ .cond(4) 011 P U 1 W 1 Rn(4) Rt(4) imm5(5) stype(2) 0 Rm(4) ]", mnemonic="LDRB")
@@ -311,7 +311,7 @@ def A_deref(obj,P,U,W,Rn,Rt,imm5,stype,Rm):
   obj.add = (U==1)
   obj.operands = [obj.t,obj.n,obj.m]
   obj.type = type_data_processing
-  if obj.t is env.pc : obj.type = type_control_flow
+  if obj.t == env.pc : obj.type = type_control_flow
 
 @ispec("32[ .cond(4) 000 P U 1 W 0 Rn(4) Rt(4) imm4H(4) 1101 imm4L(4) ]", mnemonic="LDRD")
 @ispec("32[ .cond(4) 000 P U 1 W 0 Rn(4) Rt(4) imm4H(4) 1111 imm4L(4) ]", mnemonic="STRD")
@@ -447,7 +447,7 @@ def A_default(obj,S,Rd,Rm):
   obj.m = env.regs[Rm]
   obj.operands = [obj.d,obj.m]
   obj.type = type_data_processing
-  if obj.d is env.pc: obj.type = type_control_flow
+  if obj.d == env.pc: obj.type = type_control_flow
 
 @ispec("32[ .cond(4) 0011 0100 imm4(4) Rd(4) imm12(12) ]", mnemonic="MOVT")
 def A_default(obj,imm4,Rd,imm12):
@@ -487,7 +487,7 @@ def A_sreg(obj,S,Rd,imm5,stype,Rm):
   obj.m = DecodeShift(stype,env.regs[Rm],imm5)
   obj.operands = [obj.d,obj.m]
   obj.type = type_data_processing
-  if obj.d is env.pc: obj.type = type_control_flow
+  if obj.d == env.pc: obj.type = type_control_flow
 
 @ispec("32[ .cond(4) 00 0 1111 S 0000 Rd(4) Rs(4) 0 stype(2) 1 Rm(4) ]", mnemonic="MVN")
 def A_sreg(obj,S,Rd,Rs,stype,Rm):

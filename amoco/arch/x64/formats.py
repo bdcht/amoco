@@ -19,11 +19,11 @@ def deref(op):
     s = {8:'byte ptr ',16:'word ptr ', 64:'qword ptr ', 128:'xmmword ptr '}.get(op.size,'')
     s += '%s:'%op.a.seg  if (op.a.seg is not '')  else ''
     b = op.a.base
-    if op.a.base._is_reg and op.a.base.type==regtype.STACK:
+    if b._is_reg and b.type==regtype.STACK:
         base10=True
     else:
         base10=False
-    s += '[%s%s]'%(op.a.base,op.a.disp_tostring(base10))
+    s += '[%s%s]'%(b,op.a.disp_tostring(base10))
     return s
 
 def opers(i):

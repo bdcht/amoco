@@ -452,7 +452,6 @@ def i_CALL(i,fmap):
 
 def i_CALLF(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
-  pc = fmap[eip]+i.length
 
 def i_JMP(i,fmap):
   pc = fmap[eip]+i.length
@@ -464,11 +463,9 @@ def i_JMP(i,fmap):
 
 def i_JMPF(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
-  pc = fmap[eip]+i.length
 
 def i_RETF(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
-  pc = fmap[eip]+i.length
 
 #------------------------------------------------------------------------------
 def _loop_(i,fmap,cond):
@@ -1140,14 +1137,14 @@ def i_POPCNT(i,fmap):
 
 def i_LZCNT(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
-  dst,src = i.operands
+  dst,_ = i.operands
   fmap[dst] = top(dst.size)
   fmap[cf] = fmap[zf] = top(1)
   fmap[eip] = fmap[eip]+i.length
 
 def i_TZCNT(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
-  dst,src = i.operands
+  dst,_ = i.operands
   fmap[dst] = top(dst.size)
   fmap[cf] = fmap[zf] = top(1)
   fmap[eip] = fmap[eip]+i.length
@@ -1155,13 +1152,12 @@ def i_TZCNT(i,fmap):
 def i_BT(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
-  dst,src = i.operands
   fmap[cf] = top(1)
 
 def i_BTC(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
-  dst,src = i.operands
+  dst,_ = i.operands
   fmap[cf] = top(1)
   fmap[dst] = top(dst.size)
 
@@ -1228,7 +1224,7 @@ def i_PREFETCHW(i,fmap):
 def i_LAR(i,fmap):
   logger.verbose('%s semantic is not defined'%i.mnemonic)
   fmap[eip] = fmap[eip]+i.length
-  dst,src = i.operands
+  dst,_ = i.operands
   fmap[zf] = top(1)
   fmap[dst] = top(dst.size)
 

@@ -1,5 +1,4 @@
 import cmd
-from types import MethodType
 from amoco.config import conf
 from amoco.logger import Log
 logger = Log(__name__)

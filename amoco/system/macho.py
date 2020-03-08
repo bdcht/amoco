@@ -25,7 +25,7 @@ class MachOError(Exception):
 
 #------------------------------------------------------------------------------
 from amoco.system.core import BinFormat,DataIO
-from amoco.system.utils import read_leb128,read_uleb128
+from amoco.system.utils import read_uleb128
 
 class MachO(BinFormat):
     is_MachO = True
@@ -137,18 +137,19 @@ class MachO(BinFormat):
         return self.readcode(target,size)[0]
 
     def readcode(self,target,size):
-        s,offset,base = self.getinfo(target)
-        data = b''
-        #TODO
+        s,offset,_ = self.getinfo(target)
+        data = self.readsegment(s)
+        return data[offset:offset+size]
 
     def getfileoffset(self,target):
-        s,offset,base = self.getinfo(target)
+        s,offset,_ = self.getinfo(target)
+        return s.fileoffset+offset
 
     def readsegment(self,S):
         self.__file.seek(S.fileoffset)
         return self.__file.read(S.filesize)
 
-    def loadsegment(S,pagesize=None):
+    def loadsegment(self,S,pagesize=None):
         s = self.readsegment(S)
         if pagesize is None:
             pagesize = S.vmsize
@@ -1023,8 +1024,7 @@ class struct_thread_command(MachoFormatter):
 
     def getstate(self,cputype):
         if cputype in (X86, X86_64):
-            cls2 = 'lc.x86'
-            self.name_formatter('flavor')
+            self.alt = 'lc.x86'
             if   self.flavor == x86_THREAD_STATE32:
                 self.state = struct_x86_thread_state32(self.data)
                 self.entrypoint = self.state['eip']
@@ -1032,8 +1032,7 @@ class struct_thread_command(MachoFormatter):
                 self.state = struct_x86_thread_state64(self.data)
                 self.entrypoint = self.state['rip']
         elif cputype in (ARM, ):
-            cls2 = 'lc.arm'
-            self.name_formatter('flavor')
+            self.alt = 'lc.arm'
             if   self.flavor == ARM_THREAD_STATE32:
                 self.state = struct_x86_thread_state32(self.data)
             elif self.flavor == ARM_THREAD_STATE64:

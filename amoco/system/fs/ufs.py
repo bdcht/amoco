@@ -1,4 +1,3 @@
-from amoco.system.core import DataIO
 from amoco.system.structs import *
 
 SUPERBLOCK_SIZE = 2048
@@ -492,7 +491,7 @@ class sect_trailer(StructFormatter):
 class UFS(object):
     def __init__(self,dataIO,offset=0):
         self.data = dataIO
-        bootblk = dataIO[BBOFF:BBSIZE]
+        #bootblk = dataIO[BBOFF:BBSIZE]
         S = superblock(dataIO,offset=SBOFF)
         cylinders = []
         for c in range(S.fs_ncg):

@@ -23,7 +23,7 @@ class ElfError(Exception):
         return str(self.message)
 
 #------------------------------------------------------------------------------
-from amoco.system.core import BinFormat,DataIO
+from amoco.system.core import BinFormat
 
 class Elf(BinFormat):
     is_ELF = True

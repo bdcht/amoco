@@ -26,10 +26,9 @@ class OS(object):
         if conf is None:
             from amoco.config import System
             conf = System()
-        else:
-            self.PAGESIZE = conf.pagesize
-            self.ASLR     = conf.aslr
-            self.NX       = conf.nx
+        self.PAGESIZE = conf.pagesize
+        self.ASLR     = conf.aslr
+        self.NX       = conf.nx
         self.tasks = []
         self.abi = None
 

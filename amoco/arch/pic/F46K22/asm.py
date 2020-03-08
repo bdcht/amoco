@@ -212,7 +212,6 @@ def i_COMF(i,fmap):
 def i_CPFSEQ(i,fmap):
     fmap[pc] = fmap(pc)+i.length
     _pre_(i,fmap)
-    dst = i.dst
     src = i.src
     res = fmap(src-wreg)
     fmap[pc] = tst(res==0,fmap(pc)+2,fmap(pc))
@@ -220,7 +219,6 @@ def i_CPFSEQ(i,fmap):
 
 def i_CPFSGT(i,fmap):
     fmap[pc] = fmap(pc)+i.length
-    _pre_(i,fmap)
     dst = i.dst
     src = i.src
     res = fmap(src-wreg)
@@ -230,7 +228,6 @@ def i_CPFSGT(i,fmap):
 def i_CPFSLT(i,fmap):
     fmap[pc] = fmap(pc)+i.length
     _pre_(i,fmap)
-    dst = i.dst
     src = i.src
     res = fmap(src-wreg)
     fmap[pc] = tst(res<0,fmap(pc)+2,fmap(pc))
@@ -598,7 +595,6 @@ def i_TSTFSZ(i,fmap):
     fmap[pc] = fmap(pc)+i.length
     _pre_(i,fmap)
     src = i.src
-    dst = i.dst
     res = fmap(src)
     fmap[pc] = tst(res==0,fmap(pc)+2,fmap(pc))
     _post_(i,fmap)

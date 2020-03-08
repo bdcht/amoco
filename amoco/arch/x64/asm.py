@@ -114,7 +114,6 @@ def i_INSD(i,fmap):
 #------------------------------------------------------------------------------
 def _outs_(i,fmap,l):
   counter = cx if i.misc['adrsz'] else rcx
-  src = fmap(mem(rsi,l*8))
   ext('OUT').call(fmap,src=fmap(mem(rsi,l*8)))
   if i.misc['rep']:
       fmap[counter] = fmap(counter)-1
@@ -383,7 +382,6 @@ def i_CALL(i,fmap):
 
 def i_CALLF(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
-  pc = fmap[rip]+i.length
 
 def i_JMP(i,fmap):
   pc = fmap[rip]+i.length
@@ -395,11 +393,9 @@ def i_JMP(i,fmap):
 
 def i_JMPF(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
-  pc = fmap[rip]+i.length
 
 def i_RETF(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
-  pc = fmap[rip]+i.length
 
 #------------------------------------------------------------------------------
 def _loop_(i,fmap,fcond):
@@ -1193,21 +1189,21 @@ def i_BT(i,fmap):
 def i_BTC(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
-  dst,src = i.operands
+  dst,_ = i.operands
   fmap[cf] = top(1)
   fmap[dst] = top(dst.size)
 
 def i_BTR(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
-  dst,src = i.operands
+  dst,_ = i.operands
   fmap[cf] = top(1)
   fmap[dst] = top(dst.size)
 
 def i_BTS(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
-  dst,src = i.operands
+  dst,_ = i.operands
   fmap[cf] = top(1)
   fmap[dst] = top(dst.size)
 
@@ -1260,7 +1256,7 @@ def i_PREFETCHW(i,fmap):
 def i_LAR(i,fmap):
   logger.warning('%s semantic is not defined'%i.mnemonic)
   fmap[rip] = fmap[rip]+i.length
-  dst,src = i.operands
+  dst,_ = i.operands
   fmap[zf] = top(1)
   fmap[dst] = top(dst.size)
 

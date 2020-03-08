@@ -3,7 +3,6 @@ logger = Log(__name__)
 logger.debug('loading module')
 import weakref
 import inspect
-import functools
 import types
 
 class weakmethod(object):

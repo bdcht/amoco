@@ -4,7 +4,7 @@ import multiprocessing as mp
 import queue
 
 from amoco.config import conf
-from amoco.logger import Log, flush_all
+from amoco.logger import Log
 from amoco.ui.cli import cmdcli_builder
 logger = Log(__name__)
 logger.debug('loading module')

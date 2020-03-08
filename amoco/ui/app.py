@@ -1,6 +1,4 @@
 import click
-import multiprocessing as mp
-import queue
 import amoco
 
 #------------------------------------------------------------------------------
@@ -36,7 +34,8 @@ def spawn_console(ctx):
                  local=cvars)
 
 def spawn_gui(ctx):
-    c = amoco.conf
+    #c = amoco.conf
+    pass
 
 #------------------------------------------------------------------------------
 
@@ -71,7 +70,6 @@ def cli(ctx,verbose,debug,quiet,configfile):
 @click.argument('filename', nargs=1, type=click.Path(exists=True,dir_okay=False))
 @click.pass_context
 def load_program(ctx,filename):
-    c = amoco.conf
     p = amoco.system.load_program(filename)
     ctx.obj['p'] = p
     spawn_console(ctx)

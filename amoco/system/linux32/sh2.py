@@ -113,7 +113,8 @@ class OS(object):
                     vaddr,data = ms.popitem()
                     p.mmap.write(vaddr,data)
             elif s.p_type == PT_GNU_STACK:
-                executable_stack = s.p_flags & PF_X
+                #executable_stack = s.p_flags & PF_X
+                pass
         # init task state:
         p.state = p.initstate()
         for r in cpu.R: p.state[r] = cpu.cst(0,32)

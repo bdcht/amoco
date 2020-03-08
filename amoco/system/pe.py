@@ -25,7 +25,7 @@ class PEError(Exception):
         return str(self.message)
 
 #------------------------------------------------------------------------------
-from amoco.system.core import BinFormat,DataIO
+from amoco.system.core import BinFormat
 
 class PE(BinFormat):
     is_PE = True

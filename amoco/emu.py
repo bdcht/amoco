@@ -16,11 +16,13 @@ The emu module of amoco.
 from amoco.config import conf
 from amoco.arch.core import DecodeError
 from amoco.logger import Log
+
 logger = Log(__name__)
-logger.debug('loading emu')
+logger.debug("loading emu")
+
 
 class emul(object):
-    def __init__(self,task):
+    def __init__(self, task):
         self.task = task
         self.cpu = task.cpu
         self.pc = task.cpu.PC()
@@ -54,19 +56,17 @@ class emul(object):
                 if not self.exception_handler(e):
                     break
 
-    def exception_handler(self,e):
+    def exception_handler(self, e):
         te = type(e)
-        logger.debug('exception %s received'%te)
+        logger.debug("exception %s received" % te)
         if te in self.handlers:
-            return self.handlers[te](self,e)
-        raise(e)
+            return self.handlers[te](self, e)
+        raise (e)
 
-    def checkstate(self,prev=None):
+    def checkstate(self, prev=None):
         res = True
         for f in self.hooks:
-            res &= f(self,prev)
-            if not res: break
+            res &= f(self, prev)
+            if not res:
+                break
         return res
-
-
-

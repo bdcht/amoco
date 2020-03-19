@@ -14,6 +14,5 @@ The main module of amoco.
 # published under GPLv2 license
 
 from amoco.config import conf
-from amoco.logger import set_debug,set_quiet,set_log_all
-from amoco import system
+from amoco.system.core import read_program, load_program
 from amoco.emu import emul

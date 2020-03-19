@@ -23,17 +23,25 @@ Still, it provides - at almost no cost - an overapproximation of the set of all
 
 from amoco.config import conf
 from amoco.logger import Log
+
 logger = Log(__name__)
-logger.debug('loading module')
+logger.debug("loading module")
 
 from amoco import cfg
 from amoco import code
-from amoco.signals import SIG_TRGT,SIG_NODE,SIG_EDGE,SIG_BLCK,SIG_FUNC
+from amoco.signals import SIG_TRGT, SIG_NODE, SIG_EDGE, SIG_BLCK, SIG_FUNC
 from amoco.arch.core import type_control_flow
 
-__all__ = ['cfg','code',
-           'SIG_TRGT','SIG_NODE','SIG_EDGE','SIG_BLCK','SIG_FUNC',
-           'lsweep']
+__all__ = [
+    "cfg",
+    "code",
+    "SIG_TRGT",
+    "SIG_NODE",
+    "SIG_EDGE",
+    "SIG_BLCK",
+    "SIG_FUNC",
+    "lsweep",
+]
 
 # -----------------------------------------------------------------------------
 class lsweep(object):
@@ -52,14 +60,16 @@ class lsweep(object):
         prog: (see arguments.)
         G (graph): the placeholder for the recovered :class:`cfg.graph`.
     """
-    __slots__ = ['prog','G']
-    def __init__(self,prog):
+
+    __slots__ = ["prog", "G"]
+
+    def __init__(self, prog):
         self.prog = prog
         self.G = cfg.graph()
         SIG_NODE.sender(self.G.add_vertex)
         SIG_EDGE.sender(self.G.add_edge)
 
-    def sequence(self,loc=None):
+    def sequence(self, loc=None):
         """Iterator over linearly sweeped instructions.
 
         Arguments:
@@ -75,15 +85,16 @@ class lsweep(object):
             try:
                 m = p.state
                 loc = m(p.cpu.PC())
-            except (TypeError,ValueError):
+            except (TypeError, ValueError):
                 loc = 0
         while True:
             i = p.read_instruction(loc)
-            if i is None: raise StopIteration
+            if i is None:
+                raise StopIteration
             loc += i.length
             yield i
 
-    def iterblocks(self,loc=None):
+    def iterblocks(self, loc=None):
         """Iterator over basic blocks. The :attr:`instruction.type`
         attribute is used to detect the end of a block (type_control_flow).
         The returned :class:`block` object is enhanced with plateform-specific
@@ -103,9 +114,9 @@ class lsweep(object):
         for i in seq:
             # add branching instruction inside block:
             l.append(i)
-            if i.misc['delayed']:
+            if i.misc["delayed"]:
                 is_delay_slot = True
-            elif i.type==type_control_flow or is_delay_slot:
+            elif i.type == type_control_flow or is_delay_slot:
                 # check if branch is delayed (e.g. sparc)
                 # create block instance:
                 b = code.block(l)
@@ -113,19 +124,19 @@ class lsweep(object):
                 is_delay_slot = False
                 SIG_BLCK.emit(args=b)
                 yield b
-        if len(l)>0:
+        if len(l) > 0:
             if is_delay_slot:
-                logger.warning(u'no instruction in delay slot')
+                logger.warning("no instruction in delay slot")
             b = code.block(l)
             SIG_BLCK.emit(args=b)
             yield b
 
-    def getblock(self,val):
+    def getblock(self, val):
         """getblock is just a wrapper of iterblocks to
         return the first block located at given (int) address.
         """
         p = self.prog
-        target = p.cpu.cst(val,p.cpu.PC().size)
+        target = p.cpu.cst(val, p.cpu.PC().size)
         ib = self.iterblocks(target)
         try:
             b = next(ib)
@@ -142,10 +153,11 @@ class lsweep(object):
         F = []
         for c in self.G.C:
             f = c.sV[0]
-            if f and f.data._is_func: F.append(f)
+            if f and f.data._is_func:
+                F.append(f)
         return F
 
-    def signature(self,func=None):
+    def signature(self, func=None):
         """provides the signature of a given function,
         or the entire signature string.
         """
@@ -153,11 +165,10 @@ class lsweep(object):
             return cfg.signature(func.cfg)
         return self.G.signature()
 
-    def score(self,func=None):
+    def score(self, func=None):
         """a measure for the *complexity* of the program.
         For the moment it is associated only with the
         signature length.
         """
         sig = self.signature(func)
         return len(sig)
-

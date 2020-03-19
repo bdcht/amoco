@@ -28,13 +28,15 @@ to assume that function calls always return to the *link address* of the call.
 from .lsweep import *
 from amoco.cas.mapper import mapper
 from amoco.logger import Log
+
 logger = Log(__name__)
-logger.debug('loading module')
+logger.debug("loading module")
 
 # -----------------------------------------------------------------------------
 
+
 class target(object):
-    '''Candidate for extending a :class:`cfg.graph` under construction.
+    """Candidate for extending a :class:`cfg.graph` under construction.
 
     A :class:`target` is an internal object used during cfg recovery to point
     to addresses that are candidates for extending the cfg with a new link or
@@ -46,10 +48,11 @@ class target(object):
        parent (node): the basic block that targets this address
        econd (exp): the conditional expression by which the execution would
                     proceed from parent to the basic block at this address
-    '''
-    def __init__(self,cst,parent,econd=None):
+    """
+
+    def __init__(self, cst, parent, econd=None):
         if cst is not None:
-            cst.sf=False
+            cst.sf = False
         self.cst = cst
         self.parent = parent
         self.econd = econd
@@ -59,7 +62,7 @@ class target(object):
         """Returns the list of constant (or external) expressions associated
         with this target.
         """
-        x=self.cst
+        x = self.cst
         if x._is_ext:
             SIG_TRGT.emit(args=self)
             return [self]
@@ -69,37 +72,39 @@ class target(object):
         if x._is_vec:
             l = []
             for e in x.l:
-                l.extend(target(e,self.parent,self.econd).expand())
+                l.extend(target(e, self.parent, self.econd).expand())
             return l
         if x._is_tst:
-            ltrue  = self.select(True).expand()
+            ltrue = self.select(True).expand()
             lfalse = self.select(False).expand()
-            return ltrue+lfalse
+            return ltrue + lfalse
         return []
 
-    def select(self,side):
+    def select(self, side):
         """Returns the target of the selected ``True`` or ``False`` *side* of
         the current conditional branch target expression.
         """
-        x=self.cst
+        x = self.cst
         assert x._is_tst
         v = x.l if side is True else x.r
         econd = self.econd or []
-        econd.append(x.tst==side)
-        return target(v,self.parent,econd)
+        econd.append(x.tst == side)
+        return target(v, self.parent, econd)
 
-    def __eq__(self,t):
-        return (self.cst==t.cst and self.parent==t.parent)
+    def __eq__(self, t):
+        return self.cst == t.cst and self.parent == t.parent
 
     def __repr__(self):
-        pfx = 'dirty ' if self.dirty else ''
+        pfx = "dirty " if self.dirty else ""
         cnd = [str(x) for x in (self.econd or [])]
         parent = self.parent
-        if parent is not None: parent = parent.name
-        return '<%starget %s by %s %s>'%(pfx,self.cst,parent,cnd)
+        if parent is not None:
+            parent = parent.name
+        return "<%starget %s by %s %s>" % (pfx, self.cst, parent, cnd)
 
 
 # -----------------------------------------------------------------------------
+
 
 class fforward(lsweep):
     """The fast forward based analysis follows the :meth:`PC` expression evaluated
@@ -120,23 +125,24 @@ class fforward(lsweep):
             :class:`cfg.graph`.
 
     """
-    policy = {'depth-first': True, 'branch-lazy': True}
 
-    def init_spool(self,loc):
-        self.spool = [target(loc,None)]
+    policy = {"depth-first": True, "branch-lazy": True}
 
-    def update_spool(self,vtx,parent):
-        T = self.get_targets(vtx,parent)
-        if len(T)>0:
-            if vtx.misc['tbc']:
-                del vtx.misc['tbc']
+    def init_spool(self, loc):
+        self.spool = [target(loc, None)]
+
+    def update_spool(self, vtx, parent):
+        T = self.get_targets(vtx, parent)
+        if len(T) > 0:
+            if vtx.misc["tbc"]:
+                del vtx.misc["tbc"]
             self.spool.extend(T)
             return
-        err = '%s analysis stopped at node %s'%(self.__class__.__name__,vtx.name)
+        err = "%s analysis stopped at node %s" % (self.__class__.__name__, vtx.name)
         logger.info(err)
-        vtx.misc['tbc'] = 1
+        vtx.misc["tbc"] = 1
 
-    def get_targets(self,node,parent):
+    def get_targets(self, node, parent):
         """Computes expression of target address in the given node, based
         on its address and the architecture's program counter (PC).
 
@@ -153,52 +159,53 @@ class fforward(lsweep):
         pc = self.prog.cpu.PC()
         m[pc] = node.data.address
         pc = (node.map(pc)).eval(m)
-        return target(pc,node).expand()
+        return target(pc, node).expand()
 
-    def add_root_node(self,vtx):
+    def add_root_node(self, vtx):
         """The given vertex node (vtx) is added as a root node of a new connected
         component in the cfg referenced by :attr:`self.G`.
         """
-        vtx.misc[code.tag.FUNC_START]=1
-        vtx.misc['callers'] = []
+        vtx.misc[code.tag.FUNC_START] = 1
+        vtx.misc["callers"] = []
         self.G.add_vertex(vtx)
-        logger.verbose('root node %s added'%vtx.name)
+        logger.verbose("root node %s added" % vtx.name)
 
-    def add_call_node(self,vtx,parent,econd):
+    def add_call_node(self, vtx, parent, econd):
         """When a (parent) block performs a call, the (vtx) targeted block
         will not be linked with its parent but rather will possibly start a
         new connected component of the cfg. When the component is declared
         as a function, the parent block is linked to a new node that embeds
         the function instead.
         """
-        callers = vtx.misc['callers']
+        callers = vtx.misc["callers"]
         if callers:
             if parent in callers:
                 for n in parent.N(+1):
-                    if vtx.data.address == n.data.address: return n
+                    if vtx.data.address == n.data.address:
+                        return n
                 return None
             callers.append(parent)
         else:
-            logger.verbose('block %s starts a new cfg component'%vtx.name)
-            vtx.misc['callers']  = [parent]
-        vtx.misc[code.tag.FUNC_START]+=1
+            logger.verbose("block %s starts a new cfg component" % vtx.name)
+            vtx.misc["callers"] = [parent]
+        vtx.misc[code.tag.FUNC_START] += 1
         parent.misc[code.tag.FUNC_CALL] += 1
-        if vtx.misc['func']:
-            logger.verbose('function %s called'%b.misc['func'])
-            vtx = cfg.node(vtx.misc['func'])
-            e = parent.c.add_edge(cfg.link(parent,vtx,data=econd))
+        if vtx.misc["func"]:
+            logger.verbose("function %s called" % b.misc["func"])
+            vtx = cfg.node(vtx.misc["func"])
+            e = parent.c.add_edge(cfg.link(parent, vtx, data=econd))
             vtx = e.v[1]
         else:
             vtx = self.G.add_vertex(vtx)
         return vtx
 
-    def check_func(self,vtx):
+    def check_func(self, vtx):
         """check if vtx node creates a function. (In the fforward method
         this method does nothing.)
         """
         pass
 
-    def check_ext_target(self,t):
+    def check_ext_target(self, t):
         """Check if the :class:`target` is the address of an external function.
         If True, the :class:`code.xfunc` node is linked to the parent
         and the spool is updated with this node.
@@ -206,18 +213,19 @@ class fforward(lsweep):
         Returns:
             `True` if target is external, `False` otherwise.
         """
-        if t.cst is None: return False
+        if t.cst is None:
+            return False
         if t.cst._is_ext:
             b = code.xfunc(t.cst)
             vtx = cfg.node(b)
-            e = cfg.link(t.parent,vtx,data=t.econd)
+            e = cfg.link(t.parent, vtx, data=t.econd)
             e = t.parent.c.add_edge(e)
-            self.update_spool(e.v[1],t.parent)
+            self.update_spool(e.v[1], t.parent)
             self.check_func(e.v[1])
             return True
         return False
 
-    def getcfg(self,loc=None,debug=False):
+    def getcfg(self, loc=None, debug=False):
         """The getcfg method is the cfg recovery method of any analysis
         class.
 
@@ -230,6 +238,7 @@ class fforward(lsweep):
         """
         if debug:
             import pdb
+
             pdb.set_trace()
         try:
             for x in self.itercfg(loc):
@@ -238,7 +247,7 @@ class fforward(lsweep):
             pass
         return self.G
 
-    def itercfg(self,loc=None):
+    def itercfg(self, loc=None):
         """A generic *forward* analysis explorer. The default policy
         is *depth-first* search (use policy=0 for breadth-first search.)
         The ret instructions are not followed (see lbackward analysis).
@@ -254,52 +263,56 @@ class fforward(lsweep):
         # spool is the list of targets (target_ instances) to be analysed
         self.init_spool(loc)
         # order is the index to pop elements from spool
-        order = -1 if self.policy['depth-first'] else 0
+        order = -1 if self.policy["depth-first"] else 0
         # lazy is a flag to fallback to linear sweep
-        lazy  = self.policy['branch-lazy']
+        lazy = self.policy["branch-lazy"]
         # proceed with exploration of every spool element:
-        while len(self.spool)>0:
+        while len(self.spool) > 0:
             t = self.spool.pop(order)
             parent = t.parent
-            econd  = t.econd
+            econd = t.econd
             if self.check_ext_target(t):
                 continue
             for b in self.iterblocks(loc=t.cst):
                 vtx = G.get_by_name(b.name) or cfg.node(b)
-                do_update = (vtx not in G)
+                do_update = vtx not in G
                 # if block is a FUNC_START, we add it as a new graph component (no link to parent),
                 # otherwise we add the new (parent,vtx) edge.
                 if parent is None:
                     self.add_root_node(vtx)
                 elif parent.misc[code.tag.FUNC_CALL]:
-                    vtx = self.add_call_node(vtx,parent,econd)
+                    vtx = self.add_call_node(vtx, parent, econd)
                 else:
-                    if parent.misc['cut']: continue
-                    e_ = cfg.link(parent,vtx,data=econd)
-                    e  = G.add_edge(e_)
+                    if parent.misc["cut"]:
+                        continue
+                    e_ = cfg.link(parent, vtx, data=econd)
+                    e = G.add_edge(e_)
                     if e is e_:
-                        logger.verbose(u'edge %s added'%e)
+                        logger.verbose("edge %s added" % e)
                 # now we try to populate spool with target addresses of current block:
                 if do_update:
-                    self.update_spool(vtx,parent)
+                    self.update_spool(vtx, parent)
                 self.check_func(vtx)
                 yield vtx
-                if (not do_update or not lazy or
-                   vtx.misc[code.tag.FUNC_END]): break
-                logger.verbose(u"lsweep fallback at %s"%vtx.data.address)
+                if not do_update or not lazy or vtx.misc[code.tag.FUNC_END]:
+                    break
+                logger.verbose("lsweep fallback at %s" % vtx.data.address)
                 parent = vtx
-                econd  = None
+                econd = None
+
 
 # -----------------------------------------------------------------------------
+
 
 class lforward(fforward):
     """Link forward based analysis:
     follows PC expression evaluated with parent block mapping.
     Exploration goes forward until expressions are not cst.
     """
-    policy = {'depth-first': True, 'branch-lazy': False}
 
-    def get_targets(self,node,parent):
+    policy = {"depth-first": True, "branch-lazy": False}
+
+    def get_targets(self, node, parent):
         """Computes expression of target address in the given node, based
         on its parent address and symbolic map, using the architecture's
         program counter (PC).
@@ -316,11 +329,9 @@ class lforward(fforward):
         """
         pc = self.prog.cpu.PC()
         if parent is None:
-            pc = node.map.use((pc,node.data.address))(pc)
+            pc = node.map.use((pc, node.data.address))(pc)
         else:
-            m = parent.map.use((pc,parent.data.address)) # work on copy
+            m = parent.map.use((pc, parent.data.address))  # work on copy
             m[pc] = node.data.address
             pc = m(node.map(pc))
-        return target(pc,node).expand()
-
-
+        return target(pc, node).expand()

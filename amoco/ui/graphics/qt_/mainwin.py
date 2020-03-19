@@ -1,34 +1,36 @@
 try:
     from PyQt5.QtCore import Qt
-    from PyQt5.QtWidgets import QMainWindow,QDockWidget
-    from PyQt5.QtGui import QFont,QKeySequence
+    from PyQt5.QtWidgets import QMainWindow, QDockWidget
+    from PyQt5.QtGui import QFont, QKeySequence
     from PyQt5.Qt import QBrush, QPen, QColor
 except ImportError:
     from PySide2.QtCore import Qt
-    from PySide2.QtWidgets import QMainWindow,QDockWidget
-    from PySide2.QtGui import QFont,QKeySequence
+    from PySide2.QtWidgets import QMainWindow, QDockWidget
+    from PySide2.QtGui import QFont, QKeySequence
     from PySide2.QtGui import QBrush, QPen, QColor
 
-from .graphwin import GraphScene,GraphView
+from .graphwin import GraphScene, GraphView
 from .statswin import StatsWin
 
+
 class MainWindow(QMainWindow):
-    def __init__(self,z=None,case=None):
+    def __init__(self, z=None, case=None):
         super(MainWindow, self).__init__()
         self.setWindowTitle("amoco-g")
-        self.createSession(z,case)
+        self.createSession(z, case)
         self.createActions()
         self.createMenus()
         self.createDockWindows()
         self.statusBar().showMessage("GUI ready")
 
-    def createSession(self,z,case):
-        from amoco.db import Case,createdb
+    def createSession(self, z, case):
+        from amoco.db import Case, createdb
+
         createdb()
         self.case = case or Case(z)
         self.statusBar().showMessage("session created (/tmp/amoco.db)")
 
-    def createFuncGraph(self,f):
+    def createFuncGraph(self, f):
         self.grscene = GraphScene(f.view.layout)
         self.graphwin = GraphView(self.grscene)
         self.setCentralWidget(self.graphwin)
@@ -47,10 +49,10 @@ class MainWindow(QMainWindow):
         self.createDockFuncs()
 
     def createDockStats(self):
-        dock = QDockWidget('stats',self)
+        dock = QDockWidget("stats", self)
         dock.setAllowedAreas(Qt.TopDockWidgetArea)
-        dock.setFeatures(dock.DockWidgetClosable|dock.DockWidgetVerticalTitleBar)
-        self.statsui = StatsWin(dock,cur=self)
+        dock.setFeatures(dock.DockWidgetClosable | dock.DockWidgetVerticalTitleBar)
+        self.statsui = StatsWin(dock, cur=self)
         self.statsui.setMaximumHeight(100)
         dock.setWidget(self.statsui)
         self.addDockWidget(Qt.TopDockWidgetArea, dock)
@@ -66,4 +68,3 @@ class MainWindow(QMainWindow):
 
     def createDockFuncs(self):
         pass
-

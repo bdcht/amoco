@@ -4,3 +4,4 @@ pyparsing
 grandalf
 crysp
 click
+blessings

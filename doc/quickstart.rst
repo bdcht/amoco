@@ -18,41 +18,42 @@ implementation details.
 Loading binary data
 ===================
 
-The recommended way to load binary data is to use the :meth:`load_program <system.loader.load_program>`
+The recommended way to load binary data is to use the :meth:`load_program <system.core.load_program>`
 function, providing an input filename or a bytestring.
 For example, from directory ``amoco/tests``, do::
 
    In [1]: import amoco
-   In [2]: p = amoco.system.load_program(u'samples/x86/flow.elf')
+   In [2]: p = amoco.load_program(u'samples/x86/flow.elf')
    In [3]: print(p)
-   <amoco.system.linux32.x86.Task object at 0x7f193a56cbf8>
+   <Task amoco.system.linux32.x86 'samples/x86/flow.elf'>
 
    In [4]: print(p.bin.Ehdr)
    [Ehdr]
-   e_ident             :[IDENT]
-   ELFMAG0             :127
-   ELFMAG              :b'ELF'
-   EI_CLASS            :ELFCLASS32
-   EI_DATA             :ELFDATA2LSB
-   EI_VERSION          :1
-   EI_OSABI            :ELFOSABI_NONE
-   EI_ABIVERSION       :0
-   unused              :(0, 0, 0, 0, 0, 0, 0)
-   e_type              :ET_EXEC
-   e_machine           :EM_386
-   e_version           :EV_CURRENT
-   e_entry             :0x8048380
-   e_phoff             :52
-   e_shoff             :4416
-   e_flags             :0x0
-   e_ehsize            :52
-   e_phentsize         :32
-   e_phnum             :9
-   e_shentsize         :40
-   e_shnum             :30
-   e_shstrndx          :27
+   e_ident    :[IDENT]
+               ELFMAG0      :127
+               ELFMAG       :b'ELF'
+               EI_CLASS     :ELFCLASS32
+               EI_DATA      :ELFDATA2LSB
+               EI_VERSION   :1
+               EI_OSABI     :ELFOSABI_NONE
+               EI_ABIVERSION:0
+               unused       :(0, 0, 0, 0, 0, 0, 0)
+   e_type     :ET_EXEC
+   e_machine  :EM_386
+   e_version  :EV_CURRENT
+   e_entry    :0x8048380
+   e_phoff    :52
+   e_shoff    :4416
+   e_flags    :0x0
+   e_ehsize   :52
+   e_phentsize:32
+   e_phnum    :9
+   e_shentsize:40
+   e_shnum    :30
+   e_shstrndx :27
 
-If the binary data uses a supported executable format (currently :mod:`system.pe`, :mod:`system.elf` or an
+If the binary data uses a supported executable format
+(currently :mod:`system.pe`, :mod:`system.elf` or an
 HEX/SREC format in :mod:`system.utils`) and targets a supported plateform (see :ref:`system <system>` and
 :ref:`arch <arch>` packages), the returned object is an *abstraction* of the memory mapped program::
 
@@ -87,15 +88,15 @@ string as input and then manually load the architecture::
    In [2]: shellcode = (b"\xeb\x16\x5e\x31\xd2\x52\x56\x89\xe1\x89\xf3\x31\xc0\xb0\x0b\xcd"
                         b"\x80\x31\xdb\x31\xc0\x40\xcd\x80\xe8\xe5\xff\xff\xff\x2f\x62\x69"
                         b"\x6e\x2f\x73\x68")
-   In [3]: p = amoco.system.load_program(shellcode)
-   amoco.system.loader: WARNING: unknown format
-   amoco.system.raw: WARNING: a cpu module must be imported
+   In [3]: p = amoco.load_program(shellcode)
+   [WARNING] amoco.system.core       : unknown format
+   [WARNING] amoco.system.raw        : a cpu module must be imported
 
    In [4]: from amoco.arch.x86 import cpu_x86
    In [5]: p.cpu = cpu_x86
 
    In [6]: print(p)
-   <amoco.system.raw.RawExec object at 0x7f3dc3d1cef0>
+   <RawExec - '(sc-eb165e31...)'>
 
    In [7]: print(p.state.mmap)
    <MemoryZone rel=None :
@@ -133,7 +134,7 @@ can use any of the code analysis strategies implemented in amoco to disassemble
 *basic blocks* directly::
 
    In [1]: import amoco.sa
-   In [2]: p = amoco.system.load_program(u'samples/x86/flow.elf')
+   In [2]: p = amoco.load_program(u'samples/x86/flow.elf')
    In [3]: z = amoco.sa.lsweep(p)
 
    In [4]: z.getblock(0x8048380)
@@ -268,7 +269,7 @@ In order to reason later about execution paths, we need a way to *chain* block m
 This is provided by the mapper's shifts operators::
 
    In [13]: mm = amoco.cas.mapper.mapper()
-   In [14]: mm.assume_no_aliasing = True
+   In [14]: amoco.conf.Cas.noaliasing = True
    In [15]: mm[p.cpu.eip] = p.cpu.mem(p.cpu.esp+4,32)
    In [16]: print( (m>>mm)(p.cpu.eip) )
    0x80484fd
@@ -280,6 +281,8 @@ would branch to address ``0x80484fd`` (``#main``).
 Starting some analysis
 ======================
 
-*** the merge with *emul* branch has broken the static-analysis module ***
-*** this is going to be fixed once the merge is fully integrated only  ***
+Important note::
+
+  *** The merge with *emul* branch has broken the static-analysis module.
+      This is going to be fixed only once the merge is fully integrated ***
 

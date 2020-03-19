@@ -16,16 +16,17 @@ It is based essentially on classes provided by the `grandalf`_ package.
 """
 
 from amoco.logger import Log
-logger = Log(__name__)
-logger.debug('loading module')
 
-from grandalf.graphs import Vertex,Edge,Graph
+logger = Log(__name__)
+logger.debug("loading module")
+
+from grandalf.graphs import Vertex, Edge, Graph
 from amoco.cas.mapper import mapper
 from amoco.system.memory import MemoryZone
 from collections import defaultdict
 from amoco.code import _code_misc_default
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class node(Vertex):
     """A node is a graph vertex that embeds a :mod:`code` object.
     It extends the :ref:`Vertex <grandalf:Vertex>` class in order to compare
@@ -67,10 +68,10 @@ class node(Vertex):
 
     """
 
-    def __init__(self,acode):
-        Vertex.__init__(self,data=acode)
-        pre = 'blck_' if acode._is_block else 'func_'
-        self.name = '{}{}'.format(pre,str(self.data.address))
+    def __init__(self, acode):
+        Vertex.__init__(self, data=acode)
+        pre = "blck_" if acode._is_block else "func_"
+        self.name = "{}{}".format(pre, str(self.data.address))
         self._map = None
         self.misc = defaultdict(_code_misc_default)
 
@@ -89,17 +90,17 @@ class node(Vertex):
                 self._map = mapper(self.data.instr)
             return self._map
 
-    def cut(self,address):
+    def cut(self, address):
         if self.data._is_block:
             nl = self.data.cut(address)
             self._map = None
             return nl
 
     def __repr__(self):
-        return u'<%s [%s] at 0x%x>'%(self.__class__.__name__,self.name,id(self))
+        return "<%s [%s] at 0x%x>" % (self.__class__.__name__, self.name, id(self))
 
-    def __cmp__(self,n):
-        return cmp(hash(self.data),hash(n.data))
+    def __cmp__(self, n):
+        return cmp(hash(self.data), hash(n.data))
 
     def __hash__(self):
         return id(self)
@@ -107,25 +108,27 @@ class node(Vertex):
     def __len__(self):
         return self.data.length
 
-    def __eq__(self,n):
-        return hash(self)==hash(n)
-    def __lt__(self,n):
-        return hash(self)<hash(n)
+    def __eq__(self, n):
+        return hash(self) == hash(n)
 
-    def __getitem__(self,i):
+    def __lt__(self, n):
+        return hash(self) < hash(n)
+
+    def __getitem__(self, i):
         res = node(self.data.__getitem__(i))
         return res
 
     def __getstate__(self):
-        return (self.index,self.data,self.name)
+        return (self.index, self.data, self.name)
 
-    def __setstate__(self,state):
-        self.__index,self.data,self.name = state
+    def __setstate__(self, state):
+        self.__index, self.data, self.name = state
         self._map = None
         self.c = None
         self.e = []
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 class link(Edge):
     """A directed edge between two nodes. It extends :ref:`Edge <grandalf:Edge>`
     class in order to compare edges based on their data rather than id.
@@ -158,38 +161,41 @@ class link(Edge):
     def __str__(self):
         n0 = self.v[0].name
         n1 = self.v[1].name
-        c = u'?' if self.data else u'-'
-        return u"%s -%s-> %s"%(n0,c,n1)
+        c = "?" if self.data else "-"
+        return "%s -%s-> %s" % (n0, c, n1)
 
     def __repr__(self):
-        return u'<%s [%s] at 0x%x>'%(self.__class__.__name__,self.name,id(self))
+        return "<%s [%s] at 0x%x>" % (self.__class__.__name__, self.name, id(self))
 
     @property
     def name(self):
         n0 = self.v[0].name
         n1 = self.v[1].name
-        return u"%s -> %s"%(n0,n1)
+        return "%s -> %s" % (n0, n1)
 
-    def __cmp__(self,e):
-        return cmp(hash(self),hash(e))
-    def __eq__(self,e):
-        return hash(self)==hash(e)
-    def __lt__(self,e):
-        return hash(self)<hash(e)
+    def __cmp__(self, e):
+        return cmp(hash(self), hash(e))
+
+    def __eq__(self, e):
+        return hash(self) == hash(e)
+
+    def __lt__(self, e):
+        return hash(self) < hash(e)
 
     def __hash__(self):
         return hash(self.name)
 
     def __getstate__(self):
-        xi,yi = (self.v[0].index,self.v[1].index)
-        return (xi,yi,self.w,self.data,self.feedback)
+        xi, yi = (self.v[0].index, self.v[1].index)
+        return (xi, yi, self.w, self.data, self.feedback)
 
-    def __setstate__(self,state):
-        xi,yi,self.w,self.data,self.feedback = state
-        self._v = [xi,yi]
-        self.deg = 0 if xi==yi else 1
+    def __setstate__(self, state):
+        xi, yi, self.w, self.data, self.feedback = state
+        self._v = [xi, yi]
+        self.deg = 0 if xi == yi else 1
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 class graph(Graph):
     """a :ref:`<grandalf:Graph>` that represents a set of functions as its
     individual connected components.
@@ -252,83 +258,86 @@ class graph(Graph):
         components(): synonym for attribute :attr:`C`.
 
     """
-    def __init__(self,*args,**kargs):
+
+    def __init__(self, *args, **kargs):
         self.support = MemoryZone()
         self.overlay = None
-        super(graph,self).__init__(*args,**kargs)
+        super(graph, self).__init__(*args, **kargs)
 
-    def __cut_add_vertex(self,v,mz,vaddr,mo):
+    def __cut_add_vertex(self, v, mz, vaddr, mo):
         oldnode = mo.data.val
-        if oldnode==v: return oldnode
+        if oldnode == v:
+            return oldnode
         # so v cuts an existing block:
         # if vaddr matches an oldblock instr, cut it:
         cutdone = oldnode.cut(vaddr)
         if not cutdone:
             if mz is self.overlay:
-                logger.warning(u"double overlay block at %s"%vaddr)
-                v = super(graph,self).add_vertex(v)
-                v.misc[u'double-overlay'] = 1
+                logger.warning("double overlay block at %s" % vaddr)
+                v = super(graph, self).add_vertex(v)
+                v.misc["double-overlay"] = 1
                 return v
             overlay = self.overlay or MemoryZone()
-            return self.add_vertex(v,support=overlay)
+            return self.add_vertex(v, support=overlay)
         else:
-            oldnode.misc['cut'] = cutdone
-            v = super(graph,self).add_vertex(v) # ! avoid recursion for add_edge
-            mz.write(vaddr,v)
-            self.add_edge(link(oldnode,v))
+            oldnode.misc["cut"] = cutdone
+            v = super(graph, self).add_vertex(v)  # ! avoid recursion for add_edge
+            mz.write(vaddr, v)
+            self.add_edge(link(oldnode, v))
             for n in oldnode.N(+1):
-                self.add_edge(link(v,n))
+                self.add_edge(link(v, n))
                 self.remove_edge(oldnode.e_to(n))
             return v
 
-    def add_vertex(self,v,support=None):
+    def add_vertex(self, v, support=None):
         if v.data._is_func:
-            return super(graph,self).add_vertex(v)
+            return super(graph, self).add_vertex(v)
         # insert block:
-        vaddr=v.data.address
+        vaddr = v.data.address
         if support is None:
-            support=self.support
+            support = self.support
         else:
-            logger.verbose(u"add overlay block at %s"%vaddr)
+            logger.verbose("add overlay block at %s" % vaddr)
             self.overlay = support
         i = support.locate(vaddr)
         # check if block intersects others:
         if i is not None:
             mo = support._map[i]
             if vaddr in mo:
-                return self.__cut_add_vertex(v,support,vaddr,mo)
-            else: #v does not cut an existing block,
-                try: # but may swallow next one...
-                    nextmo = support._map[i+1]
+                return self.__cut_add_vertex(v, support, vaddr, mo)
+            else:  # v does not cut an existing block,
+                try:  # but may swallow next one...
+                    nextmo = support._map[i + 1]
                 except IndexError:
                     # no more nodes here so back to default case:
                     pass
                 else:
                     nextnode = nextmo.data.val
-                    if vaddr+len(v)>nextnode.data.address:
-                        #nextnode is inside v...
-                        #try to cut v at nextnode bound:
+                    if vaddr + len(v) > nextnode.data.address:
+                        # nextnode is inside v...
+                        # try to cut v at nextnode bound:
                         cutdone = v.cut(nextnode.data.address)
                         if not cutdone:
                             # nextnode address does not match an instruction in v...
                             # thats an overlay:
                             if support is self.overlay:
                                 # we already are in overlay...
-                                logger.warning(u"double overlay block at %s"%vaddr)
-                                v = super(graph,self).add_vertex(v)
-                                v.misc[u'double-overlay'] = 1
+                                logger.warning("double overlay block at %s" % vaddr)
+                                v = super(graph, self).add_vertex(v)
+                                v.misc["double-overlay"] = 1
                                 return v
                             support = self.overlay or MemoryZone()
-        v = super(graph,self).add_vertex(v) # before support write !!
-        support.write(vaddr,v)
+        v = super(graph, self).add_vertex(v)  # before support write !!
+        support.write(vaddr, v)
         return v
 
-    def get_by_name(self,name):
+    def get_by_name(self, name):
         for v in self.V():
-            if v.name==name: return v
+            if v.name == name:
+                return v
         return None
 
-    def get_with_address(self,vaddr):
+    def get_with_address(self, vaddr):
         i = self.support.locate(vaddr)
         if i is not None:
             mo = self.support._map[i]
@@ -336,20 +345,19 @@ class graph(Graph):
                 return mo.data.val
         return None
 
-    def to_dot(self,name=None,full=True):
-        dot  = "digraph G {\n"
-        dot += '    graph [orientation=landscape, labeljust=left];\n'
+    def to_dot(self, name=None, full=True):
+        dot = "digraph G {\n"
+        dot += "    graph [orientation=landscape, labeljust=left];\n"
         dot += "    node [shape=box,fontname=monospace,fontsize=8];\n"
         if name:
             g = self.get_by_name(name).c
         else:
             g = self
         for v in g.V():
-            txt = u"%s"%v.data if full else "%s [%d]"%(v.name,len(v.data.instr))
-            dot += '    "%s" [label="%s"];\n'%(id(v),txt)
+            txt = "%s" % v.data if full else "%s [%d]" % (v.name, len(v.data.instr))
+            dot += '    "%s" [label="%s"];\n' % (id(v), txt)
         for e in g.E():
-            dot += '    "%s" -> "%s"'%(id(e.v[0]),id(e.v[1]))
-            dot += " [style=bold];\n" if e.feedback else ';\n'
-        dot += '}\n'
+            dot += '    "%s" -> "%s"' % (id(e.v[0]), id(e.v[1]))
+            dot += " [style=bold];\n" if e.feedback else ";\n"
+        dot += "}\n"
         return dot
-

@@ -1,6 +1,6 @@
 import pytest
 
-import amoco
+import amoco.cas.expressions
 from amoco import sa
 
 def test_001():
@@ -14,7 +14,7 @@ def test_001():
     assert tc.cst==c
 
 def test_002(ploop):
-    p = amoco.system.load_program(ploop)
+    p = amoco.load_program(ploop)
     z = sa.fforward(p)
     c = amoco.cas.expressions.cst(0x804849d,32)
     z.init_spool(c)

@@ -4,19 +4,21 @@
 # published under GPLv2 license
 
 import pygtk
-pygtk.require('2.0')
+
+pygtk.require("2.0")
 import gtk
 import os
 
-#if os.name=='posix':
+# if os.name=='posix':
 #    gtk.gdk.threads_init()
+
 
 class gtkWindow(object):
     def __init__(self):
         self.window = None
         self.canvas = None
         self.events = None
-        self.gui    = None
+        self.gui = None
 
     # called by Masr init :
     def initWindow(self):
@@ -27,7 +29,7 @@ class gtkWindow(object):
         self.window.connect("destroy", gtk.main_quit)
         self.window.connect("delete_event", gtk.main_quit)
         self.window.set_border_width(0)
-        #self.window.fullscreen()
+        # self.window.fullscreen()
         # add a vertical stacking box for menu/canvas/statusbar:
         self.vbox = gtk.VBox()
         self.window.add(self.vbox)
@@ -35,6 +37,7 @@ class gtkWindow(object):
 
     def initCanvas(self):
         from .canvas import Canvas
+
         # the canvas will be added to a scrollable window:
         scrolled_window = gtk.ScrolledWindow()
         scrolled_window.set_border_width(2)

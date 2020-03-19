@@ -14,24 +14,20 @@ the :mod:`amoco.system` package.
 
 """
 
-from io import BytesIO
 from amoco.arch.core import Bits
 
 from amoco.logger import Log
+
 logger = Log(__name__)
-logger.debug('loading module')
+logger.debug("loading module")
 
-try:
-    IntType = (int,long)
-except NameError:
-    IntType = (int,)
+# ------------------------------------------------------------------------------
 
-#------------------------------------------------------------------------------
 
 class CoreExec(object):
     """The Task class implements the base class for a memory mapped binary
     executable program, providing the generic instruction or data fetchers and
-    the mandatory API used by :mod:`amoco.san` analysis classes.
+    the mandatory API used by :mod:`amoco.sa` analysis classes.
     Most of the :mod:`amoco.system` modules use this base class and redefine
     the :meth:`initenv`, :meth`load_binary` and helpers methods according to
     a dedicated system and architecture (Linux/x86, Win32/x86, etc).
@@ -51,134 +47,156 @@ class CoreExec(object):
 
 
     """
-    __slots__ = ['bin','cpu','OS','state']
 
-    def __init__(self,p,cpu=None):
+    __slots__ = ["bin", "cpu", "OS", "state"]
+
+    def __init__(self, p, cpu=None):
         self.bin = p
         self.cpu = cpu
         self.OS = None
         self.state = self.initstate()
 
+    def __repr__(self):
+        c = self.__class__.__name__
+        o = self.OS.__module__ if self.OS else "-"
+        n = self.bin.filename
+        return "<%s %s '%s'>" % (c, o, n)
+
     def initstate(self):
         from amoco.cas.mapper import mapper
+
         m = mapper()
         return m
 
-    def read_data(self,vaddr,size):
-        'fetch size data bytes at virtual address vaddr'
-        return self.state.mmap.read(vaddr,size)
+    def read_data(self, vaddr, size):
+        "fetch size data bytes at virtual address vaddr"
+        return self.state.mmap.read(vaddr, size)
 
-    def read_instruction(self,vaddr,**kargs):
-        'fetch instruction at virtual address vaddr'
+    def read_instruction(self, vaddr, **kargs):
+        "fetch instruction at virtual address vaddr"
         if self.cpu is None:
-            logger.error('no cpu imported')
+            logger.error("no cpu imported")
             raise ValueError
         maxlen = self.cpu.disassemble.maxlen
-        if isinstance(vaddr,int):
-            addr = self.cpu.cst(vaddr,self.cpu.PC().size)
+        if isinstance(vaddr, int):
+            addr = self.cpu.cst(vaddr, self.cpu.PC().size)
         else:
             addr = vaddr
         try:
-            istr = self.state.mmap.read(vaddr,maxlen)
+            istr = self.state.mmap.read(vaddr, maxlen)
         except MemoryError as e:
-            logger.verbose("vaddr %s is not mapped"%addr)
+            logger.verbose("vaddr %s is not mapped" % addr)
             raise MemoryError(e)
         else:
-            if len(istr)<=0 or not isinstance(istr[0],bytes):
-                logger.verbose("failed to read instruction at %s"%addr)
+            if len(istr) <= 0 or not isinstance(istr[0], bytes):
+                logger.verbose("failed to read instruction at %s" % addr)
                 return None
-        i = self.cpu.disassemble(istr[0],**kargs)
+        i = self.cpu.disassemble(istr[0], **kargs)
         if i is None:
-            logger.warning("disassemble failed at vaddr %s"%addr)
+            logger.warning("disassemble failed at vaddr %s" % addr)
             return None
         else:
-            if i.address is None: i.address = addr
-            xsz = i.misc['xsz'] or 0
-            if xsz>0:
-                xdata = self.state.mmap.read(vaddr+i.length,xsz)
-                i.xdata(i,xdata)
+            if i.address is None:
+                i.address = addr
+            xsz = i.misc["xsz"] or 0
+            if xsz > 0:
+                xdata = self.state.mmap.read(vaddr + i.length, xsz)
+                i.xdata(i, xdata)
             return i
 
-    def getx(self,loc,size=8,sign=False):
-        if isinstance(loc,str):
-            x = getattr(self.cpu,loc)
-        elif isinstance(loc,int):
+    def getx(self, loc, size=8, sign=False):
+        if isinstance(loc, str):
+            x = getattr(self.cpu, loc)
+        elif isinstance(loc, int):
             endian = self.cpu.get_data_endian()
             psz = self.cpu.PC().size
-            addr = self.cpu.cst(loc,psz)
-            x = self.cpu.mem(addr,size,endian=endian)
+            addr = self.cpu.cst(loc, psz)
+            x = self.cpu.mem(addr, size, endian=endian)
         else:
             x = loc
         r = self.state(x)
         r.sf = sign
         return r.value if r._is_cst else r
 
-    def setx(self,loc,val,size=0):
-        if isinstance(loc,str):
-            x = getattr(self.cpu,loc)
+    def setx(self, loc, val, size=0):
+        if isinstance(loc, str):
+            x = getattr(self.cpu, loc)
             size = x.size
-        elif isinstance(loc,int):
+        elif isinstance(loc, int):
             endian = self.cpu.get_data_endian()
             psz = self.cpu.PC().size
-            x = self.cpu.mem(self.cpu.cst(addr,psz),size,endian=endian)
+            x = self.cpu.mem(self.cpu.cst(addr, psz), size, endian=endian)
         else:
             x = loc
             size = x.size
-        if isinstance(val,bytes):
+        if isinstance(val, bytes):
             if x._is_mem:
-                x.size = len(val) if size==0 else size
-                self.state._Mem_write(x.a,val)
+                x.size = len(val) if size == 0 else size
+                self.state._Mem_write(x.a, val)
             else:
                 endian = self.cpu.get_data_endian()
-                v = self.cpu.cst(Bits(val[0:x.size:endian],bitorder=1).int(),x.size*8)
+                v = self.cpu.cst(
+                    Bits(val[0 : x.size : endian], bitorder=1).int(), x.size * 8
+                )
                 self.state[x] = v
-        elif isinstance(val,int):
-            self.state[x] = self.cpu.cst(val,size)
+        elif isinstance(val, int):
+            self.state[x] = self.cpu.cst(val, size)
         else:
             self.state[x] = val
 
-    def get_uint64(self,loc):
-        return self.getx(loc,size=64,sign=True)
-    def get_int64(self,loc):
-        return self.getx(loc,size=64)
-    def get_uint32(self,loc):
-        return self.getx(loc,size=32,sign=True)
-    def get_int32(self,loc):
-        return self.getx(loc,size=32)
-    def get_uint16(self,loc):
-        return self.getx(loc,size=16,sign=True)
-    def get_int16(self,loc):
-        return self.getx(loc,size=16)
-    def get_uint8(self,loc):
-        return self.getx(loc,sign=True)
-    def get_int8(self,loc):
+    def get_uint64(self, loc):
+        return self.getx(loc, size=64, sign=True)
+
+    def get_int64(self, loc):
+        return self.getx(loc, size=64)
+
+    def get_uint32(self, loc):
+        return self.getx(loc, size=32, sign=True)
+
+    def get_int32(self, loc):
+        return self.getx(loc, size=32)
+
+    def get_uint16(self, loc):
+        return self.getx(loc, size=16, sign=True)
+
+    def get_int16(self, loc):
+        return self.getx(loc, size=16)
+
+    def get_uint8(self, loc):
+        return self.getx(loc, sign=True)
+
+    def get_int8(self, loc):
         return self.getx(loc)
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 
 # decorator to define a stub:
 class DefineStub(object):
-    def __init__(self,obj,refname,default=False):
+    def __init__(self, obj, refname, default=False):
         self.obj = obj
         self.ref = refname
         self.default = default
-    def __call__(self,f):
+
+    def __call__(self, f):
         if self.default:
             self.obj.stub_default = f
         else:
             self.obj.stubs[self.ref] = f
         return f
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+
 
 class BinFormat(object):
-    is_ELF    = False
-    is_PE     = False
-    is_MachO  = False
-    basemap   = None
-    symtab    = None
-    strtab    = None
-    reltab    = None
+    is_ELF = False
+    is_PE = False
+    is_MachO = False
+    basemap = None
+    symtab = None
+    strtab = None
+    reltab = None
     functions = None
     variables = None
 
@@ -190,7 +208,7 @@ class BinFormat(object):
     def filename(self):
         raise NotImplementedError
 
-    def loadsegment(self,S,pagesize=None,raw=None):
+    def loadsegment(self, S, pagesize=None, raw=None):
         raise NotImplementedError
 
 
@@ -200,42 +218,44 @@ class DataIO(BinFormat):
     """
 
     def __init__(self, f):
-        if isinstance(f,bytes):
-            self.f=BytesIO(f)
-        else:
-            self.f=f
+        if isinstance(f, bytes):
+            from io import BytesIO
 
-    def __getitem__(self,i):
+            self.f = BytesIO(f)
+        else:
+            self.f = f
+
+    def __getitem__(self, i):
         stay = self.f.tell()
         sta = i.start or stay
-        self.f.seek(sta,0)
+        self.f.seek(sta, 0)
         if i.stop is None:
             data = self.f.read()
         else:
-            data = self.f.read(i.stop-sta)
-        self.f.seek(stay,0)
+            data = self.f.read(i.stop - sta)
+        self.f.seek(stay, 0)
         return data
 
-    def read(self,size=-1):
+    def read(self, size=-1):
         return self.f.read(size)
 
-    def readline(self,size=-1):
+    def readline(self, size=-1):
         return self.f.readline(size)
 
-    def readlines(self,size=-1):
+    def readlines(self, size=-1):
         return self.f.readlines(size)
 
-    def xreadlines(self,size=-1):
+    def xreadlines(self, size=-1):
         return self.f.xreadlines(size)
 
-    def write(self,s):
+    def write(self, s):
         return self.f.write(s)
 
-    def writelines(self,l):
+    def writelines(self, l):
         return self.f.writelines(l)
 
-    def seek(self,offset,whence=0):
-        return self.f.seek(offset,whence)
+    def seek(self, offset, whence=0):
+        return self.f.seek(offset, whence)
 
     def tell(self):
         return self.f.tell()
@@ -252,7 +272,7 @@ class DataIO(BinFormat):
     def next(self):
         return self.f.next()
 
-    def truncate(self,size=0):
+    def truncate(self, size=0):
         return self.f.truncate(size)
 
     def close(self):
@@ -280,7 +300,7 @@ class DataIO(BinFormat):
             return self.f.name
         except AttributeError:
             s = bytes(self.f.getvalue())
-            return '(sc-%s...)'%(''.join(["%02x"%x for x in s])[:8])
+            return "(sc-%s...)" % ("".join(["%02x" % x for x in s])[:8])
 
     filename = name
 
@@ -292,9 +312,10 @@ class DataIO(BinFormat):
     def softspace(self):
         return self.f.softspace
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 def read_program(filename):
-    '''
+    """
     Identifies the program header and returns an ELF, PE, Mach-O or DataIO.
 
     Args:
@@ -303,34 +324,47 @@ def read_program(filename):
     Returns:
         an instance of currently supported program format
         (ELF, PE, Mach-O, HEX, SREC)
-    '''
+    """
 
     try:
-        data = open(filename,'rb')
-    except (TypeError,IOError):
+        data = open(filename, "rb")
+    except (TypeError, IOError):
         data = bytes(filename)
 
     f = DataIO(data)
 
     try:
         from amoco.system import elf
+
         # open file as a ELF object:
         p = elf.Elf(f)
         logger.info("ELF format detected")
         return p
     except elf.ElfError:
         f.seek(0)
-        logger.debug('ElfError raised for %s'%f.name)
+        logger.debug("ElfError raised for %s" % f.name)
 
     try:
         from amoco.system import pe
+
         # open file as a PE object:
         p = pe.PE(f)
         logger.info("PE format detected")
         return p
     except pe.PEError:
         f.seek(0)
-        logger.debug('PEError raised for %s'%f.name)
+        logger.debug("PEError raised for %s" % f.name)
+
+    try:
+        from amoco.system import macho
+
+        # open file as a Mach-O object:
+        p = macho.MachO(f)
+        logger.info("Mach-O format detected")
+        return p
+    except macho.MachOError:
+        f.seek(0)
+        logger.debug("MachOError raised for %s" % f.name)
 
     try:
         from amoco.system import macho
@@ -344,13 +378,14 @@ def read_program(filename):
 
     try:
         from amoco.system import utils
+
         # open file as a HEX object:
         p = utils.HEX(f)
         logger.info("HEX format detected")
         return p
     except utils.FormatError:
         f.seek(0)
-        logger.debug(' HEX FormatError raised for %s'%f.name)
+        logger.debug(" HEX FormatError raised for %s" % f.name)
 
     try:
         # open file as a SREC object:
@@ -359,23 +394,89 @@ def read_program(filename):
         return p
     except utils.FormatError:
         f.seek(0)
-        logger.debug(' SREC FormatError raised for %s'%f.name)
+        logger.debug(" SREC FormatError raised for %s" % f.name)
 
-    logger.warning('unknown format')
+    logger.warning("unknown format")
     return f
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # decorator that allows to "register" all loaders on-the-fly:
 
+
 class DefineLoader(object):
-    LOADERS = {
-    }
-    def __init__(self,name):
+    LOADERS = {}
+
+    def __init__(self, fmt, name=""):
+        self.fmt = fmt
         self.name = name
-        if not self.name in self.LOADERS:
-            self.LOADERS[self.name] = None
-    def __call__(self,loader):
-        logger.verbose('DefineLoader %s:%s'%(self.name,loader))
-        self.LOADERS[self.name] = loader
+        if not self.fmt in self.LOADERS:
+            self.LOADERS[self.fmt] = {}
+        if self.name in self.LOADERS[self.fmt]:
+            logger.warning(
+                "DefineLoader %s is already defined by %s"
+                % (self.name, self.LOADERS[self.fmt][self.name].__name__)
+            )
+
+    def __call__(self, loader):
+        logger.verbose(
+            "DefineLoader %s[%s]: %s" % (self.fmt, self.name, loader.__name__)
+        )
+        if self.name:
+            self.LOADERS[self.fmt][self.name] = loader
+        else:
+            self.LOADERS[self.fmt] = loader
         return loader
 
+
+def load_program(f, cpu=None):
+    """
+    Detects program format header (ELF/PE), and *maps* the program in abstract
+    memory, loading the associated "system" (linux/win) and "arch" (x86/arm),
+    based header informations.
+
+    Arguments:
+        f (str): the program filename or string of bytes.
+
+    Returns:
+        an ELF/CoreExec, PE/CoreExec or RawExec system instance
+    """
+
+    logger.verbose("--- define loaders ---")
+
+    from . import raw
+    from . import linux32
+    from . import linux64
+    from . import win32
+    from . import win64
+    from . import osx
+    from . import baremetal
+
+    logger.verbose("--- detect binary format ---")
+
+    p = read_program(f)
+
+    logger.verbose("--- create task ---")
+
+    Loaders = DefineLoader.LOADERS
+    if p.is_ELF:
+        try:
+            x = Loaders["elf"][p.Ehdr.e_machine](p)
+        except KeyError:
+            logger.error("ELF machine type not supported:\n%s" % p.Ehdr)
+            x = None
+    elif p.is_PE:
+        try:
+            x = Loaders["pe"][p.NT.Machine](p)
+        except KeyError:
+            logger.error("PE machine type not supported:\n%s" % p.NT)
+            x = None
+    elif p.is_MachO:
+        try:
+            x = Loaders["macho"][p.header.cputype](p)
+        except KeyError:
+            logger.error("Mach-O machine type not supported:\n%s" % p.header.cputype)
+            x = None
+    else:
+        x = Loaders["raw"](p, cpu)
+    return x

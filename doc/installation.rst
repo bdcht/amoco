@@ -5,9 +5,12 @@ Amoco is a pure python package which depends on the following packages:
 
 - grandalf_ used for building, walking and rendering Control Flow Graphs
 - crysp_    used by the generic intruction decoder (:mod:`arch.core`)
-- crawl_    (optional) used to define and import data structures
+- ccrawl_   (optional) used to define and import data structures
 - z3_       (optional) used to simplify expressions and solve constraints
 - pygments_ (optional) used for pretty printing of assembly code and expressions
+- click_ (optional) used to define amoco commandline app
+- blessings_ (optional) used for terminal based ui (debugger)
+- tqdm_ (optional) used for terminal based ui (debugger)
 - ply_ (optional), for parsing *GNU as* files
 - sqlalchemy_ (optional), provides analysis results as well as persistence of amoco objects in a database
 - pyside2_ (optional), for the graphical user interface
@@ -24,7 +27,7 @@ If you want to use the graphical interface you will need **all** packages.
 
 .. _grandalf: https://github.com/bdcht/grandalf
 .. _crysp: https://github.com/bdcht/crysp
-.. _crawl: https://github.com/bdcht/crawl
+.. _ccrawl: https://github.com/bdcht/ccrawl
 .. _minisat: http://minisat.se/
 .. _z3: http://z3.codeplex.com/
 .. _pygments: http://pygments.org/
@@ -36,3 +39,6 @@ If you want to use the graphical interface you will need **all** packages.
 .. _pyside2: https://wiki.qt.io/Qt_for_Python
 .. _pip: https://pypi.python.org/pypi/pip
 .. _future: http://python-future.org/
+.. _click: https://click.palletsprojects.com/
+.. _blessings: https://github.com/erikrose/blessings
+.. _tqdm: https://github.com/tqdm/tqdm

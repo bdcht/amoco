@@ -49,7 +49,7 @@ It features:
   which relies on SAT/SMT solvers to proceed with discovering the control
   flow graph or even to implement techniques like DARE (Directed Automated
   Random Exploration).
-- various generic "helpers" and arch-dependent pretty printers to allow
+- various generic *helpers* and arch-dependent pretty printers to allow
   custom look-and-feel configurations (think AT&T vs. Intel syntax,
   absolute vs. relative offsets, decimal or hex immediates, etc).
 
@@ -82,6 +82,14 @@ Please see `LICENSE`_.
 
 Changelog
 =========
+
+- `v2.9.2`_
+
+  * prepare merge with dbgui
+  * drop python 2.7 support
+  * rework subpackage/module imports and logging
+  * various code sanitizing
+  * blackified sources
 
 - `v2.9.1`_
 
@@ -318,6 +326,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.2: https://github.com/bdcht/amoco/releases/tag/v2.9.2
 .. _v2.9.1: https://github.com/bdcht/amoco/releases/tag/v2.9.1
 .. _v2.9.0: https://github.com/bdcht/amoco/releases/tag/v2.9.0
 .. _v2.6.3: https://github.com/bdcht/amoco/releases/tag/v2.6.3

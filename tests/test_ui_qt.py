@@ -8,7 +8,7 @@ import amoco
 
 @pytest.mark.skipif(True,reason="work-in-progress")
 def test_graph():
-    p = amoco.system.loader.load_program('samples/x86/flow.elf')
+    p = amoco.loader.load_program('samples/x86/flow.elf')
     z = amoco.lbackward(p)
     z.getcfg()
     f = z.functions[2]

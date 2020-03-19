@@ -1,12 +1,12 @@
 import pytest
-from amoco import system
+import amoco
 from amoco.sa import *
 
 from pickle import dumps,loads,HIGHEST_PROTOCOL
 pickler = lambda x: dumps(x,HIGHEST_PROTOCOL)
 
 def test_block(sc1):
-    p = system.load_program(sc1)
+    p = amoco.load_program(sc1)
     p.use_x86()
     z = lsweep(p)
     ib = z.iterblocks()
@@ -28,7 +28,7 @@ def test_block(sc1):
     assert len(Y.instr)==(len(b1.instr)-2)
 
 def test_func(ploop):
-    p = system.load_program(ploop)
+    p = amoco.load_program(ploop)
     z = lsweep(p)
     # build func manually...
     fcfg = cfg.graph()

@@ -25,27 +25,29 @@ logger.debug("loading module")
 
 
 class CoreExec(object):
-    """The Task class implements the base class for a memory mapped binary
+    """
+    This class implements the base class for Task(s).
+    CoreExec or Tasks are used to represent a memory mapped binary
     executable program, providing the generic instruction or data fetchers and
-    the mandatory API used by :mod:`amoco.sa` analysis classes.
-    Most of the :mod:`amoco.system` modules use this base class and redefine
-    the :meth:`initenv`, :meth`load_binary` and helpers methods according to
-    a dedicated system and architecture (Linux/x86, Win32/x86, etc).
+    the mandatory API for :mod:`amoco.emu` or :mod:`amoco.sa` analysis classes.
+    Most of the :mod:`amoco.system` modules use this base class to implement
+    a OS-specific Task class (see Linux/x86, Win32/x86, etc).
 
     Attributes:
         bin: the program executable format object. Currently supported formats
              are provided in :mod:`system.elf` (Elf32/64), :mod:`system.pe` (PE)
              and :mod:`system.utils` (HEX/SREC). 
 
-        cpu: the architecture cpu module, which implements the disassembler and
-             provides all registers.
+        cpu: reference to the architecture cpu module, which provides a generic
+             access to the PC() program counter and
+             obviously the CPU registers and disassembler.
+
+        OS:  optional reference to the OS associated to the child Task.
 
         state: the :class:`mapper` instance that represents the current state
              of the executable program, including mapping of registers as well
              as the :class:`MemoryMap` instance that represents the virtual
              memory of the program.
-
-
     """
 
     __slots__ = ["bin", "cpu", "OS", "state"]
@@ -69,11 +71,17 @@ class CoreExec(object):
         return m
 
     def read_data(self, vaddr, size):
-        "fetch size data bytes at virtual address vaddr"
+        """
+        fetch size data bytes at virtual address vaddr, returned
+        as a list of items being either raw bytes or symbolic expressions.
+        """
         return self.state.mmap.read(vaddr, size)
 
     def read_instruction(self, vaddr, **kargs):
-        "fetch instruction at virtual address vaddr"
+        """
+        fetch instruction at virtual address vaddr, returned as an
+        cpu.instruction instance or None.
+        """
         if self.cpu is None:
             logger.error("no cpu imported")
             raise ValueError
@@ -105,6 +113,16 @@ class CoreExec(object):
             return i
 
     def getx(self, loc, size=8, sign=False):
+        """
+        high level method to get the expressions value associated
+        to left-value loc (register or address). The returned value
+        is an integer if the expression is constant or a symbolic
+        expression instance.
+        The input loc is either a register string, an integer address,
+        or associated expressions' instances.
+        Optionally, the returned expression sign flag can be adjusted
+        by the sign argument.
+        """
         if isinstance(loc, str):
             x = getattr(self.cpu, loc)
         elif isinstance(loc, int):
@@ -119,6 +137,15 @@ class CoreExec(object):
         return r.value if r._is_cst else r
 
     def setx(self, loc, val, size=0):
+        """
+        high level method to set the expressions value associated
+        to left-value loc (register or address). The value
+        is possibly an integer or a symbolic expression instance.
+        The input loc is either a register string, an integer address,
+        or associated expressions' instances.
+        Optionally, the size of the loc expression can be adjusted
+        by the size argument.
+        """
         if isinstance(loc, str):
             x = getattr(self.cpu, loc)
             size = x.size
@@ -144,35 +171,45 @@ class CoreExec(object):
         else:
             self.state[x] = val
 
-    def get_uint64(self, loc):
+    def get_int64(self, loc):
+        "get 64-bit int expression of current state(loc)"
         return self.getx(loc, size=64, sign=True)
 
-    def get_int64(self, loc):
+        "get 64-bit unsigned int expression of current state(loc)"
+    def get_uint64(self, loc):
         return self.getx(loc, size=64)
 
-    def get_uint32(self, loc):
+    def get_int32(self, loc):
+        "get 32-bit int expression of current state(loc)"
         return self.getx(loc, size=32, sign=True)
 
-    def get_int32(self, loc):
+    def get_uint32(self, loc):
+        "get 32-bit unsigned int expression of current state(loc)"
         return self.getx(loc, size=32)
 
-    def get_uint16(self, loc):
+    def get_int16(self, loc):
+        "get 16-bit int expression of current state(loc)"
         return self.getx(loc, size=16, sign=True)
 
-    def get_int16(self, loc):
+    def get_uint16(self, loc):
+        "get 16-bit unsigned int expression of current state(loc)"
         return self.getx(loc, size=16)
 
-    def get_uint8(self, loc):
+    def get_int8(self, loc):
+        "get 8-bit int expression of current state(loc)"
         return self.getx(loc, sign=True)
 
-    def get_int8(self, loc):
+    def get_uint8(self, loc):
+        "get 8-bit unsigned int expression of current state(loc)"
         return self.getx(loc)
 
 
 # ------------------------------------------------------------------------------
 
-# decorator to define a stub:
 class DefineStub(object):
+    """
+    decorator to define a stub for the given 'refname' library function.
+    """
     def __init__(self, obj, refname, default=False):
         self.obj = obj
         self.ref = refname
@@ -188,8 +225,12 @@ class DefineStub(object):
 
 # ------------------------------------------------------------------------------
 
-
 class BinFormat(object):
+    """
+    Base class for binary format API, just to define default attributes
+    and recommended properties. See elf.py, pe.py and macho.py for example of
+    child classes.
+    """
     is_ELF = False
     is_PE = False
     is_MachO = False
@@ -213,8 +254,10 @@ class BinFormat(object):
 
 
 class DataIO(BinFormat):
-    """This class wraps a binary file or a string of bytes and provides both
-    the file and bytes API.
+    """
+    This class simply wraps a binary file or a bytes string and implements
+    both the file and bytes interface. It allows an input to be provided as
+    files of bytes and manipulated as either a file or a bytes object.
     """
 
     def __init__(self, f):
@@ -403,8 +446,21 @@ def read_program(filename):
 # ------------------------------------------------------------------------------
 # decorator that allows to "register" all loaders on-the-fly:
 
-
 class DefineLoader(object):
+    """
+    A decorator that allows to register a system-specific loader
+    while it is implemented. All loaders are stored in the class global
+    LOADERS dict.
+
+    Example:
+
+           @DefineLoader('elf',elf.EM_386)
+           def loader_x86(p):
+             ...
+
+    Here, a reference to function loader_x86 is stored in
+    LOADERS['elf'][elf.EM_386].
+    """
     LOADERS = {}
 
     def __init__(self, fmt, name=""):
@@ -431,15 +487,16 @@ class DefineLoader(object):
 
 def load_program(f, cpu=None):
     """
-    Detects program format header (ELF/PE), and *maps* the program in abstract
-    memory, loading the associated "system" (linux/win) and "arch" (x86/arm),
+    Detects program format header (ELF/PE/Mach-O/HEX/SREC),
+    and *maps* the program in abstract memory,
+    loading the associated "system" (linux/win) and "arch" (x86/arm),
     based header informations.
 
     Arguments:
         f (str): the program filename or string of bytes.
 
     Returns:
-        an ELF/CoreExec, PE/CoreExec or RawExec system instance
+        a Task, ELF/PE (old CoreExec interfaces) or RawExec instance.
     """
 
     logger.verbose("--- define loaders ---")

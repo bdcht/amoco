@@ -1374,6 +1374,7 @@ class slc(exp):
     __slots__ = ["x", "pos", "ref", "__protect", "_is_reg"]
     _is_def = True
     _is_slc = True
+    __eq__ = exp.__eq__
 
     def __init__(self, x, pos, size, ref=None):
         if not isinstance(pos, IntType):

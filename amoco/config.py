@@ -4,7 +4,7 @@ config.py
 =========
 
 This module defines the default amoco configuration
-and loads any user-defined configuration file.
+and loads any user-defined configuration file. It is based on the traitlets package.
 
 Attributes:
     conf (Config): holds in a Config object based on Configurable traitlets,
@@ -63,13 +63,28 @@ from traitlets import Integer, Unicode, Bool, observe
 
 
 class DB(Configurable):
-    "configurable parameters related to the database"
+    """
+    Configurable parameters related to the database.
+
+    Attributes:
+        url (str): defaults to sqlite:// (in-memory database).
+        log (Bool): If True, merges database's logs into amoco loggers.
+    """
     url = Unicode("sqlite://", config=True)
     log = Bool(False, config=True)
 
 
 class Code(Configurable):
-    "configurable parameters related to assembly blocks"
+    """
+    Configurable parameters related to assembly blocks (code.block).
+
+    Attributes:
+        helper (Bool): use block helpers if True.
+        header (Bool): display block header dash-line with its name if True.
+        footer (Bool): display block footer dash-line if True.
+        bytecode (Bool): display instructions' bytes.
+        padding (int): add space-padding bytes to bytecode (default=4).
+    """
     helper = Bool(True, config=True)
     header = Bool(True, config=True)
     footer = Bool(True, config=True)
@@ -78,21 +93,49 @@ class Code(Configurable):
 
 
 class Cas(Configurable):
-    "configurable parameters related to the Computer Algebra System (expressions)"
+    """
+    Configurable parameters related to the Computer Algebra System (expressions).
+
+    Attributes:
+        complexity (int): limit expressions complexity to given value. Defaults
+                          to 10000, a relatively high value that keeps precision
+                          but can lead to very large expressions.
+        unicode (Bool): use unicode character for expressions' operators if True.
+        noaliasing (Bool): If True (default), then assume that symbolic memory
+                           expressions (pointers) are **never** aliased.
+    """
     complexity = Integer(10000, config=True)
     unicode = Bool(False, config=True)
     noaliasing = Bool(True, config=True)
 
 
 class Log(Configurable):
-    "configurable parameters related to logging"
+    """
+    Configurable parameters related to logging.
+
+    Attributes:
+        level (str): terminal logging level (defaults to 'WARNING'.)
+        filename (str): a filename receiving *all* logs (empty by default.)
+        tempfile (Bool): log at DEBUG level to a temporary tmp/ file if True.
+    """
     level = Unicode("WARNING", config=True)
     filename = Unicode("", config=True)
     tempfile = Bool(False, config=True)
 
 
 class UI(Configurable):
-    "configurable parameters related to User Interface(s)"
+    """
+    Configurable parameters related to User Interface(s).
+
+    Attributes:
+        formatter (str): pygments formatter for pretty printing. Defaults to Null,
+                         but recommended to be set to 'Terminal256' if pygments
+                         package is installed.
+        graphics (str):  rendering backend. Currently only 'term' is supported.
+        console (str): default python console, either 'python' (default) or 'ipython'.
+        completekey (str): client key for command completion (Tab).
+        cli (str): client frontend. Currently only 'cmdcli' is supported.
+    """
     formatter = Unicode("Null", config=True)
     graphics = Unicode("term", config=True)
     console = Unicode("python", config=True)
@@ -101,12 +144,26 @@ class UI(Configurable):
 
 
 class Server(Configurable):
-    "configurable parameters related to the Server mode"
+    """
+    Configurable parameters related to the Server mode.
+
+    Attributes:
+        wbsz (int): size of the shared buffer between server and its command threads.
+        timeout (int): timeout for the servers' command threads.
+    """
     wbsz = Integer(0x1000, config=True)
     timeout = Integer(600, config=True)
 
 
 class Arch(Configurable):
+    """
+    Configurable parameters related to CPU architectures.
+
+    Attributes:
+        assemble (Bool): unused yet.
+        format_x86 (str): select disassembly flavor: Intel (default) vs. AT&T (att).
+        format_x64 (str): select disassembly flavor: Intel (default) vs. AT&T (att).
+    """
     assemble = Bool(False, config=True)
     format_x86 = Unicode("Intel", config=True)
 
@@ -126,12 +183,30 @@ class Arch(Configurable):
 
 
 class System(Configurable):
+    """
+    Configurable parameters related to the system sub-package.
+
+    Attributes:
+        pagesize (int): provides the default memory page size in bytes.
+        aslr (Bool): simulates ASLR if True. (not supported yet.)
+        nx (Bool): unused.
+    """
     pagesize = Integer(4096, config=True)
     aslr = Bool(False, config=True)
     nx = Bool(False, config=True)
 
 
 class Config(object):
+    """
+    A Config instance takes an optional filename argument or
+    looks for .amoco/config or .amocorc files to
+    load a traitlets.config.PyFileConfigLoader used to adjust
+    UI, DB, Code, Arch, Log, Cas, System, and Server parameters.
+
+    Note:
+        The Config object supports a print() method to display
+        the entire configuration.
+    """
     _locations = [".amoco/config", ".amocorc"]
     BANNER = "amoco (version 3.0)"
 
@@ -185,7 +260,7 @@ class Config(object):
 
 conf = Config()
 
-from amoco.logger import Log
+from amoco.logger import Log as _LogClass
 
-logger = Log(__name__)
+logger = _LogClass(__name__)
 logger.debug("loading module")

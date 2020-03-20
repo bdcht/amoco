@@ -5,7 +5,7 @@ The computer algebra system package
 
 .. contents::
 
-The *computer algebra system* of Amoco is built with the following elements implemented
+Symbolic expressions are provided by several classes found
 in module :mod:`cas/expressions`:
 
 - Constant  :class:`cst`, which represents immediate (signed or unsigned) value of fixed size (bitvector),

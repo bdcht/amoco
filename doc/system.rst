@@ -15,33 +15,36 @@ stubs or high-level language structures.
 .. automodule:: system.memory
    :members:
 
+.. automodule:: system.structs
+   :members:
+
 .. automodule:: system.elf
    :members:
 
 .. automodule:: system.pe
    :members:
 
-.. automodule:: system.utils
+.. automodule:: system.macho
    :members:
 
-.. automodule:: system.structs
+.. autopackage:: system.linux32
+   :members:
+
+.. autopackage:: system.linux64
+   :members:
+
+.. autopackage:: system.win32
+   :members:
+
+.. autopackage:: system.win64
+   :members:
+
+.. autopackage:: system.baremetal
    :members:
 
 .. automodule:: system.raw
    :members:
 
-.. automodule:: system.linux32
-   :members:
-
-.. automodule:: system.linux64
-   :members:
-
-.. automodule:: system.win32
-   :members:
-
-.. automodule:: system.win64
-   :members:
-
-.. automodule:: system.baremetal
+.. automodule:: system.utils
    :members:
 

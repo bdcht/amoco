@@ -1366,7 +1366,7 @@ def i_TZCNT(i, fmap):
 def i_BT(i, fmap):
     logger.warning("%s semantic is not defined" % i.mnemonic)
     fmap[rip] = fmap[rip] + i.length
-    dst, src = i.operands
+    #dst, src = i.operands
     fmap[cf] = top(1)
 
 

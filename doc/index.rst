@@ -57,13 +57,13 @@ It features:
    :caption: Application Programming Interface
 
    overview
-   main
+   arch
+   cas
+   system
+   sa
+   ui
    code
    cfg
-   arch
-   system
-   cas
-   ui
    db
    config
    logger

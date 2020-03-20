@@ -10,15 +10,25 @@ system/macho.py
 
 The system macho module implements the Mach-O executable format parser.
 """
+
+from collections import defaultdict
+from amoco.system.core import BinFormat, DataIO
+from amoco.system.utils import read_uleb128
+from amoco.system.structs import Consts, StructFormatter, default_formatter
+from amoco.system.structs import StructDefine, UnionDefine
+
+
 from amoco.logger import Log
 
 logger = Log(__name__)
 logger.debug("loading module")
 
-from collections import defaultdict
 
-# our exception handler:
 class MachOError(Exception):
+    """
+    MachOError is raised whenever MachO object instance fails
+    to decode required structures.
+    """
     def __init__(self, message):
         self.message = message
 
@@ -27,11 +37,30 @@ class MachOError(Exception):
 
 
 # ------------------------------------------------------------------------------
-from amoco.system.core import BinFormat, DataIO
-from amoco.system.utils import read_uleb128
-
 
 class MachO(BinFormat):
+    """
+    This class takes a DataIO object (ie an opened file of BytesIO instance)
+    and decodes all Mach-O structures found in it.
+
+    Attributes:
+        entrypoints (list of int): list of entrypoint addresses.
+        filename (str): binary file name.
+        header (struct_mach_header): the Mach header structure.
+        archs (list of MachO): the list of MachO instances in case the
+                               provided binary file is a "fat" format.
+        cmds (list): the list of all "command" structures.
+        dynamic (Bool): True if the binary wants to load dynamic libs.
+        basemap (int): Base address of the binary (or None.)
+        symtab (list): the symbol table.
+        dysymtab (list): the dynamic symbol table.
+        dyld_info (container): a container with dyld_info attributes
+                               rebase, bind, weak_bind, lazy_bind
+                               and export.
+        function_starts (list,optional): list of function start addresses.
+        la_symbol_ptr (dict): address to lazy symbol bindings
+        nl_symbol_ptr (dict): address to non-lazy symbol bindings
+    """
     is_MachO = True
 
     @property
@@ -45,7 +74,7 @@ class MachO(BinFormat):
                 except AttributeError:
                     pass
             if c.cmd == LC_MAIN:
-                base = self.base_address()
+                base = self.basemap
                 # remplacement for thread commands
                 self.__entry = base + c.entryoff
                 break
@@ -96,11 +125,16 @@ class MachO(BinFormat):
             self.nl_symbol_ptr = self.__nl_bindings()
 
     def read_fat_arch(self, a):
+        """
+        takes a struct_fat_arch instance and sets its 'bin' attribute
+        to the corresponding MachO instance.
+        """
         self.__f.seek(a.offset)
         data = self.__f.read(a.size)
         a.bin = MachO(DataIO(data))
 
     def read_commands(self, offset):
+        "returns the list of struct_load_command starting from given offset"
         cmds = []
         lcsize = 0
         f = self.__file
@@ -119,6 +153,7 @@ class MachO(BinFormat):
         return cmds
 
     def getsize(self):
+        "total size of LC_SEGMENT/64 commands"
         total = 0
         for c in self.cmds:
             if c.cmd in (LC_SEGMENT, LC_SEGMENT_64,):
@@ -139,22 +174,26 @@ class MachO(BinFormat):
         return res
 
     def data(self, target, size):
-        return self.readcode(target, size)[0]
+        "returns 'size' bytes located at target virtual address"
+        return self._readcode(target, size)[0]
 
-    def readcode(self, target, size):
+    def _readcode(self, target, size):
         s, offset, _ = self.getinfo(target)
         data = self.readsegment(s)
         return data[offset : offset + size]
 
     def getfileoffset(self, target):
+        "converts given target virtual address back to offset in file"
         s, offset, _ = self.getinfo(target)
         return s.fileoffset + offset
 
     def readsegment(self, S):
+        "returns segment S data from file"
         self.__file.seek(S.fileoffset)
         return self.__file.read(S.filesize)
 
     def loadsegment(self, S, pagesize=None):
+        "returns segment S data padded/aligned to S.vmsize and pagesize"
         s = self.readsegment(S)
         if pagesize is None:
             pagesize = S.vmsize
@@ -164,7 +203,7 @@ class MachO(BinFormat):
         return s.ljust(n * pagesize, b"\0")
 
     def readsection(self, s):
-        pass
+        raise NotImplementedError
 
     def __read_table(self, off, elt, count, sz=0):
         tab = []
@@ -339,7 +378,8 @@ class MachO(BinFormat):
                 D[addr] = name
         return D
 
-    def base_address(self):
+    @property
+    def basemap(self):
         fbaseaddr = None
         for c in self.cmds:
             if c.cmd in (LC_SEGMENT, LC_SEGMENT_64):
@@ -349,7 +389,7 @@ class MachO(BinFormat):
 
     # source: https://opensource.apple.com/source/ld64/ld64-127.2/src/other/dyldinfo.cpp
     def __read_funcstarts(self, fs):
-        fbaseaddr = self.base_address()
+        fbaseaddr = self.basemap
         addr = fbaseaddr
         F = []
         if fs is not None:
@@ -380,9 +420,6 @@ class MachO(BinFormat):
 
 
 # ------------------------------------------------------------------------------
-from amoco.system.structs import Consts, StructFormatter, default_formatter
-from amoco.system.structs import StructDefine, UnionDefine
-
 
 @StructDefine(
     """

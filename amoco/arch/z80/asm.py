@@ -238,11 +238,9 @@ def i_SUB(i_, fmap):
 
 
 def i_SBC(i_, fmap):
-    src = i_.operands[0]
-    dst = a
     _c = fmap[cf]
     i_add(i_, fmap)
-    _a = fmap(dst)
+    _a = fmap(a)
     _x = _a - tst(_c, cst(1, _a.size), cst(0, _a.size))
     fmap[zf] = tst(_x == 0, bit1, bit0)
     fmap[sf] = tst(_x < 0, bit1, bit0)
@@ -343,20 +341,21 @@ def i_DAA(i_, fmap):
 
 def i_CPL(i_, fmap):
     fmap[pc] = fmap[pc] + i_.length
-    _a = fmap(dst)
+    _a = fmap(a)
     fmap[hf] = bit1
     fmap[nf] = bit1
-    fmap[a] = ~a
+    fmap[a] = ~_a
 
 
 def i_NEG(i_, fmap):
     fmap[pc] = fmap[pc] + i_.length
-    fmap[cf] = tst(a != 0, bit1, bit0)
-    fmap[pf] = tst(a == 0x80, bit1, bit0)
-    fmap[a] = -a
+    _a = fmap(a)
+    fmap[cf] = tst(_a != 0, bit1, bit0)
+    fmap[pf] = tst(_a == 0x80, bit1, bit0)
+    fmap[a] = -_a
     fmap[nf] = bit1
-    fmap[zf] = tst(a == 0, bit1, bit0)
-    fmap[sf] = tst(a < 0, bit1, bit0)
+    fmap[zf] = tst(_a == 0, bit1, bit0)
+    fmap[sf] = tst(_a < 0, bit1, bit0)
 
 
 def i_CCF(i_, fmap):
@@ -606,7 +605,7 @@ def i_RET(i_, fmap):
 
 def i_RETcc(i_, fmap):
     _back = fmap[pc] + i_.length
-    _pop_cc(fmap, i_.cond[1], pc)
+    _pop_cc(fmap, i_.cond[1], _back)
 
 
 def i_RETI(i_, fmap):

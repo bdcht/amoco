@@ -180,7 +180,7 @@ class MemoryZone(object):
             datadiv values, unmapped areas are returned as *bottom* exp.
 
         write(vaddr,data): writes data expression or
-            bytes at given (concrete) address.
+            bytes at given (offset) address.
 
         addtomap(z): add (possibly overlapping) :class:`mo` object z to the
             _map, eventually adjusting other objects.

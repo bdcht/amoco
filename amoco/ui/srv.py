@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-import os
-import signal
 import ctypes
 import multiprocessing as mp
 import queue
 from amoco.config import conf
-from amoco.logger import Log, flush_all
 from amoco.ui.render import Token, highlight
 from amoco.ui.cli import cmdcli_builder
 
+from amoco.logger import Log
 logger = Log(__name__)
 logger.debug("loading module")
 
@@ -37,29 +35,6 @@ class DefineSrvCommand(object):
         commands[self.name] = cls
         return cls
 
-
-from amoco.ui.cli import cmdcli_builder
-
-STOPPED = 0
-IDLE    = 1
-WAITING = 2
-STALLED = 3
-
-commands = {}
-
-class DefineSrvCommand(object):
-    """decorator that allows to "register" commands on-the-fly
-    """
-    def __init__(self,name):
-        global commands
-        self.name = name
-        if not self.name in commands:
-            commands[self.name] = None
-    def __call__(self,cls):
-        global commands
-        logger.verbose('DefineCommand %s:%s'%(self.name,cls))
-        commands[self.name] = cls
-        return cls
 
 class srv(object):
     def __init__(self, scope=None, obj=""):

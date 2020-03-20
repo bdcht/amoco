@@ -13,25 +13,48 @@ The system pe module implements the PE class which support both 32 and 64 bits
 executable formats.
 """
 
+from amoco.system.core import BinFormat
+from amoco.system.structs import struct, Consts, StructFormatter, StructDefine
+from amoco.system.structs import token_datetime_fmt
+from amoco.ui.render import Token, highlight
+
 from amoco.logger import Log
 
 logger = Log(__name__)
 logger.debug("loading module")
 
-# our exception handler:
 class PEError(Exception):
+    """
+    PEError is raised whenever PE object instance fails
+    to decode required structures.
+    """
     def __init__(self, message):
         self.message = message
 
     def __str__(self):
         return str(self.message)
 
-
 # ------------------------------------------------------------------------------
-from amoco.system.core import BinFormat
-
 
 class PE(BinFormat):
+    """
+    This class takes a DataIO object (ie an opened file of BytesIO instance)
+    and decodes all PE structures found in it.
+
+    Attributes:
+        data (DataIO): a reference to the input data file/bytes object.
+        entrypoints (list of int): list of entrypoint addresses.
+        filename (str): binary file name.
+        DOS (DOSHdr,optional): the DOS Header (only if present.)
+        NT (COFFHdr): the PE header.
+        Opt (OptionalHdr): the Optional Header
+        basemap (int): base address for this ELF image.
+        sections (list of SectionHdr): list of PE sections.
+        functions (list): a list of function names gathered from internal
+                          definitions (if not stripped) and import names.
+        variables (list): a list of global variables' names (if found.)
+        tls (TlsTable): the Thead local Storage table (or None.)
+    """
     is_PE = True
 
     @property
@@ -70,10 +93,18 @@ class PE(BinFormat):
         self.variables = self.__variables()
         self.tls = self.__tls()
 
-    ##
-
-    #  allows to retreive section that holds target address (rva or absolute)
     def locate(self, addr, absolute=False):
+        """
+        returns a tuple with:
+            - the section that holds addr (rva or absolute), or 0 or None.
+            - the offset within the section (or addr or 0).
+
+        Note:
+            If returned section is 0, then addr is within SizeOfImage,
+            but is not found within any sections. Then offset is addr.
+            If returned section is None, then addr is not mapped at all,
+            and offset is set to 0.
+        """
         if absolute:
             addr = addr - self.basemap
         # now we have addr so we can see in which section/segment it is...
@@ -91,6 +122,7 @@ class PE(BinFormat):
         return None, 0
 
     def getdata(self, addr, absolute=False):
+        "get section bytes from given virtual address to end of mapped section."
         s, offset = self.locate(addr, absolute)
         if s is None:
             logger.error("address not mapped")
@@ -98,6 +130,14 @@ class PE(BinFormat):
         return self.loadsegment(s, raw=True)[offset:]
 
     def loadsegment(self, S, pagesize=0, raw=False):
+        """
+        returns a dict {base: bytes} (or only bytes if optional arg raw is True,)
+        indicating that section S data bytes (padded and extended to pagesize bounds)
+        need to be mapped at virtual base address.
+
+        Note:
+           If S is 0, returns base=0 and the first Opt.SizeOfHeaders bytes.
+        """
         if S and not S.Characteristics == IMAGE_SCN_LNK_REMOVE:
             addr = self.basemap + S.RVA
             if addr % self.Opt.SectionAlignment:
@@ -106,23 +146,24 @@ class PE(BinFormat):
             if sta % self.Opt.FileAlignment:
                 logger.warning("bad file alignment for section %s" % S.Name)
             sto = sta + S.SizeOfRawData
-            bytes = self.data[sta:sto].ljust(S.VirtualSize)
+            bytes_ = self.data[sta:sto].ljust(S.VirtualSize)
             if pagesize:
                 # note: bytes are not truncated, only extended if needed...
-                bytes = bytes.ljust(pagesize, b"\x00")
+                bytes_ = bytes_.ljust(pagesize, b"\x00")
             if raw:
-                return bytes
+                return bytes_
             else:
-                return {addr: bytes}
+                return {addr: bytes_}
         elif S == 0:
-            bytes = self.data[0 : self.Opt.SizeOfHeaders]
+            bytes_ = self.data[0 : self.Opt.SizeOfHeaders]
             if raw:
-                return bytes
+                return bytes_
             else:
-                return {self.basemap: bytes}
+                return {self.basemap: bytes_}
         return None
 
     def getfileoffset(self, addr):
+        "converts given address back to offset in file"
         s, offset = self.locate(addr, absolute=True)
         return s.PointerToRawData + offset
 
@@ -147,7 +188,7 @@ class PE(BinFormat):
                 try:
                     dllname = self.getdata(e.NameRVA)
                     e.Name = str(dllname.partition(b"\0")[0].decode())
-                except:
+                except Exception:
                     logger.warning("invalid dll name RVA in ImportTable")
                 try:
                     if e.ImportLookupTableRVA != 0:
@@ -223,12 +264,7 @@ class PE(BinFormat):
             s.pfx = tmp
         return "\n".join(ss)
 
-
 # ------------------------------------------------------------------------------
-from amoco.system.structs import struct, Consts, StructFormatter, StructDefine
-from amoco.system.structs import token_datetime_fmt
-from amoco.ui.render import Token, highlight
-
 
 @StructDefine(
     """
@@ -518,6 +554,7 @@ with Consts("SectionHdr.Characteristics"):
 
 # COFF Relocations
 # ------------------------------------------------------------------------------
+
 @StructDefine(
     """
 I : RVA
@@ -557,7 +594,6 @@ IMAGE_SYM_DEBUG = -2
 
 # COFF Symbol table
 # ------------------------------------------------------------------------------
-
 
 class COFFSymbolTable(object):
     def __init__(self, data=None):
@@ -788,6 +824,7 @@ class AuxSectionDefinition(StructFormatter):
 
 # COFF String table
 # ------------------------------------------------------------------------------
+
 class COFFStringTable(object):
     def __init__(self, data=None):
         if data is None:
@@ -796,9 +833,7 @@ class COFFStringTable(object):
         self.strings = data[4 : self.length].split("\0")
         self.strings.pop()
 
-
 # ------------------------------------------------------------------------------
-
 
 class AttributeCertificateTable(object):
     NotImplementedError
@@ -807,14 +842,11 @@ class AttributeCertificateTable(object):
 class AttributeCertificate(StructFormatter):
     pass
 
-
 # ------------------------------------------------------------------------------
-
 
 class DelayLoadImportTable(object):
     def __init__(self, data):
         raise NotImplementedError
-
 
 @StructDefine(
     """
@@ -834,9 +866,7 @@ class DelayLoadDirectoryTable(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-
 # ------------------------------------------------------------------------------
-
 
 @StructDefine(
     """
@@ -862,8 +892,8 @@ class ExportTable(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-
 # ------------------------------------------------------------------------------
+
 class ImportTable(object):
     def __init__(self, data, offset=0):
         self.dlls = []
@@ -875,7 +905,6 @@ class ImportTable(object):
             self.dlls.append(e)
             offset += len(e)
         logger.warning("NULL Import entry not found")
-
 
 @StructDefine(
     """
@@ -932,6 +961,7 @@ class NameTableEntry(object):
 
 
 # ------------------------------------------------------------------------------
+
 @StructDefine(
     """
 I : RawDataStartVA

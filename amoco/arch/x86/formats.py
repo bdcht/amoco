@@ -446,13 +446,13 @@ def intel_deref(op):
         (b0, b1, b2), (d0, d1) = b, d
         if b2 != None:
             b1 = "%s*%s" % (b1, b2)
-        if b0 == None:
+        if b0 is None:
             b = b1
-        elif b1 == None:
+        elif b1 is None:
             b = b0
         else:
             b = "%s+%s" % (b0, b1)
-        if b0 == None:
+        if b0 is None:
             s = "%s[%d+%s]" % (d0, d1, b)
         elif d1 == 0:
             s = "%s[%s]" % (d0, b)
@@ -768,16 +768,16 @@ def att_deref(op):
     d = op.a.disp
     seg = op.a.seg
     s, b, d = default_deref(b, d)
-    if s == None:
+    if s is None:
         # Base includes a register; disp may include labels
         (b0, b1, b2), (d0, d1) = b, d
         if b0 == "rip":
             seg = ""  # Don't display segment
-        if b1 == None:
+        if b1 is None:
             b = "(%{})".format(b0)
-        elif b0 == None:
+        elif b0 is None:
             b = "(,%{},{})".format(b1, b2)
-        elif b2 == None:
+        elif b2 is None:
             b = "(%{},%{})".format(b0, b1)
         else:
             b = "(%{},%{},{})".format(b0, b1, b2)
@@ -787,7 +787,7 @@ def att_deref(op):
             d = d0
         else:
             d = "%s%+d" % (d0, d1)
-        if b0 == None:
+        if b0 is None:
             s = d + b
         elif d == "0":
             s = b

@@ -18,7 +18,8 @@ implementation details.
 Loading binary data
 ===================
 
-The recommended way to load binary data is to use the :meth:`load_program <system.core.load_program>`
+The recommended way to load binary data is to use the
+:meth:`load_program <system.core.load_program>`
 function, providing an input filename or a bytestring.
 For example, from directory ``amoco/tests``, do::
 
@@ -54,8 +55,10 @@ For example, from directory ``amoco/tests``, do::
 
 If the binary data uses a supported executable format
 (currently :mod:`system.pe`, :mod:`system.elf` or an
-HEX/SREC format in :mod:`system.utils`) and targets a supported plateform (see :ref:`system <system>` and
-:ref:`arch <arch>` packages), the returned object is an *abstraction* of the memory mapped program::
+HEX/SREC format in :mod:`system.utils`) and targets a
+supported plateform (see :ref:`system <system>` and
+:ref:`arch <arch>` packages), the returned object is
+an *abstraction* of the memory mapped program::
 
    In [5]: print(p.state)
    eip <- { | [0:32]->0x8048380 | }
@@ -281,8 +284,8 @@ would branch to address ``0x80484fd`` (``#main``).
 Starting some analysis
 ======================
 
-Important note::
+Important note:
 
-  *** The merge with *emul* branch has broken the static-analysis module.
+  *** The merge with emul branch has broken the static-analysis module.
       This is going to be fixed only once the merge is fully integrated ***
 

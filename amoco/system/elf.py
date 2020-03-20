@@ -19,20 +19,36 @@ from amoco.logger import Log
 logger = Log(__name__)
 logger.debug("loading module")
 
-
-# our exception handler:
 class ElfError(Exception):
+    """
+    ElfError is raised whenever Elf object instance fails
+    to decode required structures.
+    """
     def __init__(self, message):
         self.message = message
 
     def __str__(self):
         return str(self.message)
 
-
 # ------------------------------------------------------------------------------
 
-
 class Elf(BinFormat):
+    """
+    This class takes a DataIO object (ie an opened file of BytesIO instance)
+    and decodes all ELF structures found in it.
+
+    Attributes:
+        entrypoints (list of int): list of entrypoint addresses.
+        filename (str): binary file name.
+        Ehdr (Ehdr): the ELF header structure.
+        Phdr (list of Phdr): the list of ELF Program header structures.
+        Shdr (list of Shdr): the list of ELF Section header structures.
+        dynamic (Bool): True if the binary wants to load dynamic libs.
+        basemap (int): base address for this ELF image.
+        functions (list): a list of function names gathered from internal
+                          definitions (if not stripped) and import names.
+        variables (list): a list of global variables' names (if found.)
+    """
     is_ELF = True
 
     @property
@@ -107,16 +123,20 @@ class Elf(BinFormat):
         self.variables = self.__variables()
 
     def getsize(self):
+        "total file size of all the Program headers"
         total = sum([s.p_filesz for s in self.Phdr])
         return total
 
-    #  allows to get info about target :
-    # - section index (0 is error, -1 is a dynamic call)
-    # - offset into section  (idem)
-    # - base virtual address (0 for dynamic calls)
-    # target can be a virtual address in hex string format or integer,
-    # or a symbol string searched in the functions dictionary.
     def getinfo(self, target):
+        """
+        target is either an address provided as str or int,
+        or a symbol str searched in the functions dictionary.
+
+        Returns a triplet with:
+            - section index (0 is error, -1 is a dynamic call)
+            - offset into section  (idem)
+            - base virtual address (0 for dynamic calls)
+        """
         addr = None
         if isinstance(target, str):
             try:
@@ -150,12 +170,11 @@ class Elf(BinFormat):
                     return s, addr - s.p_vaddr, s.p_vaddr
         return None, 0, 0
 
-    ##
-
     def data(self, target, size):
-        return self.readcode(target, size)[0]
+        "returns 'size' bytes located at target virtual address"
+        return self._readcode(target, size)[0]
 
-    def readcode(self, target, size=None):
+    def _readcode(self, target, size=None):
         s, offset, base = self.getinfo(target)
         data = b""
         if s:
@@ -173,6 +192,7 @@ class Elf(BinFormat):
         return data, 0, base + offset
 
     def getfileoffset(self, target):
+        "converts given target virtual address back to offset in file"
         s, offset, base = self.getinfo(target)
         if s != None:
             result = s.p_offset + offset
@@ -181,10 +201,17 @@ class Elf(BinFormat):
         return result
 
     def readsegment(self, S):
+        "returns segment S data padded to S.p_memsz"
         self.__file.seek(S.p_offset)
         return self.__file.read(S.p_filesz).ljust(S.p_memsz, b"\x00")
 
     def loadsegment(self, S, pagesize=None):
+        """
+        If S is of type PT_LOAD, returns a dict {base: bytes}
+        indicating that segment data bytes (extended to pagesize boundary)
+        need to be mapped at virtual base address.
+        (Returns None if not a PT_LOAD segment.)
+        """
         if S.p_type == PT_LOAD:
             self.__file.seek(S.p_offset)
             if S.p_align > 1 and (S.p_offset != (S.p_vaddr % S.p_align)):
@@ -202,6 +229,7 @@ class Elf(BinFormat):
             return None
 
     def readsection(self, sect):
+        "returns the given section data bytes from file."
         S = None
         if isinstance(sect, str):
             for st in self.Shdr:
@@ -367,6 +395,7 @@ class Elf(BinFormat):
         return D
 
     def checksec(self):
+        "check for usual security features."
         R = {}
         R["Canary"] = 0
         R["Fortify"] = 0
@@ -422,7 +451,7 @@ class Elf(BinFormat):
 
 
 @StructDefine(
-    """
+"""
 B  : ELFMAG0
 c*3: ELFMAG
 B  : EI_CLASS
@@ -481,7 +510,7 @@ with Consts("EI_OSABI"):
 
 
 @StructDefine(
-    """
+"""
 IDENT :< e_ident
 H : e_type
 H : e_machine

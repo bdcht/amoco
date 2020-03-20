@@ -30,7 +30,6 @@ Examples:
 
 Note that amoco loggers are configured to log both to *stderr* with selected level
 and to a temporary file with ``'DEBUG'`` level.
-
 """
 
 import logging
@@ -62,7 +61,8 @@ else:
 
 
 class Log(logging.Logger):
-    """This class is intended to allow amoco activities to be logged
+    """
+    This class is intended to allow amoco activities to be logged
     simultaneously to the *stderr* output with an adjusted level and to
     a temporary file with full verbosity.
 
@@ -141,19 +141,15 @@ def set_log_all(level):
     for l in Log.loggers.values():
         l.setLevel(level)
 
-
 def set_log_module(name, level):
     if name in Log.loggers:
         Log.loggers[name].setLevel(level)
-
 
 def log_level_observed(change):
     level = change["new"]
     set_log_all(level)
 
-
 conf.Log.observe(log_level_observed, names=["level"])
-
 
 def set_log_file(filename):
     """set log file for all loggers

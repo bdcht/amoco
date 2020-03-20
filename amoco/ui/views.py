@@ -94,7 +94,6 @@ class blockView(View):
 
     def _vltable(self, **kargs):
         T = vltable(**kargs)
-        n = len(self.of.instr)
         for i in self.of.instr:
             ins2 = i.toks()
             if isinstance(ins2, str):

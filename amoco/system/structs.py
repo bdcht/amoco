@@ -86,47 +86,47 @@ from inspect import stack as _stack
 
 
 class Consts(object):
-    """Provides a contextmanager to map constant values with their names in
-order to build the associated reverse-dictionary.
+    """
+    Provides a contextmanager to map constant values with their names in
+    order to build the associated reverse-dictionary.
 
-All revers-dict are stored inside the Consts class definition.
-For example if you declare variables in a Consts('example') with-scope,
-the reverse-dict will be stored in Consts.All['example'].
-When StructFormatter will lookup a variable name matching a given value
-for the attribute 'example', it will get Consts.All['example'][value].
+    All revers-dict are stored inside the Consts class definition.
+    For example if you declare variables in a Consts('example') with-scope,
+    the reverse-dict will be stored in Consts.All['example'].
+    When StructFormatter will lookup a variable name matching a given value
+    for the attribute 'example', it will get Consts.All['example'][value].
 
-Note: To avoid attribute name conflicts, the lookup is always prepended
-the stucture class name (or the 'alt' field of the structure class).
-Hence, the above 'tag' constants could have been defined as::
+    Note: To avoid attribute name conflicts, the lookup is always prepended
+    the stucture class name (or the 'alt' field of the structure class).
+    Hence, the above 'tag' constants could have been defined as::
 
-  with Consts('HAB_header.tag'):
-      HAB_TAG_IVT = 0xd1
-      HAB_TAG_DCD = 0xd2
-      HAB_TAG_CSF = 0xd4
-      HAB_TAG_CRT = 0xd7
-      HAB_TAG_SIG = 0xd8
-      HAB_TAG_EVT = 0xdb
-      HAB_TAG_RVT = 0xdd
-      HAB_TAG_WRP = 0x81
-      HAB_TAG_MAC = 0xac
+      with Consts('HAB_header.tag'):
+          HAB_TAG_IVT = 0xd1
+          HAB_TAG_DCD = 0xd2
+          HAB_TAG_CSF = 0xd4
+          HAB_TAG_CRT = 0xd7
+          HAB_TAG_SIG = 0xd8
+          HAB_TAG_EVT = 0xdb
+          HAB_TAG_RVT = 0xdd
+          HAB_TAG_WRP = 0x81
+          HAB_TAG_MAC = 0xac
 
-Or the structure definition could have define an 'alt' attribute::
+    Or the structure definition could have define an 'alt' attribute::
 
-  @StructDefine(\"\"\"
-  B :  tag
-  H :> length
-  B :  version
-  \"\"\")
-  class HAB_Header(StructFormatter):
-      alt = 'hab'
+      @StructDefine(\"\"\"
+      B :  tag
+      H :> length
+      B :  version
+      \"\"\")
+      class HAB_Header(StructFormatter):
+          alt = 'hab'
+          [...]
+
+    in which case the variables could have been defined with::
+
+      with Consts('hab.tag'):
       [...]
-
-in which case the variables could have been defined with::
-
-  with Consts('hab.tag'):
-  [...]
-
-"""
+    """
 
     All = defaultdict(dict)
 
@@ -224,7 +224,8 @@ def token_datetime_fmt(k, x, cls=None):
 
 
 class Field(object):
-    """A Field object defines an element of a structure, associating a name
+    """
+    A Field object defines an element of a structure, associating a name
     to a structure typename and a count. A count of 0 means that the element
     is an object of type typename, a count>0 means that the element is a list
     of objects of type typename of length count.
@@ -381,11 +382,12 @@ class Field(object):
 
 
 class RawField(Field):
-    """A RawField is a Field associated to a *raw* type, i.e. an internal type
-       matching a standard C type (u)int8/16/32/64, floats/double, (u)char.
-       Contrarily to a generic Field which essentially forward the unpack call to
-       its subtype, a RawField will rely on struct package to return the raw
-       unpacked value.
+    """
+    A RawField is a Field associated to a *raw* type, i.e. an internal type
+    matching a standard C type (u)int8/16/32/64, floats/double, (u)char.
+    Contrarily to a generic Field which essentially forward the unpack call to
+    its subtype, a RawField relies on the struct package to return the raw
+    unpacked value.
     """
 
     def format(self):
@@ -431,7 +433,8 @@ class RawField(Field):
 
 
 class VarField(RawField):
-    """A VarField is a RawField with variable length, associated with a
+    """
+    A VarField is a RawField with variable length, associated with a
     termination condition that will end the unpack method.
     An instance of VarField has an infinite size() unless it has been
     unpacked with data.
@@ -496,7 +499,8 @@ class VarField(RawField):
 
 
 class CntField(RawField):
-    """A CntField is a RawField where the amount of elements to unpack
+    """
+    A CntField is a RawField where the amount of elements to unpack
     is provided as first bytes, encoded as either a byte/word/dword.
     """
 
@@ -546,8 +550,10 @@ class CntField(RawField):
 
 
 class StructDefine(object):
-    """StructDefine is a decorator class used for defining structures
-    by parsing a simple intermediate language input decorating a StructFormatter class.
+    """
+    StructDefine is a decorator class used for defining structures
+    by parsing a simple intermediate language input decorating
+    a StructFormatter class.
     """
 
     All = {}
@@ -645,7 +651,9 @@ class StructDefine(object):
 
 
 class UnionDefine(StructDefine):
-    """UnionDefine is a decorator class based on StructDefine, used for defining unions.
+    """
+    UnionDefine is a decorator class based on StructDefine,
+    used for defining unions.
     """
 
     def __call__(self, cls):
@@ -678,11 +686,14 @@ def TypeDefine(newname, typebase, typecount=0, align_value=0):
 #------------------------------------------------------------------------------
 
 class StructCore(object):
-    """StructCore is a ParentClass for all user-defined structures based on a StructDefine format.
-    This class contains essentially the packing and unpacking logic of the structure.
+    """
+    StructCore is a ParentClass for all user-defined structures based on a
+    StructDefine format. This class contains essentially the packing and unpacking
+    logic of the structure.
 
-    Note: It is mandatory that any class that inherits from StructCore can be instanciated
-    with no arguments.
+    Note:
+    It is mandatory that any class that inherits from StructCore can be
+    instanciated with no arguments.
     """
 
     packed = False
@@ -788,7 +799,8 @@ class StructCore(object):
 
 
 class StructFormatter(StructCore):
-    """StructFormatter is the Parent Class for all user-defined structures
+    """
+    StructFormatter is the Parent Class for all user-defined structures
     based on a StructDefine format.
     It inherits the core logic from StructCore Parent and provides all
     formatting facilities to pretty print the structures based on wether
@@ -797,7 +809,7 @@ class StructFormatter(StructCore):
 
     Note: Since it inherits from StructCore, it is mandatory that any child
     class can be instanciated with no arguments.
-"""
+    """
 
     pfx = ""
     alt = None
@@ -847,7 +859,8 @@ class StructFormatter(StructCore):
 
 
 class StructMaker(StructFormatter):
-    """The StructMaker class is a StructFormatter equipped with methods that
+    """
+    The StructMaker class is a StructFormatter equipped with methods that
     allow to interactively define and adjust fields at some given offsets
     or when some given sample bytes match a given value.
     """

@@ -37,6 +37,17 @@ else:
     logger.info("z3 package imported")
 
     class solver(object):
+        """
+        Wrapper of z3.Solver which allows to convert boolean expressions
+        to their z3 bitvector-based forms and ultimately convert back a z3
+        *model* into an amoco :class:`mapper` instance.
+
+        Arguments:
+            eqns (list, []): optional list of 'op' expressions or expressions
+                             with a size of 1 bit.
+            tactics (list, None): optional list of z3 tactics.
+            timeout (int, None): optional timeout value for the z3 solver.
+        """
         def __init__(self, eqns=None, tactics=None, timeout=None):
             self.eqns = []
             self.locs = []
@@ -52,16 +63,19 @@ else:
             self._ctr = 0
 
         def add(self, eqns):
+            "add input list of 'op' expressions to the solver"
             for e in eqns:
                 self.eqns.append(e)
                 self.solver.add(cast_z3_bool(e, self))
                 self.locs.extend(locations_of(e))
 
         def check(self):
+            "check for satisfiability of current formulas"
             logger.verbose("z3 check...")
             return self.solver.check()
 
         def get_model(self, eqns=None):
+            "If satisfiable, returns a z3 *model* for the solver (with added eqns)"
             if eqns is not None:
                 self.add(eqns)
             if self.check() == z3.sat:
@@ -69,12 +83,17 @@ else:
                 return r
 
         def get_mapper(self, eqns=None):
+            """
+            If satisfiable,
+            returns an amoco mapper for the current solver (with added eqns)
+            """
             r = self.get_model(eqns)
             if r is not None:
                 return model_to_mapper(r, self.locs)
 
         @property
         def ctr(self):
+            "internal counter for variables associated to 'top' or 'vec' expressions"
             ctr = self._ctr
             self._ctr += 1
             return ctr
@@ -83,27 +102,33 @@ else:
 
 
 def newvar(pfx, e, slv):
+    "return a new z3 BitVec of size e.size, with name prefixed by slv argument"
     s = "" if slv is None else "%d" % slv.ctr
     return z3.BitVec("%s%s" % (pfx, s), e.size)
 
 
 def top_to_z3(e, slv=None):
+    "translate top expression into a new _topN BitVec variable"
     return newvar("_top", e, slv)
 
 
 def cst_to_z3(e, slv=None):
+    "translate cst expression into its z3 BitVecVal form"
     return z3.BitVecVal(e.v, e.size)
 
 
 def cfp_to_z3(e, slv=None):
+    "translate cfp expression into its z3 RealVal form"
     return z3.RealVal(e.v)
 
 
 def reg_to_z3(e, slv=None):
+    "translate reg expression into its z3 BitVec form"
     return z3.BitVec(e.ref, e.size)
 
 
 def comp_to_z3(e, slv=None):
+    "translate comp expression into its z3 Concat form"
     e.simplify()
     parts = [x.to_smtlib(slv) for x in e]
     parts.reverse()
@@ -114,15 +139,18 @@ def comp_to_z3(e, slv=None):
 
 
 def slc_to_z3(e, slv=None):
+    "translate slc expression into its z3 Extract form"
     x = e.x.to_smtlib(slv)
     return z3.Extract(int(e.pos + e.size - 1), int(e.pos), x)
 
 
 def ptr_to_z3(e, slv=None):
+    "translate ptr expression into its z3 form"
     return e.base.to_smtlib(slv) + e.disp
 
 
 def mem_to_z3(e, slv=None):
+    "translate mem expression into z3 a Concat of BitVec bytes"
     e.simplify()
     M = z3.Array("M", z3.BitVecSort(e.a.size), z3.BitVecSort(8))
     p = e.a.to_smtlib(slv)
@@ -137,6 +165,7 @@ def mem_to_z3(e, slv=None):
 
 
 def cast_z3_bool(x, slv=None):
+    "translate boolean expression into its z3 bool form"
     b = x.to_smtlib(slv)
     if not z3.is_bool(b):
         assert b.size() == 1
@@ -145,6 +174,10 @@ def cast_z3_bool(x, slv=None):
 
 
 def cast_z3_bv(x, slv=None):
+    """
+    translate expression x to its z3 form, if x.size==1 the
+    returned formula is (If x ? 1 : 0).
+    """
     b = x.to_smtlib(slv)
     if z3.is_bool(b):
         b = z3.If(b, z3.BitVecVal(1, 1), z3.BitVecVal(0, 1))
@@ -152,6 +185,7 @@ def cast_z3_bv(x, slv=None):
 
 
 def tst_to_z3(e, slv=None):
+    "translate tst expression into a z3 If form"
     e.simplify()
     z3t = cast_z3_bool(e.tst, slv)
     l = cast_z3_bv(e.l, slv)
@@ -182,6 +216,7 @@ def tst_verify(e, env):
 
 
 def op_to_z3(e, slv=None):
+    "translate op expression into its z3 form"
     e.simplify()
     l, r = e.l, e.r
     op = e.op
@@ -214,6 +249,7 @@ def op_to_z3(e, slv=None):
 
 
 def uop_to_z3(e, slv=None):
+    "translate uop expression into its z3 form"
     e.simplify()
     r = e.r
     op = e.op
@@ -224,6 +260,7 @@ def uop_to_z3(e, slv=None):
 
 
 def vec_to_z3(e, slv=None):
+    "translate vec expression into z3 Or form"
     # flatten vec:
     e.simplify()
     # translate vec list to z3:
@@ -273,10 +310,12 @@ if has_solver:
 
 
 def to_smtlib(e, slv=None):
+    "return the z3 smt form of expression e"
     return e.to_smtlib(slv)
 
 
 def model_to_mapper(r, locs):
+    "return an amoco mapper based on given locs for the z3 model r"
     m = mapper()
     mlocs = []
     for l in set(locs):

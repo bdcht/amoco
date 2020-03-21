@@ -93,6 +93,15 @@ def _checkarg_slice(f):
 class exp(object):
     """the core class for all expressions.
     It defines mandatory attributes, shared methods like dumps/loads etc.
+
+    Attributes:
+        size (int): the bit size of the expression (default is 0.)
+        sf (Bool): the sign flag of the expression (default is False: unsigned.)
+        length (int): the byte size of the expression.
+        mask (int): the bit mask of the expression.
+
+    Note:
+        len(exp) returns the byte size, assuming that size is a multiple of 8.
     """
 
     __slots__ = ["size", "sf"]
@@ -117,10 +126,12 @@ class exp(object):
         return self.length
 
     def signed(self):
+        "consider expression as signed"
         self.sf = True
         return self
 
     def unsigned(self):
+        "consider expression as unsigned"
         self.sf = False
         return self
 
@@ -133,6 +144,7 @@ class exp(object):
         return (1 << self.size) - 1
 
     def eval(self, env):
+        "evalute expression in given :class:`mapper` env"
         if self._is_def == 0:
             return top(self.size)
         if self._is_def == False:
@@ -141,22 +153,24 @@ class exp(object):
             raise NotImplementedError("can't eval %s" % self)
 
     def simplify(self, **kargs):
-        """simplify expression based on predefined heuristics
-        """
+        "simplify expression based on predefined heuristics"
         return self
 
     def depth(self):
+        "depth size of the expression tree"
         return 1.0
 
     def addr(self, env):
         raise TypeError("exp has no address")
 
     def dumps(self):
+        "pickle expression"
         from pickle import dumps, HIGHEST_PROTOCOL
 
         return dumps(self, HIGHEST_PROTOCOL)
 
     def loads(self, s):
+        "unpickle expression"
         from pickle import loads
 
         self = loads(s)
@@ -177,18 +191,24 @@ class exp(object):
             return res.encode("utf-8")
 
     def toks(self, **kargs):
+        "returns list of pretty printing tokens of the expression"
         return [(render.Token.Literal, "%s" % self)]
 
     def pp(self, **kargs):
+        "pretty-printed string of the expression"
         return render.highlight(self.toks(**kargs))
 
     def bit(self, i):
+        "extract i-th bit expression of the expression"
         i = i % self.size
         return self[i : i + 1]
 
-    # return the expression slice located at bytes
-    # (sta,sto) depending on provided endianess (1:little, -1:big).
     def bytes(self, sta=0, sto=None, endian=1):
+        """
+        returns the expression slice located at bytes [sta,sto]
+        taking into account given endianess 1 (little)
+        or -1 (big). Defaults to little endian.
+        """
         s = slice(sta, sto)
         l = self.length
         sta, sto, stp = s.indices(l)
@@ -213,6 +233,7 @@ class exp(object):
         return res.simplify()
 
     def extend(self, sign, size):
+        "extend expression to given size, taking sign into account"
         xt = size - self.size
         if xt <= 0:
             return self
@@ -226,12 +247,15 @@ class exp(object):
         return composer([self, xx])
 
     def signextend(self, size):
+        "sign extend expression to given size"
         return self.extend(True, size)
 
     def zeroextend(self, size):
+        "zero extend expression to given size"
         return self.extend(False, size)
 
     # arithmetic / logic methods : These methods are shared by all nodes.
+
     # unary operators:
     def __invert__(self):
         return oper(OP_NOT, self)
@@ -379,6 +403,7 @@ class exp(object):
         return oper(OP_GT, self, n)
 
     def to_smtlib(self, solver=None):
+        "translate expression to its smt form"
         logger.warning("no SMT solver defined")
         raise NotImplementedError
 
@@ -387,6 +412,15 @@ class exp(object):
 
 
 class top(exp):
+    """
+    top expression represents symbolic values
+    that have reached a high complexity threshold.
+
+    Note:
+    This expression is an absorbing element of the
+    algebra. Any expression that involves a top
+    expression results in a top expression.
+    """
     _is_def = 0
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
@@ -399,6 +433,13 @@ class top(exp):
 # cst holds numeric immediate values
 # -----------------------------------
 class cst(exp):
+    """
+    cst expression represents concrete values (constants).
+
+    Attributes:
+        value (int): get the integer of the expression, taking into account
+                     the sign flag.
+    """
     __slots__ = ["v"]
     _is_def = True
     _is_cst = True
@@ -438,6 +479,7 @@ class cst(exp):
         return [(render.Token.Constant, "%s" % self)]
 
     def to_sym(self, ref):
+        "cast into a symbol expression associated to name ref"
         return sym(ref, self.v, self.size)
 
     # eval of cst is always itself: (sf flag conserved)
@@ -671,7 +713,8 @@ bit1 = cst(1, 1)
 assert bool(bit1)
 
 
-class sym(cst):  # lgtm [py/missing-equals]
+class sym(cst):
+    "symbol expression extends cst with a reference name for pretty printing"
     __slots__ = ["ref"]
     __hash__ = cst.__hash__
     __eq__ = exp.__eq__
@@ -684,10 +727,8 @@ class sym(cst):  # lgtm [py/missing-equals]
         return "#%s" % self.ref
 
 
-# ---------------------------------
-# cfp holds float immediate values
-# ---------------------------------
-class cfp(exp):  # lgtm [py/missing-equals]
+class cfp(exp):
+    "floating point concrete value expression"
     __slots__ = ["v"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
@@ -697,8 +738,6 @@ class cfp(exp):  # lgtm [py/missing-equals]
     def __init__(self, v, size=32):
         self.size = size
         self.v = float(v)
-
-    ##
 
     @property
     def value(self):
@@ -835,12 +874,12 @@ class cfp(exp):  # lgtm [py/missing-equals]
             return exp.__gt__(self, n)
 
 
-##
-
 # ------------------------------------------------------------------------------
 # reg holds 32-bit register reference (refname).
 # ------------------------------------------------------------------------------
-class reg(exp):  # lgtm [py/missing-equals]
+
+class reg(exp):
+    "symbolic register expression"
     __slots__ = ["ref", "type", "_subrefs", "__protect"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
@@ -887,10 +926,12 @@ class reg(exp):  # lgtm [py/missing-equals]
         self.__protect = v["_reg__protect"]
 
 
-##
-
-
 class regtype(object):
+    """
+    decorator and context manager (with...) for associating
+    a register to a specific category among STD (standard),
+    PC (program counter), FLAGS, STACK, OTHER.
+    """
     STD = 0b0000
     PC = 0b0001
     FLAGS = 0b0010
@@ -922,7 +963,9 @@ is_reg_other = regtype(regtype.OTHER)
 # ------------------------------------------------------------------------------
 # ext holds external symbols used by the dynamic linker.
 # ------------------------------------------------------------------------------
+
 class ext(reg):
+    "external reference to a dynamic (lazy or non-lazy) symbol"
     _is_ext = True
     __hash__ = reg.__hash__
     __eq__ = exp.__eq__
@@ -947,6 +990,7 @@ class ext(reg):
         exp.__setattr__(self, a, v)
 
     def call(self, env, **kargs):
+        "explicit call to the ext's stub"
         logger.info("stub %s explicit call" % self.ref)
         if not "size" in kargs:
             kargs.update(size=self.size)
@@ -963,24 +1007,24 @@ class ext(reg):
         logger.info("stub %s implicit call" % self.ref)
         self.stub(env, **self._subrefs)
 
-
-##
-
 # ------------------------------------------------------------------------------
 # lab holds labels/symbols, e.g. from relocations
 # ------------------------------------------------------------------------------
+
 class lab(ext):
+    "label expression used by the assembler"
     _is_lab = True
     __hash__ = ext.__hash__
     __eq__ = exp.__eq__
 
+# ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-# composer returns a comp object (see below) constructed with parts from low
-# significant bits parts to most significant bits parts. The last part sf flag
-# propagates to the resulting comp.
-# ------------------------------------------------------------------------------
 def composer(parts):
+    """
+    composer returns a comp object (see below) constructed with parts from low
+    significant bits parts to most significant bits parts.
+    The last part sf flag propagates to the resulting comp.
+    """
     assert len(parts) > 0
     if len(parts) == 1:
         return parts[0]
@@ -993,13 +1037,21 @@ def composer(parts):
         pos += x.size
     return c.simplify()
 
+# ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-# comp is used to represent expressions that are made of many parts (slices).
-# each part is accessed by 'slicing' the comp to obtain another comp or atom.
-# comp is the only expression that can be built adaptively.
-# ------------------------------------------------------------------------------
-class comp(exp):  # lgtm [py/missing-equals]
+class comp(exp):
+    """
+    composite expression, represents an expression made of several parts.
+
+    Attributes:
+        parts (dict): expressions parts dictionary.
+                      Each key is a tuple (pos,sz) and value is the exp part.
+                      pos is the bit position for this part, and sz is its size.
+        smask (list): mapping of bit index to the part's key that defines this bit.
+    Note:
+        Each part can be accessed by 'slicing' the comp to obtain another
+        comp or the part if the given slice indices match the part position.
+    """
     __slots__ = ["smask", "parts"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
@@ -1110,8 +1162,6 @@ class comp(exp):  # lgtm [py/missing-equals]
             return list(res.parts.values())[0]
         return res
 
-    ##
-
     @_checkarg_slice
     def __setitem__(self, i, v):
         sta = i.start or 0
@@ -1132,14 +1182,22 @@ class comp(exp):  # lgtm [py/missing-equals]
                 self.parts[(sta, sto)] = v
                 self.cut(sta, sto)
 
-    # cut will scan the parts dict to find slices spanning over (start,stop)
-    # then it will split them (inner parts are removed)
     def cut(self, start, stop):
-        # update parts covered by (start,stop)
+        """
+        cut will scan the parts dict to find those spanning **over**
+        start and/or stop bounds then it will split them and remove their
+        inner parts.
+
+        Note:
+            cut is in in-place method (affects self).
+        """
+        # list parts that cover (start,stop) range:
         maskset = []
         for nk in filter(None, self.smask[start:stop]):
             if not nk in maskset:
                 maskset.append(nk)
+        # for each listed part, remove its covering in this range
+        # and update parts and smask dicts accordingly:
         for nk in maskset:
             nv = self.parts.pop(nk)
             if nk[0] < start:
@@ -1148,10 +1206,7 @@ class comp(exp):  # lgtm [py/missing-equals]
             if nk[1] > stop:
                 self.parts[(stop, nk[1])] = nv[stop - nk[0] : nk[1] - nk[0]]
                 self.smask[stop : nk[1]] = [(stop, nk[1])] * (nk[1] - stop)
-            ##
         self.smask[start:stop] = [(start, stop)] * (stop - start)
-
-    ##
 
     def __iter__(self):
         # gather cst as possible:
@@ -1163,9 +1218,11 @@ class comp(exp):  # lgtm [py/missing-equals]
             yield self.parts[p]
             cur = p[1]
 
-    # restruct will concatenate cst expressions when possible
-    # to minimize the number of parts.
     def restruct(self):
+        """
+        restruct will aggregate consecutive cst expressions in order
+        to minimize the number of parts.
+        """
         # gather cst as possible:
         part = list(self.parts.keys())
         part.sort(key=operator.itemgetter(0))
@@ -1191,21 +1248,25 @@ class comp(exp):  # lgtm [py/missing-equals]
                     self.restruct()
                     break
 
-    ##
-
     def depth(self):
         return sum((p.depth() for p in self))
 
-    ##
-
-
 # ------------------------------------------------------------------------------
-# mem holds memory fetches, ie a read operation of length size, in segment seg,
-# at given address expression.
-# The mods list allows to handle aliasing issues detected at fetching time
-# and adjust the eval result accordingly.
-# ------------------------------------------------------------------------------
-class mem(exp):  # lgtm [py/missing-equals]
+
+class mem(exp):
+    """
+    memory expression represents a symbolic value of length size, in segment seg,
+    at given address expression.
+
+    Attributes:
+        a (ptr): a pointer expression that represents the address.
+        endian (int): 1 means little, -1 means big.
+        mods (list): list of possibly aliasing operations affecting this exp.
+
+    Note:
+        The mods list allows to handle aliasing issues detected at fetching time
+        and adjust the eval result accordingly.
+    """
     __slots__ = ["a", "mods", "endian"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
@@ -1279,12 +1340,18 @@ class mem(exp):  # lgtm [py/missing-equals]
             x = slc(x, r1, (sto - sta))
         return x
 
+# ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-# ptr holds memory addresses with segment, base expressions and
-# displacement integer (offset relative to base).
-# ------------------------------------------------------------------------------
-class ptr(exp):  # lgtm [py/missing-equals]
+class ptr(exp):
+    """
+    ptr holds memory addresses with segment, base expressions and
+    displacement integer (offset relative to base).
+
+    Attributes:
+        base (exp): symbolic expression for the base of pointer address.
+        disp (int): offset relative to base for the pointer address.
+        seg  (reg): segment register (or None if unused.)
+    """
     __slots__ = ["base", "disp", "seg"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
@@ -1348,11 +1415,12 @@ class ptr(exp):  # lgtm [py/missing-equals]
             s = s.eval(env)
         return self.segment_handler(env, s, (a, self.disp))
 
+# ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-# slicer is slc class wrapper that deals with slicing the entire expression
-# ------------------------------------------------------------------------------
 def slicer(x, pos, size):
+    """
+    wrapper of slc class that returns a simplified version of x[pos:pos+size].
+    """
     if not isinstance(x, exp):
         raise TypeError(x)
     if not x._is_def:
@@ -1366,11 +1434,17 @@ def slicer(x, pos, size):
             return res
         return slc(x, pos, size)
 
+# ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-# slc holds bit-slice of a non-cst (and non-slc) expressions
-# ------------------------------------------------------------------------------
 class slc(exp):
+    """
+    slice expression, represents an expression part.
+
+    Attributes:
+        x (exp): reference to the symbolic expression
+        pos (int): start bit for the part.
+        ref (str): an alternative symbolic name for this part.
+    """
     __slots__ = ["x", "pos", "ref", "__protect", "_is_reg"]
     _is_def = True
     _is_slc = True
@@ -1406,6 +1480,7 @@ class slc(exp):
             return self.x.type
 
     def raw(self):
+        "returns the raw symbolic name (ignore the ref attribute.)"
         return "%s[%d:%d]" % (self.x, self.pos, self.pos + self.size)
 
     def __setattr__(self, a, v):
@@ -1498,13 +1573,17 @@ class slc(exp):
         self._is_reg = v["_is_reg"]
         self.__protect = v["_slc__protect"]
 
-
-##
-
 # ------------------------------------------------------------------------------
-# tst holds a conditional expression: l if test==1 else r
-# ------------------------------------------------------------------------------
+
 class tst(exp):
+    """
+    Conditional expression.
+
+    Attributes:
+        tst (exp): the boolean expression that represents the condition.
+        l   (exp): the resulting expression if test == bit1.
+        r   (exp): the resulting expression if test == bit0.
+    """
     __slots__ = ["tst", "l", "r"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
@@ -1578,20 +1657,27 @@ class tst(exp):
     def depth(self):
         return (self.tst.depth() + self.l.depth() + self.r.depth()) / 3.0
 
+# ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-# oper returns a possibly simplified op() object (see below)
-# ------------------------------------------------------------------------------
 def oper(opsym, l, r=None):
+    "wrapper of the operator expression that detects unary operations"
     if r is None:
         return uop(opsym, l).simplify()
     return op(opsym, l, r).simplify()
 
 
 # ------------------------------------------------------------------------------
-# op holds binary integer arithmetic and bitwise logic expressions
 # ------------------------------------------------------------------------------
 class op(exp):
+    """
+    op holds binary integer arithmetic and bitwise logic expressions
+
+    Attributes:
+        op (_operator): binary operator
+        prop (int): type of operator (ARITH, LOGIC, CONDT, SHIFT)
+        l (exp): left-hand expression of the operator
+        r (exp): right-hand expression of the operator
+    """
     __slots__ = ["op", "l", "r", "prop"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
@@ -1676,12 +1762,18 @@ class op(exp):
         return self.l.depth() + self.r.depth()
 
 
-##
+# ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-# uop holds unary operations (+x, -x, ~x)
-# ------------------------------------------------------------------------------
 class uop(exp):
+    """
+    uop holds unary integer arithmetic and bitwise logic expressions
+
+    Attributes:
+        op (_operator): unary operator
+        prop (int): type of operator (ARITH, LOGIC, CONDT, SHIFT)
+        l (None): returns None in case uop is treated as an op instance.
+        r (exp): right-hand expression of the operator
+    """
     __slots__ = ["op", "r", "prop"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
@@ -1784,14 +1876,17 @@ else:
 
 
 def ror(x, n):
+    "high-level rotate right n bits"
     return (x >> n | x << (x.size - n)) if x._is_cst else op(OP_ROR, x, n)
 
 
 def rol(x, n):
+    "high-level rotate left n bits"
     return (x << n | x >> (x.size - n)) if x._is_cst else op(OP_ROL, x, n)
 
 
 def ltu(x, y):
+    "high-level less-than-unsigned operation"
     try:
         if not (x._is_cst and y._is_cst):
             return op(OP_LTU, x, y)
@@ -1802,6 +1897,7 @@ def ltu(x, y):
 
 
 def geu(x, y):
+    "high level greater-or-equal-unsigned operation"
     try:
         if not (x._is_cst and y._is_cst):
             return op(OP_GEU, x, y)
@@ -1892,8 +1988,8 @@ class _operator(object):
 # basic simplifier:
 # ------------------
 
-
 def symbols_of(e):
+    "returns all symbols contained in expression e"
     if e is None:
         return []
     if e._is_cst:
@@ -1920,6 +2016,7 @@ def symbols_of(e):
 
 
 def locations_of(e):
+    "returns all locations contained in expression e"
     if e is None:
         return []
     if e._is_cst:
@@ -1946,12 +2043,13 @@ def locations_of(e):
 
 
 def complexity(e):
+    "evaluate the complexity of expression e"
     factor = e.prop if e._is_eqn else 1
     return (e.depth() + len(symbols_of(e))) * factor
 
 
-# helpers for unary expressions:
 def eqn1_helpers(e, **kargs):
+    "helpers for simplifying unary expressions"
     assert e.op.unary
     if e.r._is_cst:
         return e.op(e.r)
@@ -1995,11 +2093,12 @@ def ismask(v):
     return ((1 << (i2 + 1)) - 1) ^ ((1 << i1) - 1) == v
 
 
-# helpers for binary expressions:
 # reminder: be careful not to modify the internal structure of
 # e.l or e.r because these objects might be used also in other
 # expressions. See tests/test_cas_exp.py for details.
+
 def eqn2_helpers(e, bitslice=False, widening=False):
+    "helpers for simplifying binary expressions"
     threshold = conf.Cas.complexity
     if complexity(e.r) > threshold:
         e.r = top(e.r.size)
@@ -2137,8 +2236,8 @@ def eqn2_helpers(e, bitslice=False, widening=False):
     return e
 
 
-# separate expression e into (e' + C) with C cst offset.
 def extract_offset(e):
+    "separate expression e into (e' + C) with C cst offset."
     x = e.simplify()
     if x._is_eqn and x.r._is_cst:
         if e.op.symbol == OP_ADD:
@@ -2148,15 +2247,18 @@ def extract_offset(e):
     return (x, 0)
 
 
-# vec holds a list of expressions each being a possible
-# representation of the current expression. A vec object
-# is obtained by merging several execution paths using
-# the merge function in the mapper module.
-# The simplify method uses the complexity measure to
-# eventually "reduce" the expression to top with a hard-limit
-# currently set to op.threshold.
 # -----------------------------------------------------
+
 class vec(exp):
+    """
+    vec holds a list of expressions each being a possible
+    representation of the current expression. A vec object
+    is obtained by merging several execution paths using
+    the merge function in the mapper module.
+    The simplify method uses the complexity measure to
+    eventually "reduce" the expression to top with a hard-limit
+    currently set to op.threshold.
+    """
     __slots__ = ["l"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
@@ -2245,6 +2347,11 @@ class vec(exp):
 
 
 class vecw(top):
+    """
+    vecw is a *widened* vec expression: it allows to limit
+    the list of possible values to a fixed range and acts
+    as a top (absorbing) expression.
+    """
     __slots__ = ["l"]
     __hash__ = top.__hash__
     __eq__ = exp.__eq__
@@ -2283,5 +2390,3 @@ class vecw(top):
             l.append(e[sta:sto])
         return vecw(vec(l))
 
-
-##

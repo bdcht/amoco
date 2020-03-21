@@ -26,7 +26,10 @@ Amoco is composed of 5 sub-packages
   It allows to represent architectures' registers values either
   as *concrete* or *symbolic* values,
   and to describe instructions' semantics as a *map* of expressions
-  to registers or memory addresses. If z3 is available, expressions
+  to registers or memory addresses. If z3 is installed, boolean expressions
+  formulas can be translated to z3 bitvectors and checked by its solver.
+  If satisfiable, a z3 model can be translated back into a
+  :class:̀`mapper` instance (with amoco expressions.)
 
 - :ref:`system <system>`, implements all *system* features like
   an abstract memory suited for symbolic expressions, as well as

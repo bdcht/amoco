@@ -4,9 +4,9 @@ from amoco.arch.x86 import cpu_x86 as cpu
 from amoco.arch.x86.env import *
 
 # enforce Intel syntax and NullFormatter output:
-cpu.configure(format='Intel')
+cpu.instruction_x86.set_formatter(cpu.IA32_Intel)
 from amoco.ui import render
-render.configure(formatter='Null')
+render.conf.UI.formatter = 'Null'
 
 def test_decoder_000():
   c = b'\x90'

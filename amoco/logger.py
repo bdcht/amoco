@@ -8,7 +8,8 @@
 logger.py
 =========
 
-This module defines amoco logging facilities. The ``Log`` class inherits from a standard :py:class:`logging.Logger`,
+This module defines amoco logging facilities.
+The ``Log`` class inherits from a standard :py:class:`logging.Logger`,
 with minor additional features like a ``'VERBOSE'`` level introduced between ``'INFO'`` and ``'DEBUG'``
 levels, and a progress method that can be useful for time consuming activities. See below for details.
 
@@ -23,56 +24,45 @@ Examples:
         In [1]: import amoco
         In [2]: amoco.cas.mapper.logger.setlevel('VERBOSE')
 
-
     Setting all modules loggers to ``'ERROR'`` level::
 
         In [2]: amoco.set_quiet()
 
 Note that amoco loggers are configured to log both to *stderr* with selected level
 and to a temporary file with ``'DEBUG'`` level.
-
 """
 
 import logging
 
-
 VERBOSE = 15
-logging.addLevelName(VERBOSE,u'VERBOSE')
-#logging.captureWarnings(True)
+logging.addLevelName(VERBOSE, "VERBOSE")
+# logging.captureWarnings(True)
 
-default_format = logging.Formatter(u"%(name)s: %(levelname)s: %(message)s")
+default_format = logging.Formatter("[%(levelname)-7s] %(name)-24s: %(message)s")
 
-try:
-    from amoco import conf
-    def get_log_level():
-        try:
-            level = conf.getint('log','level')
-            if level is None: level = 30
-        except ValueError:
-            level = logging.__dict__.get(conf.get('log','level'),30)
-        return level
-    default_level = get_log_level()
-    if conf.has_option('log','file'):
-        logfilename  = conf.get('log','file')
-    elif conf.getboolean('log','tempfile'):
-        import tempfile
-        logfilename  = tempfile.mkstemp('.log',prefix="amoco-")[1]
-    else:
-        logfilename  = None
-except ImportError:
-    default_level  = logging.WARNING
+from amoco.config import conf
+
+if conf.Log.filename:
+    logfilename = conf.Log.filename
+elif conf.Log.tempfile:
+    import tempfile
+
+    logfilename = tempfile.mkstemp(".log", prefix="amoco-")[1]
+else:
     logfilename = None
 
 if logfilename:
-    logfile = logging.FileHandler(logfilename,mode='w')
+    logfile = logging.FileHandler(logfilename, mode="w")
     logfile.setFormatter(default_format)
-    logfile.setLevel(logging.DEBUG)
-    conf.set('log','file',logfilename)
+    logfile.setLevel(VERBOSE)
+    conf.Log.filename = logfilename
 else:
     logfile = None
 
+
 class Log(logging.Logger):
-    """This class is intended to allow amoco activities to be logged
+    """
+    This class is intended to allow amoco activities to be logged
     simultaneously to the *stderr* output with an adjusted level and to
     a temporary file with full verbosity.
 
@@ -86,38 +76,44 @@ class Log(logging.Logger):
         logger = Log(__name__)
 
     """
-    def __init__(self,name,handler=logging.StreamHandler()):
-        logging.Logger.__init__(self,name)
+
+    loggers = {}
+
+    def __init__(self, name, handler=logging.StreamHandler()):
+        super().__init__(name)
         handler.setFormatter(default_format)
         self.addHandler(handler)
-        self.setLevel(default_level)
-        if logfile: self.addHandler(logfile)
-        self.register(name,self)
+        self.setLevel(conf.Log.level)
+        if logfile:
+            self.addHandler(logfile)
+        self.register(name, self)
 
-    def verbose(self,msg,*args,**kargs):
-        return self.log(VERBOSE,msg,*args,**kargs)
+    def verbose(self, msg, *args, **kargs):
+        return self.log(VERBOSE, msg, *args, **kargs)
 
-    def progress(self,count,total=0,pfx=''):
+    def progress(self, count, total=0, pfx=""):
         h = self.handlers[0]
-        if h.level>VERBOSE: return
+        if h.level > VERBOSE:
+            return
         term = h.stream
-        if not term.isatty(): return
-        if total>0:
+        if not term.isatty():
+            return
+        if total > 0:
             barlen = 40
-            fillr = min((count+1.)/total,1.)
-            done = int(round(barlen*fillr))
-            ratio = round(100. * fillr, 1)
-            s = (u'='*done).ljust(barlen,u'-')
-            term.write(u'%s[%s] %s%%\r'%(pfx,s,ratio))
+            fillr = min((count + 1.0) / total, 1.0)
+            done = int(round(barlen * fillr))
+            ratio = round(100.0 * fillr, 1)
+            s = ("=" * done).ljust(barlen, "-")
+            term.write("%s[%s] %s%%\r" % (pfx, s, ratio))
         else:
-            s = (u"%s[%d]"%(pfx,count)).ljust(80,u' ')
-            term.write(u"%s\r"%s)
+            s = ("%s[%d]" % (pfx, count)).ljust(80, " ")
+            term.write("%s\r" % s)
 
-    def setLevel(self,lvl):
-        self.handlers[0].setLevel(lvl)
+    def setLevel(self, lvl):
+        return super().setLevel(lvl)
 
     @classmethod
-    def register(cls,name,self):
+    def register(cls, name, self):
         if name in self.loggers:
             raise KeyError
         else:
@@ -129,10 +125,12 @@ def set_quiet():
     """
     set_log_all(logging.ERROR)
 
+
 def set_debug():
     """set all loggers to ``'DEBUG'`` level
     """
     set_log_all(logging.DEBUG)
+
 
 def set_log_all(level):
     """set all loggers to specified level
@@ -140,9 +138,18 @@ def set_log_all(level):
     Args:
         level (int): level value as an integer.
     """
-    default_level = level
-    for l in Log.loggers.itervalues():
+    for l in Log.loggers.values():
         l.setLevel(level)
+
+def set_log_module(name, level):
+    if name in Log.loggers:
+        Log.loggers[name].setLevel(level)
+
+def log_level_observed(change):
+    level = change["new"]
+    set_log_all(level)
+
+conf.Log.observe(log_level_observed, names=["level"])
 
 def set_log_file(filename):
     """set log file for all loggers
@@ -153,10 +160,8 @@ def set_log_file(filename):
     """
     if logfile is not None:
         logfile.close()
-    logfile = logging.FileHandler(logfilename,mode='w')
+    logfile = logging.FileHandler(logfilename, mode="w")
     logfile.setFormatter(default_format)
     logfile.setLevel(logging.DEBUG)
-    for l in Log.loggers.itervalues():
+    for l in Log.loggers.values():
         l.addHandler(logfile)
-
-Log.loggers = {}

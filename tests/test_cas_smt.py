@@ -2,10 +2,11 @@ import pytest
 
 from amoco.cas.smt import *
 
-op.limit(100)
 
 @pytest.mark.skipif(not has_solver,reason="no smt solver loaded")
 def test_reg_bv(x,y):
+    clx = conf.Cas.complexity
+    conf.Cas.complexity = 100
     xl = slc(x,0,8,ref='xl')
     xh = slc(x,8,8,ref='xh')
     z = (x^cst(0xcafebabe,32))+(y+(x>>2))
@@ -16,9 +17,12 @@ def test_reg_bv(x,y):
     assert m.eval(xl.to_smtlib()).as_long() == 0xa
     assert m.eval(xh.to_smtlib()).as_long() == 0x84
     assert ((xv^0xcafebabe)+(yv+(xv>>2)))&0xffffffff == 0
+    conf.Cas.complexity = clx
 
 @pytest.mark.skipif(not has_solver,reason="no smt solver loaded")
 def test_mem_bv():
+    clx = conf.Cas.complexity
+    conf.Cas.complexity = 100
     p = reg('p',32)
     x = mem(p,32)
     y = mem(p+2,32)
@@ -30,4 +34,5 @@ def test_mem_bv():
     assert m is not None
     assert m(xh)==m(yl)
     assert m(z) == 0
+    conf.Cas.complexity = clx
 

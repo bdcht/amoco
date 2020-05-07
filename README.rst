@@ -2,24 +2,27 @@
 Amoco
 =====
 
-|bdcht travis| (bdcht main repo) |LRGH travis| (LRGH fork)
-
-.. |bdcht travis| image:: https://travis-ci.org/bdcht/amoco.svg?branch=release
+.. image:: https://travis-ci.org/bdcht/amoco.svg?branch=release
     :target: https://travis-ci.org/bdcht/amoco
-.. |LRGH travis| image:: https://travis-ci.org/LRGH/amoco.svg?branch=release
-    :target: https://travis-ci.org/LRGH/amoco
 
 .. image:: http://readthedocs.org/projects/amoco/badge/?version=latest
     :target: http://amoco.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
-+-----------+-----------------------------------+
-| Status:   | Under Development                 |
-+-----------+-----------------------------------+
-| Location: | https://github.com/bdcht/amoco    |
-+-----------+-----------------------------------+
-| Version:  | 2.5                               |
-+-----------+-----------------------------------+
+.. image:: https://img.shields.io/lgtm/grade/python/g/bdcht/amoco.svg?logo=lgtm&logoWidth=18
+    :target: https://lgtm.com/projects/g/bdcht/amoco/context:python
+    :alt: Code Quality
+
+
++-----------+--------------------------------------------------+
+| Status:   | Under Development                                |
++-----------+--------------------------------------------------+
+| Location: | https://github.com/bdcht/amoco                   |
++-----------+--------------------------------------------------+
+| Version:  | 2.9 (pre-3.0)                                    |
++-----------+--------------------------------------------------+
+|  Doc:     | http://amoco.readthedocs.io/en/latest/index.html |
++-----------+--------------------------------------------------+
 
 Description
 ===========
@@ -38,7 +41,7 @@ It features:
 - a **symbolic** algebra module which allows to describe the semantics of
   every instructions and compute a functional representation of instruction
   blocks.
-- a generic execution model wich provides an abstract memory model to deal
+- a generic execution model which provides an abstract memory model to deal
   with concrete or symbolic values transparently, and other system-dependent
   features.
 - various classes implementing usual disassembly techniques like linear sweep,
@@ -46,7 +49,7 @@ It features:
   which relies on SAT/SMT solvers to proceed with discovering the control
   flow graph or even to implement techniques like DARE (Directed Automated
   Random Exploration).
-- various generic "helpers" and arch-dependent pretty printers to allow
+- various generic *helpers* and arch-dependent pretty printers to allow
   custom look-and-feel configurations (think AT&T vs. Intel syntax,
   absolute vs. relative offsets, decimal or hex immediates, etc).
 
@@ -79,6 +82,85 @@ Please see `LICENSE`_.
 
 Changelog
 =========
+
+- `v2.9.2`_
+
+  * prepare merge with dbgui
+  * drop python 2.7 support
+  * rework subpackage/module imports and logging
+  * various code sanitizing
+  * blackified sources
+
+- `v2.9.1`_
+
+  * add Mach-O loader and system.osx skeleton
+  * improve emulator module
+  * add server and basic client cmdcli ui
+  * fix various errors/warnings
+
+- `v2.9.0`_
+
+  * add skeleton of emulator module (emul class)
+  * reorganize system modules into subpackages
+  * add System, OS, Task and DefineStub classes
+  * add AVR architecture
+  * modified block class => map attribute moved to cfg.node class
+  * moved memory classes in system.memory module
+  * moved cfg analysis classes in 'sa' subpackage
+  * improve debug logs
+  * improve PE/ELF parsers with amoco.structs module
+  * add checksec method in Elf class
+  * fix armv7 semantics and formats
+
+- `v2.6.3`_
+
+  * add DWARF architecture
+  * update and improve elf loader
+  * improve expression simplify for shifts+and ops
+  * merge variable-length struct fields class "VarField"
+
+- `v2.6.2`_
+
+  * fix support for structs "slop"
+  * allow self-defined alignements of structs
+
+- `v2.6.1`_
+
+  * use native structure size/aligment by default
+
+- `v2.6.0`_
+
+  * add V850(E2S) architecture
+  * add SH2-A architecture
+  * add support for analysing i.MX6 HAB structures
+  * merge AVR architecture
+  * add system/structs classes
+  * export 'crawl' out of amoco tree (libclang C-to-structs)
+  * add eBPF instructions semantics
+  * add support for (old)BPF instructions specs
+  * add support for HEX/SREC binary format
+  * add MemoryMap 'merge' method
+  * add 'step_instruction' method in CoreExec (emulator)
+  * add support for UFS structures
+  * merge signals dispatcher for ui
+  * improve setuptools support
+  * remove tox and rely on travis only
+  * improve armv7 instructions semantics and code helpers
+  * improve armv7 instructions specs and formats
+  * add spec tree debug level logging
+  * fix decoder for archs with bigendian variable length instruction
+  * improve decoder efficency with indicator of extended fetcher
+  * add pygments support for sparc, msp430 instruction formatter
+  * improve expressions widening
+  * improve config module
+
+- `v2.5.3`_
+
+  * complete fix of issue #77 (typical x64 madness)
+
+- `v2.5.2`_
+
+  * partial fix of issue #77 (github) related to LEA instruction semantics on x64 arch.
 
 - `v2.5.1`_
 
@@ -244,6 +326,15 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.2: https://github.com/bdcht/amoco/releases/tag/v2.9.2
+.. _v2.9.1: https://github.com/bdcht/amoco/releases/tag/v2.9.1
+.. _v2.9.0: https://github.com/bdcht/amoco/releases/tag/v2.9.0
+.. _v2.6.3: https://github.com/bdcht/amoco/releases/tag/v2.6.3
+.. _v2.6.2: https://github.com/bdcht/amoco/releases/tag/v2.6.2
+.. _v2.6.1: https://github.com/bdcht/amoco/releases/tag/v2.6.1
+.. _v2.6.0: https://github.com/bdcht/amoco/releases/tag/v2.6.0
+.. _v2.5.3: https://github.com/bdcht/amoco/releases/tag/v2.5.3
+.. _v2.5.2: https://github.com/bdcht/amoco/releases/tag/v2.5.2
 .. _v2.5.1: https://github.com/bdcht/amoco/releases/tag/v2.5.1
 .. _v2.5.0: https://github.com/bdcht/amoco/releases/tag/v2.5.0
 .. _v2.4.6: https://github.com/bdcht/amoco/releases/tag/v2.4.6

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-class engine(object):
 
+class engine(object):
     @staticmethod
-    def setw(view,w):
+    def setw(view, w):
         pass
 
     @staticmethod
@@ -14,7 +14,7 @@ class engine(object):
             return len(str(view.of))
 
     @staticmethod
-    def seth(view,h):
+    def seth(view, h):
         pass
 
     @staticmethod
@@ -25,7 +25,7 @@ class engine(object):
             return 1
 
     @staticmethod
-    def setxy(view,xy):
+    def setxy(view, xy):
         view._xy = xy
 
     @staticmethod

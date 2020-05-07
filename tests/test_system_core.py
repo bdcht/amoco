@@ -4,7 +4,7 @@ from amoco.cas.expressions import *
 
 @pytest.fixture(scope='module')
 def M():
-    from amoco.system.core import MemoryMap
+    from amoco.system.memory import MemoryMap
     return MemoryMap()
 
 @pytest.fixture
@@ -65,7 +65,7 @@ def test_pickle_memorymap(a,m):
     from pickle import dumps,loads,HIGHEST_PROTOCOL
     pickler = lambda x: dumps(x,HIGHEST_PROTOCOL)
     m[mem(a,32)] = cst(0xcafebabe,32)
-    p = pickler(m.memory())
+    p = pickler(m.mmap)
     M = loads(p)
     parts = M.read(ptr(a+1),2)
     assert len(parts)==1

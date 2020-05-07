@@ -30,7 +30,7 @@ It features:
 
 setup(
     name = 'amoco',
-    version = '2.5.1',
+    version = '2.9.2',
     description = 'yet another binary analysis framework',
     long_description = long_descr,
     # Metadata
@@ -41,7 +41,6 @@ setup(
       'Development Status :: 3 - Alpha',
       'Intended Audience :: Developers',
       'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
-      'Programming Language :: Python :: 2.7',
       'Programming Language :: Python :: 3',
       'Topic :: Scientific/Engineering :: Information Analysis',
       'Topic :: Security',
@@ -51,15 +50,26 @@ setup(
     keywords='binary analysis symbolic execution',
     packages=find_packages(exclude=['doc','tests*']),
     url = 'https://github.com/bdcht/amoco',
-    install_requires = ['grandalf>=0.55555', 'crysp>=0.9', 'pyparsing'],
+    setup_requires=['pytest-runner',],
+    tests_require=['pytest',],
+    install_requires = ['grandalf>=0.7',
+                        'crysp>=1.1',
+                        'pyparsing',
+                        'traitlets',
+                       ],
+    entry_points={
+        'console_scripts': [ 'amoco=amoco.ui.app:cli [app]' ],
+    },
     extras_require={
-        'test': ['pytest'],
-        'app' : ['pygments','SQLAlchemy','Click','blinker'],
+        'app' : ['click',
+                 'pygments',
+                 'z3-solver',
+                 'tqdm',
+                 'blessings',
+                 'ccrawl>=1.2',
+                 'PySide2'],
     },
     package_data = {
     },
     data_files = [],
-    entry_points={
-        'console_scripts': [ 'amoco=amoco.ui.app:Main [app]' ],
-    },
 )

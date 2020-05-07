@@ -4,7 +4,7 @@
 Amoco documentation
 ===================
 
-Amoco is a python (>=2.7, >=3.5) package dedicated to the static symbolic
+Amoco is a python (>=3.5) package dedicated to the static symbolic
 analysis of binary programs.
 
 It features:
@@ -27,7 +27,7 @@ It features:
   which relies on SAT/SMT solvers to proceed with discovering the control
   flow graph or even to implement techniques like DARE (Directed Automated
   Random Exploration).
-- various generic "helpers" and arch-dependent pretty printers to allow
+- various generic *helpers* and arch-dependent pretty printers to allow
   custom look-and-feel configurations (think AT&T vs. Intel syntax,
   absolute vs. relative offsets, decimal or hex immediates, etc).
 - a persistent database facility that allows to compare discovered graphs
@@ -57,13 +57,13 @@ It features:
    :caption: Application Programming Interface
 
    overview
-   main
+   arch
+   cas
+   system
+   sa
+   ui
    code
    cfg
-   arch
-   system
-   cas
-   ui
    db
    config
    logger

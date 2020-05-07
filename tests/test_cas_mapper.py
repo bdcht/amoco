@@ -19,6 +19,8 @@ def test_slicing(m,x,y):
     assert m(x[16:32])==0xabcd
 
 def test_aliasing1(m,x,y):
+    al = conf.Cas.noaliasing
+    conf.Cas.noaliasing = False
     m.clear()
     mx = mem(x,32)
     my = mem(y,32)
@@ -32,8 +34,11 @@ def test_aliasing1(m,x,y):
     assert str(rx)=='M32$3(x)'
     assert rx.mods[0][1]==0xdeadbeef
     assert rx.mods[1][0]==my.a
+    conf.Cas.noaliasing = al
 
 def test_aliasing2(m,x,y,z,w,r,a,b):
+    al = conf.Cas.noaliasing
+    conf.Cas.noaliasing = False
     m.clear()
     mx = mem(x,32)
     my = mem(y,32)
@@ -56,8 +61,11 @@ def test_aliasing2(m,x,y,z,w,r,a,b):
     m[b]  = m(b+mx)                   # add  b  , [x]
     assert len(m(b).r.mods)==2
     m[mem(a,32)] = cst(0,32)          # mov [a] , 0
+    conf.Cas.noaliasing = al
 
 def test_aliasing3(m,x,y,a):
+    al = conf.Cas.noaliasing
+    conf.Cas.noaliasing = False
     m.clear()
     m[mem(x-4,32)] = cst(0x44434241,32)
     m[mem(x-8,32)] = y
@@ -73,8 +81,11 @@ def test_aliasing3(m,x,y,a):
     mprev[a] = x-4
     res = mprev(res)
     assert res[16:24] == 0xcc
+    conf.Cas.noaliasing = al
 
 def test_compose1(m,x,y,z,w):
+    al = conf.Cas.noaliasing
+    conf.Cas.noaliasing = True
     mx = mem(x,32)
     my = mem(y,32)
     mxx = mem(x+2,32)
@@ -87,10 +98,18 @@ def test_compose1(m,x,y,z,w):
     mprev[y] = z
     mprev[w] = z
     cm = m<<mprev
+    # x == y in prev so mx==my:
+    assert cm(mx) == 0x4567babe
     assert cm(my) == 0x4567babe
-    assert cm(z) == 0x4567babe
+    # no aliasing is assumed so z
+    # receives mem(w) BEFORE m,
+    # i.e mem(z):
+    assert cm(z) == mem(z,32)
+    conf.Cas.noaliasing = al
 
 def test_compose2(m,x,y,z,w):
+    al = conf.Cas.noaliasing
+    conf.Cas.noaliasing = False
     mx = mem(x,32)
     my = mem(y,32)
     mxx = mem(x+2,32)
@@ -102,9 +121,37 @@ def test_compose2(m,x,y,z,w):
     mprev = mapper()
     mprev[x] = z
     mprev[y] = z
+    mprev[w] = z
     cm = m<<mprev
+    # x==y in prev so mx==my:
+    assert cm(mx) == 0x4567babe
     assert cm(my) == 0x4567babe
+    # aliasing is possible so z
+    # receives mem(z) AFTER the 2
+    # memory writes in mx/my,
+    # i.e cm(my):
     assert cm(w)==cm(my)
+    conf.Cas.noaliasing = al
+
+def test_signpropagate(m,x,y):
+    m[x] = cst(0xfffffffe,32)
+    assert (x*2).eval(m) == cst(0xfffffffc,32)
+    assert (reg('x').signed()*2).eval(m) == cst(-4,32)
+    m[y] = cst(-2,32)
+    assert m[y]==cst(-2,32)
+    assert (y*2).eval(m) == cst(-4,32)
+    assert (reg('y').signed()*5).eval(m) == cst(-2*5,32)
+    y8 = y[0:8]
+    assert m(y8) == cst(0xfe,8)
+    assert (y8**2).eval(m) == cst(0x1fc,16)
+    y8.sf = True
+    assert m(y8) == cst(-2,8)
+    z = y8*2
+    zz = y8**2
+    assert z.sf == zz.sf == True
+    assert (z).eval(m) == cst(-4,8)
+    assert (zz).eval(m) == cst(-4,16)
+
 
 def test_vec(m,x,y,z,w,a,b):
     mx = mem(x,32)
@@ -159,7 +206,7 @@ def test_pickle_mapper(a,m):
     w = loads(p)
     assert w.conds[0]==(a==0)
     assert w(a)==(a+3)
-    M = w.memory()
+    M = w.mmap
     parts = M.read(ptr(w(a)),1)
     assert len(parts)==1
     assert parts[0]==x[0:8]

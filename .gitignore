@@ -7,4 +7,6 @@ dist/
 *.egg-info
 tests/priv
 tests/.cache
-.tox/
+.pytest_cache/
+tests/.pytest_cache/
+.eggs/

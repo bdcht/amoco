@@ -288,7 +288,7 @@ class MemoryZone(object):
         j = self.locate(z.end)
         # h = []
         if j is None:
-            assert i is None
+            assert i is None or i == 0
             self._map.insert(0, z)
             self.__update_cache()
             return

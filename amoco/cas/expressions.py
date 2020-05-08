@@ -651,6 +651,8 @@ class cst(exp):
         return n ^ self
 
     # the only atom that is considered True is the cst(1,1) (ie bit1 below)
+    # __nonzero__ for python2, __bool__ for python3
+    def __nonzero__(self): return self.__bool__()
     def __bool__(self):
         if self.size == 1 and self.v == 1:
             return True
@@ -710,7 +712,6 @@ class cst(exp):
 
 bit0 = cst(0, 1)
 bit1 = cst(1, 1)
-assert bool(bit1)
 
 
 class sym(cst):

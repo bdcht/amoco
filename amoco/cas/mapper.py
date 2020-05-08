@@ -18,7 +18,7 @@ from amoco.logger import Log
 logger = Log(__name__)
 logger.debug("loading module")
 
-from .expressions import *
+from amoco.cas.expressions import *
 
 from amoco.cas.tracker import generation
 from amoco.system.memory import MemoryMap

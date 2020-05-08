@@ -80,7 +80,7 @@ class Log(logging.Logger):
     loggers = {}
 
     def __init__(self, name, handler=logging.StreamHandler()):
-        super().__init__(name)
+        logging.Logger.__init__(self, name)
         handler.setFormatter(default_format)
         self.addHandler(handler)
         self.setLevel(conf.Log.level)
@@ -110,7 +110,7 @@ class Log(logging.Logger):
             term.write("%s\r" % s)
 
     def setLevel(self, lvl):
-        return super().setLevel(lvl)
+        return logging.Logger.setLevel(self, lvl)
 
     @classmethod
     def register(cls, name, self):

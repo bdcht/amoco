@@ -7,7 +7,7 @@
 from collections import OrderedDict
 
 
-class generation(OrderedDict):
+class generation(dict):
     def lastdict(self):
         return self
 

@@ -24,6 +24,7 @@ Attributes:
 
             - 'noaliasing' will assume that mapper's memory pointers are not aliased if True (default)
             - 'complexity' threshold for expressions (default 100). See `cas.expressions` for details.
+            - 'memtrace' store memory writes as mapper items if True (default).
             - 'unicode' will use math unicode symbols for expressions operators if True (default False).
 
         - 'DB' which deals with database backend options:
@@ -34,7 +35,7 @@ Attributes:
         - 'Log' which deals with logging options:
 
             - 'level' one of 'ERROR' (default), 'VERBOSE', 'INFO', 'WARNING' or 'DEBUG' from less to more verbose,
-            - 'tempfile' to also save DEBUG logs in a temporary file if True (default),
+            - 'tempfile' to also save DEBUG logs in a temporary file if True (default is False),
             - 'filename' to also save DEBUG logs using this filename.
 
         - 'UI' which deals with some user-interface pretty-printing options:
@@ -42,11 +43,16 @@ Attributes:
             - 'formatter' one of 'Null' (default), 'Terminal', "Terminal256', 'TerminalDark', 'TerminalLight', 'Html'
             - 'graphics' one of 'term' (default), 'qt' or 'gtk'
             - 'console' one of 'python' (default), or 'ipython'
+            - 'unicode' will use unicode symbols for drawing lines and icons if True
 
         - 'Server' which deals with amoco's server parameters:
 
             - 'wbsz' sets the size of the server's internal shared memory buffer with spawned commands
             - 'timeout' sets the servers's internal timeout for the connection with spawned commands
+
+        - 'Emu' which deals with amoco's emulator parameters:
+
+            - 'hist' defines the size of the emulator's instructions' history list (defaults to 100.)
 
         - 'Arch' which allows to configure assembly format parameters:
 
@@ -56,7 +62,8 @@ Attributes:
 """
 
 
-from traitlets.config import Configurable
+import os
+from traitlets.config import Configurable,PyFileConfigLoader
 from traitlets import Integer, Unicode, Bool, observe
 
 # -----------------------
@@ -84,12 +91,15 @@ class Code(Configurable):
         footer (Bool): display block footer dash-line if True.
         bytecode (Bool): display instructions' bytes.
         padding (int): add space-padding bytes to bytecode (default=4).
+        hist (int): number of history instructions to show in
+                    emulator's code frame view.
     """
     helper = Bool(True, config=True)
     header = Bool(True, config=True)
     footer = Bool(True, config=True)
     bytecode = Bool(True, config=True)
     padding = Integer(4, config=True)
+    hist = Integer(3, config=True)
 
 
 class Cas(Configurable):
@@ -103,10 +113,12 @@ class Cas(Configurable):
         unicode (Bool): use unicode character for expressions' operators if True.
         noaliasing (Bool): If True (default), then assume that symbolic memory
                            expressions (pointers) are **never** aliased.
+        memtrace (Bool): keep memory writes in mapper in addition to MemoryMap (default).
     """
     complexity = Integer(10000, config=True)
     unicode = Bool(False, config=True)
     noaliasing = Bool(True, config=True)
+    memtrace = Bool(True, config=True)
 
 
 class Log(Configurable):
@@ -114,14 +126,17 @@ class Log(Configurable):
     Configurable parameters related to logging.
 
     Attributes:
-        level (str): terminal logging level (defaults to 'WARNING'.)
-        filename (str): a filename receiving *all* logs (empty by default.)
-        tempfile (Bool): log at DEBUG level to a temporary tmp/ file if True.
+        level (str): terminal logging level (defaults to 'INFO'.)
+        filename (str): if not "" (default), a filename receiving VERBOSE logs.
+        tempfile (Bool): log at VERBOSE level to a temporary tmp/ file if True.
+
+    Note:
+        observers for Log traits are defined in the amoco.logger module
+        (to avoid module cyclic imports.)
     """
-    level = Unicode("WARNING", config=True)
+    level = Unicode("INFO", config=True)
     filename = Unicode("", config=True)
     tempfile = Bool(False, config=True)
-
 
 class UI(Configurable):
     """
@@ -141,6 +156,7 @@ class UI(Configurable):
     console = Unicode("python", config=True)
     completekey = Unicode("tab", config=True)
     cli = Unicode("cmdcli", config=True)
+    unicode = Bool(False, config=True)
 
 
 class Server(Configurable):
@@ -182,6 +198,16 @@ class Arch(Configurable):
         configure(format=change.new)
 
 
+class Emu(Configurable):
+    """
+    Configurable parameters related to the amoco.emu module.
+
+    Attributes:
+        hist (int): size of the emulated instruction history list (defaults to 100.)
+    """
+    hist = Integer(100, config=True)
+
+
 class System(Configurable):
     """
     Configurable parameters related to the system sub-package.
@@ -207,24 +233,32 @@ class Config(object):
         The Config object supports a print() method to display
         the entire configuration.
     """
-    _locations = [".amoco/config", ".amocorc"]
+    _locations = [".config/amoco/config", ".amoco/config", ".amocorc"]
     BANNER = "amoco (version 3.0)"
 
     def __init__(self, f=None):
-        if f is None:
-            from os import getenv
-            from traitlets.config import PyFileConfigLoader
 
-            for f in self._locations:
-                cl = PyFileConfigLoader(filename=f, path=(".", getenv("HOME")))
-                try:
-                    c = cl.load_config()
-                except Exception:
-                    c = None
-                    self.f = None
-                else:
-                    self.f = f
-                    break
+        if f is not None:
+            f = os.path.expanduser(f)
+            self._locations = [f]
+        for f in self._locations:
+            cl = PyFileConfigLoader(filename=f, path=(".", os.getenv("HOME")))
+            try:
+                c = cl.load_config()
+            except Exception:
+                c = None
+                self.f = None
+            else:
+                self.f = f
+                break
+        self.setup(c)
+
+    def load(self,f):
+        f = os.path.expanduser(f)
+        cl = PyFileConfigLoader(filename=f, path=(".", os.getenv("HOME")))
+        self.setup(cl.load_config())
+
+    def setup(self,c=None):
         self.UI = UI(config=c)
         self.DB = DB(config=c)
         self.Code = Code(config=c)
@@ -232,6 +266,7 @@ class Config(object):
         self.Log = Log(config=c)
         self.Cas = Cas(config=c)
         self.System = System(config=c)
+        self.Emu = Emu(config=c)
         self.Server = Server(config=c)
         self.src = c
 

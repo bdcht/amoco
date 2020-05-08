@@ -86,6 +86,8 @@ def test_aliasing3(m,x,y,a):
 def test_compose1(m,x,y,z,w):
     al = conf.Cas.noaliasing
     conf.Cas.noaliasing = True
+    tr = conf.Cas.memtrace
+    conf.Cas.memtrace = True
     mx = mem(x,32)
     my = mem(y,32)
     mxx = mem(x+2,32)
@@ -106,6 +108,7 @@ def test_compose1(m,x,y,z,w):
     # i.e mem(z):
     assert cm(z) == mem(z,32)
     conf.Cas.noaliasing = al
+    conf.Cas.memtrace = tr
 
 def test_compose2(m,x,y,z,w):
     al = conf.Cas.noaliasing
@@ -209,5 +212,5 @@ def test_pickle_mapper(a,m):
     M = w.mmap
     parts = M.read(ptr(w(a)),1)
     assert len(parts)==1
-    assert parts[0]==x[0:8]
+    assert parts[0]==b'\x01'
 

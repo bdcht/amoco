@@ -59,6 +59,10 @@ class Elf(BinFormat):
     def filename(self):
         return self.__file.name
 
+    @property
+    def header(self):
+        return self.Ehdr
+
     def __init__(self, f):
         self.__file = f
         self.Ehdr = Ehdr(f)

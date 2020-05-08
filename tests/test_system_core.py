@@ -28,8 +28,8 @@ def test_memory_002(M,sc1,p):
     M.write(p+2,cst(0x4243,16))
     assert len(M._zones)==2
     z = M._zones[p.base]
-    assert len(z._map)==3
-    assert M.read(p+3,1)[0]==0x42
+    assert len(z._map)==1
+    assert M.read(p+3,1)[0]==b'B'
 
 def test_memory_003(M,sc1,p,y):
     M.write(0x0, sc1)
@@ -49,12 +49,12 @@ def test_memory_004(M,sc1,p,y):
     M.write(cst(0x10,32), y, endian=-1)
     # test big endian cases:
     z = M._zones[p.base]
-    assert M.read(p+3,1)[0]==0x43
+    assert M.read(p+3,1)[0]==b'C'
     res = M.read(cst(0x12,32),4)
     assert res[0] == y[0:16]
     assert res[1] == b'\xc0@'
     res = M.read(p,6)
-    assert res[0]==res[2]==b'AA'
+    assert res[0]==b'AABCAA'
     M.write(cst(0x12,32),p.base,endian=-1)
     res = M.read(cst(0x10,32),8)
     assert res[0]==y[16:32]
@@ -69,7 +69,7 @@ def test_pickle_memorymap(a,m):
     M = loads(p)
     parts = M.read(ptr(a+1),2)
     assert len(parts)==1
-    assert parts[0]==cst(0xfeba,16)
+    assert parts[0]==b'\xba\xfe'
 
 
 

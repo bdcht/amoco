@@ -19,12 +19,6 @@ logger.debug("loading module")
 from amoco.ui import render
 import operator
 
-try:
-    IntType = (int, long)
-except NameError:
-    IntType = (int,)
-else:
-    conf.Cas.unicode = False
 
 # decorators:
 # ------------
@@ -54,7 +48,7 @@ def _checkarg_sizes(f):
 
 def _checkarg_numeric(f):
     def checkarg_numeric(self, n):
-        if isinstance(n, IntType):
+        if isinstance(n, int):
             n = cst(n, self.size)
         elif isinstance(n, (float)):
             n = cfp(n, self.size)
@@ -82,14 +76,26 @@ def _checkarg_slice(f):
 
     return checkarg_slice
 
+# expression types:
 
-# atoms:
-# ------
+et_cst = 0x00001
+et_reg = 0x00002
+et_slc = 0x00100
+et_ext = 0x00200
+et_lab = 0x00400
+et_mem = 0x00800
+et_ptr = 0x01000
+et_tst = 0x02000
+et_eqn = 0x04000
+et_vec = 0x08000
+et_cmp = 0x10000
+et_msk = 0x1ffff
 
 # ------------------------------------------------------------------------------
 # exp is the core class for all expressions.
 # It defines mandatory attributes, shared methods like dumps/loads, etc.
 # ------------------------------------------------------------------------------
+
 class exp(object):
     """the core class for all expressions.
     It defines mandatory attributes, shared methods like dumps/loads etc.
@@ -103,20 +109,8 @@ class exp(object):
     Note:
         len(exp) returns the byte size, assuming that size is a multiple of 8.
     """
-
+    etype = 0
     __slots__ = ["size", "sf"]
-    _is_def = False
-    _is_cst = False
-    _is_reg = False
-    _is_cmp = False
-    _is_slc = False
-    _is_mem = False
-    _is_ext = False
-    _is_lab = False
-    _is_ptr = False
-    _is_tst = False
-    _is_eqn = False
-    _is_vec = False
 
     def __init__(self, size=0, sf=False):
         self.size = size
@@ -145,9 +139,9 @@ class exp(object):
 
     def eval(self, env):
         "evalute expression in given :class:`mapper` env"
-        if self._is_def == 0:
+        if self._is_top:
             return top(self.size)
-        if self._is_def == False:
+        if not self._is_def:
             return exp(self.size)
         else:
             raise NotImplementedError("can't eval %s" % self)
@@ -177,10 +171,10 @@ class exp(object):
         return self
 
     def __unicode__(self):
-        if self._is_def == 0:
-            return "\u22A4%d" % self.size if conf.Cas.unicode else "T%d" % self.size
-        if self._is_def == False:
-            return "\u22A5%d" % self.size if conf.Cas.unicode else "_%d" % self.size
+        if self._is_top:
+            return render.icons.top+("%d" % self.size)
+        if not self._is_def:
+            return render.icons.bot+("%d" % self.size)
         raise ValueError("void expression")
 
     def __str__(self):
@@ -364,7 +358,7 @@ class exp(object):
 
     def __eq__(self, n):
         # we inline checkarg_numeric only here:
-        if isinstance(n, IntType):
+        if isinstance(n, int):
             n = cst(n, self.size)
         elif isinstance(n, (float)):
             n = cfp(n, self.size)
@@ -407,8 +401,51 @@ class exp(object):
         logger.warning("no SMT solver defined")
         raise NotImplementedError
 
+    def is_(self,t):
+        return t & self.etype
 
-##
+    def set_top(self):
+        self.etype = ~(~self.etype & et_msk)
+
+    @property
+    def _is_def(self):
+        return self.etype > 0
+    @property
+    def _is_top(self):
+        return self.etype < 0
+    @property
+    def _is_cst(self):
+        return et_cst & self.etype
+    @property
+    def _is_reg(self):
+        return et_reg & self.etype
+    @property
+    def _is_cmp(self):
+        return et_cmp & self.etype
+    @property
+    def _is_slc(self):
+        return et_slc & self.etype
+    @property
+    def _is_mem(self):
+        return et_mem & self.etype
+    @property
+    def _is_ext(self):
+        return et_ext & self.etype
+    @property
+    def _is_lab(self):
+        return et_lab & self.etype
+    @property
+    def _is_ptr(self):
+        return et_ptr & self.etype
+    @property
+    def _is_tst(self):
+        return et_tst & self.etype
+    @property
+    def _is_eqn(self):
+        return et_eqn & self.etype
+    @property
+    def _is_vec(self):
+        return et_vec & self.etype
 
 
 class top(exp):
@@ -421,7 +458,7 @@ class top(exp):
     algebra. Any expression that involves a top
     expression results in a top expression.
     """
-    _is_def = 0
+    etype = -et_msk
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
 
@@ -432,6 +469,7 @@ class top(exp):
 # -----------------------------------
 # cst holds numeric immediate values
 # -----------------------------------
+
 class cst(exp):
     """
     cst expression represents concrete values (constants).
@@ -441,8 +479,7 @@ class cst(exp):
                      the sign flag.
     """
     __slots__ = ["v"]
-    _is_def = True
-    _is_cst = True
+    etype = et_cst
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
 
@@ -453,8 +490,6 @@ class cst(exp):
         self.sf = False if v >= 0 else True
         self.size = size
         self.v = v & self.mask
-
-    ##
 
     @property
     def value(self):
@@ -481,6 +516,14 @@ class cst(exp):
     def to_sym(self, ref):
         "cast into a symbol expression associated to name ref"
         return sym(ref, self.v, self.size)
+
+    def to_bytes(self,endian=1):
+        s = []
+        v = self.v
+        for i in range(0,self.size,8):
+            s.append(v&0xff)
+            v = v>>8
+        return bytes(s[::endian])
 
     # eval of cst is always itself: (sf flag conserved)
     def eval(self, env):
@@ -706,8 +749,6 @@ class cst(exp):
             return exp.__gt__(self, n)
 
 
-##
-
 bit0 = cst(0, 1)
 bit1 = cst(1, 1)
 assert bool(bit1)
@@ -732,8 +773,7 @@ class cfp(exp):
     __slots__ = ["v"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
-    _is_def = True
-    _is_cst = True
+    etype = et_cst
 
     def __init__(self, v, size=32):
         self.size = size
@@ -880,11 +920,9 @@ class cfp(exp):
 
 class reg(exp):
     "symbolic register expression"
-    __slots__ = ["ref", "type", "_subrefs", "__protect"]
+    __slots__ = ["ref", "etype", "_subrefs", "__protect"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
-    _is_def = True
-    _is_reg = True
 
     def __init__(self, refname, size=32):
         self.__protect = False
@@ -893,7 +931,7 @@ class reg(exp):
         self.sf = False
         self.ref = refname
         self._subrefs = {}
-        self.type = regtype.STD
+        self.etype = et_reg | (regtype.cur or regtype.STD)
 
     def __unicode__(self):
         return "%s" % self.ref
@@ -921,9 +959,10 @@ class reg(exp):
         self.size = v["size"]
         self.sf = v["sf"]
         self.ref = v["ref"]
-        self.type = v["type"]
+        self.etype = v["etype"]
         self._subrefs = v["_subrefs"]
         self.__protect = v["_reg__protect"]
+
 
 
 class regtype(object):
@@ -932,11 +971,11 @@ class regtype(object):
     a register to a specific category among STD (standard),
     PC (program counter), FLAGS, STACK, OTHER.
     """
-    STD = 0b0000
-    PC = 0b0001
-    FLAGS = 0b0010
-    STACK = 0b0100
-    OTHER = 0b1000
+    STD   = 0x00
+    PC    = 0x10
+    FLAGS = 0x20
+    STACK = 0x40
+    OTHER = 0x80
     cur = None
 
     def __init__(self, t):
@@ -945,7 +984,7 @@ class regtype(object):
     def __call__(self, r):
         if not r._is_reg:
             logger.error("pc decorator ignored (not a register)")
-        r.type = self.t
+        r.etype |= self.t
         return r
 
     def __enter__(self):
@@ -955,7 +994,7 @@ class regtype(object):
         regtype.cur = None
 
 
-is_reg_pc = regtype(regtype.PC)
+is_reg_pc    = regtype(regtype.PC)
 is_reg_flags = regtype(regtype.FLAGS)
 is_reg_stack = regtype(regtype.STACK)
 is_reg_other = regtype(regtype.OTHER)
@@ -966,7 +1005,6 @@ is_reg_other = regtype(regtype.OTHER)
 
 class ext(reg):
     "external reference to a dynamic (lazy or non-lazy) symbol"
-    _is_ext = True
     __hash__ = reg.__hash__
     __eq__ = exp.__eq__
 
@@ -976,8 +1014,13 @@ class ext(reg):
         self.size = kargs.get("size", None)
         self.sf = False
         self._reg__protect = False
-        self.type = regtype.OTHER
+        self.etype = et_ext | et_reg | regtype.OTHER
         self.stub = None
+        # add the instruction interface:
+        self.address = None
+        self.operands = []
+        self.misc = {}
+        self.type = 2 # type_control_flow
 
     def __unicode__(self):
         return "@%s" % self.ref
@@ -1002,8 +1045,8 @@ class ext(reg):
             return top(self.size)
         return res[0 : self.size]
 
-    # used when the expression is a target used to build a block
     def __call__(self, env):
+        "used when the expression is used as a target instruction"
         logger.info("stub %s implicit call" % self.ref)
         self.stub(env, **self._subrefs)
 
@@ -1013,7 +1056,7 @@ class ext(reg):
 
 class lab(ext):
     "label expression used by the assembler"
-    _is_lab = True
+    etype = et_lab
     __hash__ = ext.__hash__
     __eq__ = exp.__eq__
 
@@ -1055,8 +1098,7 @@ class comp(exp):
     __slots__ = ["smask", "parts"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
-    _is_def = True
-    _is_cmp = True
+    etype = et_cmp
 
     def __init__(self, s):
         self.size = s
@@ -1270,10 +1312,9 @@ class mem(exp):
     __slots__ = ["a", "mods", "endian"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
-    _is_def = True
-    _is_mem = True
+    etype = et_mem
 
-    def __init__(self, a, size=32, seg="", disp=0, mods=None, endian=1):
+    def __init__(self, a, size=32, seg=None, disp=0, mods=None, endian=1):
         self.size = size
         self.sf = False
         self.a = ptr(a, seg, disp)
@@ -1312,7 +1353,7 @@ class mem(exp):
         return self
 
     def addr(self, env):
-        return self.a.eval(env)
+        return self.a.eval(env).unsigned()
 
     def bytes(self, sta=0, sto=None, endian=0):
         s = slice(sta, sto)
@@ -1355,8 +1396,7 @@ class ptr(exp):
     __slots__ = ["base", "disp", "seg"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
-    _is_def = True
-    _is_ptr = True
+    etype = et_ptr
 
     def __init__(self, base, seg=None, disp=0):
         if base._is_ptr:
@@ -1372,7 +1412,8 @@ class ptr(exp):
 
     def __unicode__(self):
         d = self.disp_tostring()
-        return "%s(%s%s)" % (self.seg, self.base, d)
+        seg = "" if self.seg is None else self.seg
+        return "%s(%s%s)" % (seg, self.base, d)
 
     def disp_tostring(self, base10=True):
         if hasattr(self.disp, "_is_cst"):
@@ -1445,13 +1486,11 @@ class slc(exp):
         pos (int): start bit for the part.
         ref (str): an alternative symbolic name for this part.
     """
-    __slots__ = ["x", "pos", "ref", "__protect", "_is_reg"]
-    _is_def = True
-    _is_slc = True
+    __slots__ = ["x", "pos", "ref", "__protect", "etype"]
     __eq__ = exp.__eq__
 
     def __init__(self, x, pos, size, ref=None):
-        if not isinstance(pos, IntType):
+        if not isinstance(pos, int):
             raise TypeError(pos)
         self.__protect = False
         self.size = size
@@ -1461,23 +1500,18 @@ class slc(exp):
             x, pos = res.x, res.pos
         self.x = x
         self.pos = pos
+        self.etype = et_slc
         self.setref(ref)
 
     def setref(self, ref):
-        self._is_reg = False
         if self.x._is_reg:
-            self._is_reg = True
+            self.etype |= et_reg
             if ref is None:
                 ref = self.x._subrefs.get((self.pos, self.size), None)
             else:
                 self.x._subrefs[(self.pos, self.size)] = ref
             self.__protect = True
         self.ref = ref
-
-    @property
-    def type(self):
-        if self._is_reg:
-            return self.x.type
 
     def raw(self):
         "returns the raw symbolic name (ignore the ref attribute.)"
@@ -1554,7 +1588,7 @@ class slc(exp):
     # but x can't be of type slc...
     def addr(self, env):
         if self.x._is_mem:
-            a = self.x.addr(env)
+            a = self.x.addr(env).unsigned()
             a.disp = self.pos
             return a
         elif self.x._is_reg:
@@ -1570,7 +1604,7 @@ class slc(exp):
         self.x = v["x"]
         self.pos = v["pos"]
         self.ref = v["ref"]
-        self._is_reg = v["_is_reg"]
+        self.etype = v["etype"]
         self.__protect = v["_slc__protect"]
 
 # ------------------------------------------------------------------------------
@@ -1587,8 +1621,7 @@ class tst(exp):
     __slots__ = ["tst", "l", "r"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
-    _is_def = True
-    _is_tst = True
+    etype = et_tst
 
     def __init__(self, t, l, r):
         if t is True or t is False:
@@ -1667,7 +1700,7 @@ def oper(opsym, l, r=None):
 
 
 # ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
+
 class op(exp):
     """
     op holds binary integer arithmetic and bitwise logic expressions
@@ -1681,8 +1714,7 @@ class op(exp):
     __slots__ = ["op", "l", "r", "prop"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
-    _is_def = True
-    _is_eqn = True
+    etype = et_eqn
 
     def __init__(self, op, l, r):
         self.op = _operator(op)
@@ -1716,7 +1748,7 @@ class op(exp):
     ##
 
     def __unicode__(self):
-        return "(%s%s%s)" % (self.l, self.op.symbol, self.r)
+        return "(%s%s%s)" % (self.l, render.icons.op(self.op.symbol), self.r)
 
     def toks(self, **kargs):
         l = self.l.toks(**kargs)
@@ -1729,9 +1761,9 @@ class op(exp):
         l = self.l.simplify(**kargs)
         r = self.r.simplify(**kargs)
         if self.prop < 4 and self.op.symbol not in (OP_DIV, OP_MOD):
-            if l._is_def == 0:
+            if l._is_top:
                 return l
-            if r._is_def == 0:
+            if r._is_top:
                 return r
             minus = self.op.symbol == OP_MIN
             # arithm/logic normalisation:
@@ -1777,8 +1809,7 @@ class uop(exp):
     __slots__ = ["op", "r", "prop"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
-    _is_def = True
-    _is_eqn = True
+    etype = et_eqn
 
     def __init__(self, op, r):
         self.op = _operator(op, unary=1)
@@ -1796,14 +1827,12 @@ class uop(exp):
         res.sf = self.sf
         return res
 
-    ##
-
     @property
     def l(self):
         return None
 
     def __unicode__(self):
-        return "(%s%s)" % (self.op.symbol, self.r)
+        return "(%s%s)" % (render.icons.op(self.op.symbol), self.r)
 
     def toks(self, **kargs):
         r = self.r.toks(**kargs)
@@ -1812,7 +1841,7 @@ class uop(exp):
 
     def simplify(self, **kargs):
         r = self.r.simplify(**kargs)
-        if r._is_def == 0:
+        if r._is_top:
             return r
         self.r = r
         return eqn1_helpers(self, **kargs)
@@ -1820,59 +1849,32 @@ class uop(exp):
     def depth(self):
         return self.r.depth()
 
-
-##
 # operators:
 # -----------
 
-if conf.Cas.unicode:
-    OP_ADD = "+"
-    OP_MIN = "-"
-    OP_MUL = "*"
-    OP_MUL2 = "\u2217"
-    OP_DIV = "/"
-    OP_MOD = "%"
-    OP_AND = "\u2227"
-    OP_OR = "\u2228"
-    OP_XOR = "\u2295"
-    OP_NOT = "\u2310"
-    OP_EQ = "=="
-    OP_NEQ = "\u2260"
-    OP_LE = "\u2264"
-    OP_GE = "\u2265"
-    OP_GEU = "\u22DD"
-    OP_LT = "<"
-    OP_LTU = "\u22D6"
-    OP_GT = ">"
-    OP_LSL = "<<"
-    OP_LSR = ">>"
-    OP_ASR = "\u00B1>>"
-    OP_ROR = ">>>"
-    OP_ROL = "<<<"
-else:
-    OP_ADD = "+"
-    OP_MIN = "-"
-    OP_MUL = "*"
-    OP_MUL2 = "**"
-    OP_DIV = "/"
-    OP_MOD = "%"
-    OP_AND = "&"
-    OP_OR = "|"
-    OP_XOR = "^"
-    OP_NOT = "~"
-    OP_EQ = "=="
-    OP_NEQ = "!="
-    OP_LE = "<="
-    OP_GE = ">="
-    OP_GEU = ">=."
-    OP_LT = "<"
-    OP_LTU = "<."
-    OP_GT = ">"
-    OP_LSL = "<<"
-    OP_LSR = ">>"
-    OP_ASR = ".>>"
-    OP_ROR = ">>>"
-    OP_ROL = "<<<"
+OP_ADD = "+"
+OP_MIN = "-"
+OP_MUL = "*"
+OP_MUL2 = "**"
+OP_DIV = "/"
+OP_MOD = "%"
+OP_AND = "&"
+OP_OR = "|"
+OP_XOR = "^"
+OP_NOT = "~"
+OP_EQ = "=="
+OP_NEQ = "!="
+OP_LE = "<="
+OP_GE = ">="
+OP_GEU = ">=."
+OP_LT = "<"
+OP_LTU = "<."
+OP_GT = ">"
+OP_LSL = "<<"
+OP_LSR = ">>"
+OP_ASR = ".>>"
+OP_ROR = ">>>"
+OP_ROL = "<<<"
 
 
 def ror(x, n):
@@ -2104,7 +2106,7 @@ def eqn2_helpers(e, bitslice=False, widening=False):
         e.r = top(e.r.size)
     if complexity(e.l) > threshold:
         e.l = top(e.l.size)
-    if not (e.r._is_def and e.l._is_def):
+    if e.r._is_top or e.l._is_top:
         return top(e.size)
     # if e := ((a l.op cst) e.op r)
     if e.l._is_eqn and e.l.r._is_cst and e.l.op.unary == 0:
@@ -2238,7 +2240,7 @@ def eqn2_helpers(e, bitslice=False, widening=False):
 
 def extract_offset(e):
     "separate expression e into (e' + C) with C cst offset."
-    x = e.simplify()
+    x = e.simplify().unsigned()
     if x._is_eqn and x.r._is_cst:
         if e.op.symbol == OP_ADD:
             return (x.l, x.r.value)
@@ -2262,8 +2264,7 @@ class vec(exp):
     __slots__ = ["l"]
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
-    _is_def = True
-    _is_vec = True
+    etype = et_vec
 
     def __init__(self, l=None):
         if l is None:
@@ -2355,8 +2356,7 @@ class vecw(top):
     __slots__ = ["l"]
     __hash__ = top.__hash__
     __eq__ = exp.__eq__
-    _is_def = 0
-    _is_vec = True
+    etype = ~(~et_vec & et_msk)
 
     def __init__(self, v):
         self.l = v.l
@@ -2365,7 +2365,7 @@ class vecw(top):
 
     def __unicode__(self):
         s = ",".join(["%s" % x for x in self.l])
-        return "[%s, ...]" % (s)
+        return "[%s, %s]" % (s,render.icons.dots)
 
     def toks(self, **kargs):
         t = []
@@ -2375,7 +2375,7 @@ class vecw(top):
         if len(t) > 0:
             t.pop()
         t.insert(0, (render.Token.Literal, "["))
-        t.append((render.Token.Literal, ", ...]"))
+        t.append((render.Token.Literal, ", %s]"%render.icons.dots))
         return t
 
     def eval(self, env):

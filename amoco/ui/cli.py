@@ -1,4 +1,18 @@
+# -*- coding: utf-8 -*-
+
+# This code is part of Amoco
+# Copyright (C) 2018-2020 Axel Tillequin (bdcht3@gmail.com)
+# published under GPLv2 license
+
+"""
+cli.py
+======
+
+This module...
+"""
+
 import cmd
+import time
 from amoco.config import conf
 from amoco.ui.render import Token, highlight
 from amoco.logger import Log
@@ -7,42 +21,13 @@ logger = Log(__name__)
 logger.debug("loading module")
 
 
-def spawn_console():
-    """ amoco console for interactive mode.
-    The console is based on IPython if found, or uses CPython otherwise.
-    """
-    c = conf
-    cvars = dict(globals(), **locals())
-    if c.Terminal.console.lower() == "ipython":
-        try:
-            from IPython import start_ipython
-        except ImportError:
-            logger.verbose("ipython not found")
-            c.Terminal.console = "python"
-        else:
-            ic = c.src.__class__()
-            ic.TerminalTerminalIPythonApp.display_banner = False
-            ic.InteractiveShellApp.exec_lines = ["print(conf.BANNER)"]
-            start_ipython(argv=[], config=ic, user_ns=cvars)
-    if c.Terminal.console.lower() == "python":
-        from code import interact
-
-        try:
-            import readline, rlcompleter
-
-            readline.set_completer(rlcompleter.Completer(cvars).complete)
-            readline.parse_and_bind("Tab: complete")
-            del readline, rlcompleter
-        except ImportError:
-            logger.verbose("readline not found")
-        interact(banner=conf.BANNER + "\n", local=cvars)
-
-
 def cmdcli_builder(srv):
     cmdcli = type("cmdcli", (cmdcli_core,), {})
     func = cmdcli.default
-    for c in srv.cmds.keys():
-        setattr(cmdcli, "do_%s" % c, func)
+    for cname,cdef in srv.cmds.items():
+        setattr(cmdcli, "do_%s" % cname, func)
+        setattr(cmdcli, "help_%s" % cname,
+                   lambda x,m=cdef.__doc__: print(m))
     s = cmdcli(srv)
     return s
 
@@ -57,7 +42,7 @@ class cmdcli_core(cmd.Cmd):
         self.prompt = highlight(prompt)
 
     def precmd(self, line):
-        if self.srv._srv.is_alive():
+        if (self.srv._srv is None) or self.srv._srv.is_alive():
             return line
         else:
             return "EOF"
@@ -71,14 +56,36 @@ class cmdcli_core(cmd.Cmd):
         self.lastcmd = line
         if line == "EOF":
             self.lastcmd = ""
-            return self.do_EOF(arg)
+            print()
+            return True
+        elif cmd == "help":
+            self.lastcmd = cmd
+            return self.do_help(arg)
         return self.default(line)
 
-    def do_EOF(self, args):
-        print()
-        return True
-
     def default(self, line):
-        self.srv.msgs.put(line)
+        "default command handler will pass line to the server"
+        # check if the server is running in its own thread (daemon):
+        if self.srv._srv is not None:
+            # if it is, just end it the line...
+            self.srv.ctrl.put(line)
+        else:
+            # otherwise, the server is just an object in the current
+            # thread, so we call the command directly and put the
+            # return code in outs queue:
+            res = self.srv._do_cmd(0,line)
+            time.sleep(0.1)
+            self.srv.outs.put(res)
+        # when outs queue receives server's response, it means
+        # that the command has finished executing:
+        while self.srv.outs.empty():
+            try:
+                print(self.srv.msgs.get_nowait())
+            except Exception:
+                pass
+        # get the return code
         res = self.srv.outs.get()
+        # print received messages from server command execution:
+        while not self.srv.msgs.empty():
+            print(self.srv.msgs.get())
         return res

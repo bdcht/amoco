@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+
+# This code is part of Amoco
+# Copyright (C) 2006-2014 Axel Tillequin (bdcht3@gmail.com)
+# published under GPLv2 license
+
+
 try:
     from PyQt5.QtWidgets import QApplication
 except ImportError:
@@ -55,3 +61,7 @@ def setxy(view, xy):
 def getxy(view):
     pt = view.obj.center()
     return (pt.x(), pt.y())
+
+def pp(view):
+    return view._vltable().__str__()
+

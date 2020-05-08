@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+
+# This code is part of Amoco
+# Copyright (C) 2012-2016 Axel Tillequin (bdcht3@gmail.com)
+# published under GPLv2 license
+
+"""
+signals.py
+==========
+
+This module ...
+"""
+
 from amoco.logger import Log
 
 logger = Log(__name__)

@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+#  Copyright (C) 2008 Axel Tillequin (bdcht3@gmail.com)
+# This code is part of Masr
+# published under GPLv2 license
+
 from .mainwin import gtkWindow
 from .items import *
 
@@ -33,3 +37,6 @@ def setxy(view, xy):
 
 def getxy(view):
     return view.obj.xy
+
+def pp(view):
+    return view._vltable().__str__()

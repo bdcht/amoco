@@ -26,7 +26,7 @@ from amoco.cas.mapper import mapper
 try:
     import z3
 except ImportError:
-    logger.info("z3 package not found => solve() method is not implemented")
+    logger.verbose("z3 package not found => solve() method is not implemented")
 
     class solver(object):
         def __init__(self, eqns=None, tactics=None, timeout=None):
@@ -34,7 +34,7 @@ except ImportError:
 
     has_solver = False
 else:
-    logger.info("z3 package imported")
+    logger.verbose("z3 package imported")
 
     class solver(object):
         """

@@ -109,12 +109,14 @@ class lsweep(object):
             until :meth:`sequence` stops.
         """
         l = []
+        if isinstance(loc,int):
+            loc = self.prog.cpu.cst(loc,self.prog.cpu.PC().size)
         seq = self.sequence(loc)
         is_delay_slot = False
         for i in seq:
             # add branching instruction inside block:
             l.append(i)
-            if i.misc["delayed"]:
+            if i.misc.get("delayed",False):
                 is_delay_slot = True
             elif i.type == type_control_flow or is_delay_slot:
                 # check if branch is delayed (e.g. sparc)
@@ -135,9 +137,7 @@ class lsweep(object):
         """getblock is just a wrapper of iterblocks to
         return the first block located at given (int) address.
         """
-        p = self.prog
-        target = p.cpu.cst(val, p.cpu.PC().size)
-        ib = self.iterblocks(target)
+        ib = self.iterblocks(val)
         try:
             b = next(ib)
         except StopIteration:

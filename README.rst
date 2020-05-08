@@ -27,7 +27,7 @@ Amoco
 Description
 ===========
 
-Amoco is a python package dedicated to the (static) analysis of binaries.
+Amoco is a python (>=3.7) package dedicated to symbolic analysis of binaries.
 
 It features:
 
@@ -70,7 +70,7 @@ More precisely:
 - arm SIMD, VFP, NEON, TrustZone, Jazelle instruction sets are not implemented,
 - some solver-based disassembling strategies are not merged yet.
 - idb import/export features are not implemented.
-- MIPS, 6502 and PPC archs are planned.
+- 6502 and PPC archs are planned.
 
 Contributions to fulfill uncomplete/unimplemented parts are welcome.
 
@@ -82,6 +82,15 @@ Please see `LICENSE`_.
 
 Changelog
 =========
+
+- `v2.9.3`_
+
+  * merge/update dbgui emul and srv commands
+  * merge/update emulator views
+  * add PSX system
+  * add MIPS architecture (R3000 only)
+  * improve support for changes in config
+  * rework ext/stub interface
 
 - `v2.9.2`_
 
@@ -326,6 +335,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.3: https://github.com/bdcht/amoco/releases/tag/v2.9.3
 .. _v2.9.2: https://github.com/bdcht/amoco/releases/tag/v2.9.2
 .. _v2.9.1: https://github.com/bdcht/amoco/releases/tag/v2.9.1
 .. _v2.9.0: https://github.com/bdcht/amoco/releases/tag/v2.9.0

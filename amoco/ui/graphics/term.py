@@ -1,16 +1,24 @@
 # -*- coding: utf-8 -*-
 
+# This code is part of Amoco
+# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
+# published under GPLv2 license
 
 class engine(object):
+
+    @staticmethod
+    def builder(view):
+        return view._vltable()
+
     @staticmethod
     def setw(view, w):
         pass
 
     @staticmethod
     def getw(view):
-        if view._is_block:
+        try:
             return view._vltable().width
-        else:
+        except Exception:
             return len(str(view.of))
 
     @staticmethod
@@ -19,15 +27,21 @@ class engine(object):
 
     @staticmethod
     def geth(view):
-        if view._is_block:
+        try:
             return view._vltable().nrows
-        else:
+        except Exception:
             return 1
 
     @staticmethod
     def setxy(view, xy):
-        view._xy = xy
+        pass
 
     @staticmethod
     def getxy(view):
-        return view._xy
+        return None
+
+    @staticmethod
+    def pp(view):
+        return view._vltable().__str__()
+
+

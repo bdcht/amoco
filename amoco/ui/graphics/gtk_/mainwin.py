@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 # Copyright (C) 2008 Axel Tillequin (bdcht3@gmail.com)
 # This code is part of Amoco
 # published under GPLv2 license

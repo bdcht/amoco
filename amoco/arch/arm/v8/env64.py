@@ -220,3 +220,5 @@ internals = {  # states MUST be in a mutable object !
 
 # Coprocessor (CPxx) support:
 # NOT IMPLEMENTED
+
+registers = Xregs + [sp, pc, pstate]

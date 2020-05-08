@@ -45,3 +45,5 @@ RAMPY = reg("RAMPY", 8)
 RAMPZ = reg("RAMPZ", 8)
 RAMPD = reg("RAMPD", 8)
 EIND = reg("EIND", 8)
+
+registers = R + [sp, pc, SREG]

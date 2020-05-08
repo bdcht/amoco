@@ -15,7 +15,7 @@ the :mod:`amoco.system` package.
 """
 
 from amoco.arch.core import Bits
-
+from amoco.ui.views import execView
 from amoco.logger import Log
 
 logger = Log(__name__)
@@ -36,7 +36,7 @@ class CoreExec(object):
     Attributes:
         bin: the program executable format object. Currently supported formats
              are provided in :mod:`system.elf` (Elf32/64), :mod:`system.pe` (PE)
-             and :mod:`system.utils` (HEX/SREC). 
+             and :mod:`system.utils` (HEX/SREC).
 
         cpu: reference to the architecture cpu module, which provides a generic
              access to the PC() program counter and
@@ -50,19 +50,23 @@ class CoreExec(object):
              memory of the program.
     """
 
-    __slots__ = ["bin", "cpu", "OS", "state"]
+    __slots__ = ["bin", "cpu", "OS", "state", "view"]
 
     def __init__(self, p, cpu=None):
         self.bin = p
         self.cpu = cpu
         self.OS = None
         self.state = self.initstate()
+        self.view = execView(of=self)
 
     def __repr__(self):
         c = self.__class__.__name__
         o = self.OS.__module__ if self.OS else "-"
         n = self.bin.filename
         return "<%s %s '%s'>" % (c, o, n)
+
+    def __str__(self):
+        return str(self.view)
 
     def initstate(self):
         from amoco.cas.mapper import mapper
@@ -80,7 +84,17 @@ class CoreExec(object):
     def read_instruction(self, vaddr, **kargs):
         """
         fetch instruction at virtual address vaddr, returned as an
-        cpu.instruction instance or None.
+        cpu.instruction instance or cpu.ext in case an external expression
+        is found at vaddr or vaddr is an external symbol.
+
+        Raises MemoryError in case vaddr is not mapped,
+        and returns None if disassembler fails to decode bytes at vaddr.
+
+        Note:
+        Returning a cpu.ext expression means that this instruction starts
+        an external stub function.
+        It is the responsibility of the fetcher (emulator or analyzer)
+        to eventually call the stub to modify the state mapper.
         """
         if self.cpu is None:
             logger.error("no cpu imported")
@@ -88,6 +102,9 @@ class CoreExec(object):
         maxlen = self.cpu.disassemble.maxlen
         if isinstance(vaddr, int):
             addr = self.cpu.cst(vaddr, self.cpu.PC().size)
+        elif vaddr._is_ext:
+            vaddr.address = vaddr
+            return vaddr
         else:
             addr = vaddr
         try:
@@ -96,9 +113,15 @@ class CoreExec(object):
             logger.verbose("vaddr %s is not mapped" % addr)
             raise MemoryError(e)
         else:
-            if len(istr) <= 0 or not isinstance(istr[0], bytes):
+            if len(istr) <= 0:
                 logger.verbose("failed to read instruction at %s" % addr)
-                return None
+                raise MemoryError(addr)
+            elif not isinstance(istr[0], bytes):
+                if istr[0]._is_ext:
+                    istr[0].address = addr
+                    return istr[0]
+                else:
+                    return None
         i = self.cpu.disassemble(istr[0], **kargs)
         if i is None:
             logger.warning("disassemble failed at vaddr %s" % addr)
@@ -371,7 +394,7 @@ def read_program(filename):
 
     try:
         data = open(filename, "rb")
-    except (TypeError, IOError):
+    except (ValueError, TypeError, IOError):
         data = bytes(filename)
 
     f = DataIO(data)
@@ -410,16 +433,6 @@ def read_program(filename):
         logger.debug("MachOError raised for %s" % f.name)
 
     try:
-        from amoco.system import macho
-        # open file as a Mach-O object:
-        p = macho.MachO(f)
-        logger.info("Mach-O format detected")
-        return p
-    except macho.MachOError:
-        f.seek(0)
-        logger.debug('MachOError raised for %s'%f.name)
-
-    try:
         from amoco.system import utils
 
         # open file as a HEX object:
@@ -445,6 +458,7 @@ def read_program(filename):
 
 # ------------------------------------------------------------------------------
 # decorator that allows to "register" all loaders on-the-fly:
+
 
 class DefineLoader(object):
     """

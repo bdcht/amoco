@@ -38,7 +38,7 @@ esp = slc(rsp, 0, 32, "esp")
 esi = slc(rsi, 0, 32, "esi")
 edi = slc(rdi, 0, 32, "edi")
 eflags = slc(rflags, 0, 32, "eflags")
-
+is_reg_flags(eflags)
 ax = slc(rax, 0, 16, "ax")
 bx = slc(rbx, 0, 16, "bx")
 cx = slc(rcx, 0, 16, "cx")
@@ -216,3 +216,9 @@ def dr(num):
 
 
 internals = {"mode": 64}
+
+registers = [rax,rcx,rdx,rbx,rsp,rbp,rsi,rdi,
+             r8,r9,r10,r11,r12,r13,r14,r15,
+             rip,
+             eflags,
+             cs,ss,ds,es,fs,gs]

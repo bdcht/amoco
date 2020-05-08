@@ -41,8 +41,12 @@ h_ = slc(hl_, 8, 8, "h'")
 l_ = slc(hl_, 0, 8, "l'")
 
 # other registers:
-sp = reg("sp", 16)  # stack pointer
-pc = reg("pc", 16)  # program pointer
+with is_reg_stack:
+    sp = reg("sp", 16)
+
+with is_reg_pc:
+    pc = reg("pc", 16)
+
 ix = reg("ix", 16)  # index register x  (indexed addressing mode)
 iy = reg("iy", 16)  # index register y  (indexed addressing mode)
 ir = reg("ir", 16)  # interrupt vector / memory refresher
@@ -63,6 +67,7 @@ hf = slc(af, 4, 1, "hf")  # half carry (for BCD)
 yf = slc(af, 5, 1, "yf")  # copy of bit5 of result
 zf = slc(af, 6, 1, "zf")  # zero flag
 sf = slc(af, 7, 1, "sf")  # copy of MSB
+is_reg_flags(f)
 
 # interrupts flipflops
 iff1 = reg("iff1", 1)
@@ -84,3 +89,5 @@ CONDITION = {
     0b110: ("p", (sf == 0)),
     0b111: ("m", (sf == 1)),
 }
+
+registers = reg8 + reg8_ + [sp, pc, f]

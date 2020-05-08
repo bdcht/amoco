@@ -23,7 +23,7 @@ from .expressions import *
 from amoco.cas.tracker import generation
 from amoco.system.memory import MemoryMap
 from amoco.arch.core import Bits
-from amoco.ui.views import mapView
+from amoco.ui.views import mapperView
 
 
 class mapper(object):
@@ -61,13 +61,8 @@ class mapper(object):
         # to this init phase...
         for instr in instrlist or []:
             # call the instruction with this mapper:
-            if not instr.misc["delayed"]:
-                instr(self)
-            else:
-                icache.append(instr)
-        for instr in icache:
             instr(self)
-        self.view = mapView(self)
+        self.view = mapperView(self)
 
     def __len__(self):
         return len(self.__map)
@@ -81,7 +76,7 @@ class mapper(object):
         for l, v in iter(self.__map.items()):
             for lv in locations_of(v):
                 if lv._is_reg and l._is_reg:
-                    if (lv == l) or (lv.type == l.type == regtype.FLAGS):
+                    if (lv == l) or (lv.etype & l.etype & regtype.FLAGS):
                         continue
                 r.append(lv)
         return r
@@ -90,7 +85,7 @@ class mapper(object):
         "list image locations (modified in the mapping)"
         L = []
         for l in sum([locations_of(e) for e in self.__map], []):
-            if l._is_reg and l.type in (regtype.PC, regtype.FLAGS):
+            if l._is_reg and (l.etype & (regtype.PC | regtype.FLAGS)):
                 continue
             if l._is_ptr:
                 l = mem(l, self.__map[l].size)
@@ -173,9 +168,9 @@ class mapper(object):
         return res
 
     def aliasing(self, k):
-        """check if location k is possibly aliased by the mapper:
-        i.e. the mapper writes to some other location expression
-        after writing to k"""
+        """check if location k is possibly aliased in the mapper:
+        i.e. the mapper writes to some other symbolic location expression
+        after writing to k which might overlap with k."""
         if conf.Cas.noaliasing:
             return 0
         K = list(self.__map.keys())
@@ -206,7 +201,7 @@ class mapper(object):
         cur = 0
         for p in res:
             plen = len(p)
-            if isinstance(p, exp) and (p._is_def is False):
+            if isinstance(p, exp) and (p._is_def == 0):
                 # p is "bottom":
                 if self.csi:
                     p = self.csi(mem(a, p.size, disp=cur, endian=endian))
@@ -248,6 +243,7 @@ class mapper(object):
             except TypeError:
                 logger.error("setitem ignored (invalid left-value expression: %s)" % k)
                 return
+        # now loc is either a reg or a ptr, we prepare the right-value r from v:
         if k._is_slc and not loc._is_reg:
             raise ValueError("memory location slc is not supported")
         elif loc._is_ptr:
@@ -260,7 +256,12 @@ class mapper(object):
             else:
                 endian = 1
             self._Mem_write(loc, r, endian)
-            self.__map.lastw = len(self.__map) + 1
+            if conf.Cas.memtrace or not conf.Cas.noaliasing:
+                # if we assume that aliasing may exists, we
+                # need to keep tracks of the memory writes ordering
+                # in the mapper:
+                self.__map.lastw = len(self.__map) + 1 #this is O(1) AFAIK...
+                self.__map[loc] = r
         else:
             r = self.R(loc)
             if r._is_reg:
@@ -268,7 +269,7 @@ class mapper(object):
                 r[0 : loc.size] = loc
             pos = k.pos if k._is_slc else 0
             r[pos : pos + k.size] = v.simplify()
-        self.__map[loc] = r
+            self.__map[loc] = r
 
     def update(self, instr):
         "opportunistic update of the self mapper with instruction"
@@ -418,7 +419,7 @@ def merge(m1, m2, **kargs):
             else:
                 v2 = m2[mem(loc, v1.size)]
         else:
-            if loc._is_reg and loc.type == regtype.FLAGS:
+            if loc._is_reg and (loc.etype & regtype.FLAGS):
                 v2 = top(loc.size)
             else:
                 v2 = m2[loc]
@@ -439,7 +440,7 @@ def merge(m1, m2, **kargs):
             else:
                 v1 = m1[mem(loc, v2.size)]
         else:
-            if loc._is_reg and loc.type == regtype.FLAGS:
+            if loc._is_reg and (loc.etype & regtype.FLAGS):
                 v1 = top(loc.size)
             else:
                 v1 = m1[loc]

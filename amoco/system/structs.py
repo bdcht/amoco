@@ -415,9 +415,12 @@ class RawField(Field):
         return res
 
     def pack(self, value):
+        fmt = self.typename
         pfx = "%d" % self.count if self.count > 0 else ""
         order = self.ORDER if hasattr(self, "ORDER") else self.order
-        res = struct.pack(order + pfx + self.typename, value)
+        if fmt=='c' and isinstance(value,bytes):
+            fmt = 's'
+        res = struct.pack(order + pfx + fmt, value)
         return res
 
     def __repr__(self):

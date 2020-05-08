@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+
+# This code is part of Amoco
+# Copyright (C) 2006-2014 Axel Tillequin (bdcht3@gmail.com)
+# published under GPLv2 license
+
 try:
     from PyQt5.QtCore import pyqtSignal, Qt
     from PyQt5.QtWidgets import *

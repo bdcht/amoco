@@ -202,7 +202,7 @@ class disassembler(object):
         self.iset = iset
         self.endian = endian
         # build ispecs tree for each set:
-        logger.debug("building specs tree for modules %s", specmodules)
+        logger.debug("building specs tree for modules %s", [m.__name__ for m in specmodules])
         # self.indent = 0
         self.specs = [self.setup(m.ISPECS) for m in specmodules]
         # del self.indent
@@ -286,7 +286,7 @@ class disassembler(object):
                         i.address = kargs["address"]
                     return i
                 logger.debug(
-                    "no instruction spec matching '%s'"
+                    "no instruction spec matching %s"
                     % (codecs.encode(bytestring, "hex"))
                 )
                 break

@@ -68,6 +68,10 @@ class PE(BinFormat):
     def filename(self):
         return self.data.name
 
+    @property
+    def header(self):
+        return self.NT
+
     def __init__(self, data):
         self.data = data
         # parse DOS header:

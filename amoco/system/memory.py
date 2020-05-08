@@ -28,6 +28,7 @@ logger.debug("loading module")
 
 from bisect import bisect_left
 from amoco.cas.expressions import exp
+from amoco.ui.views import mmapView
 
 # ------------------------------------------------------------------------------
 class MemoryMap(object):
@@ -63,14 +64,15 @@ class MemoryMap(object):
             the raw bytes objects of all memory zones.
 
         merge(other): update this MemoryMap with a new MemoryMap, merging
-            overlapping zones with values from the new map. 
+            overlapping zones with values from the new map.
     """
 
-    __slots__ = ["_zones", "misc"]
+    __slots__ = ["_zones", "misc", "view"]
 
     def __init__(self):
         self._zones = {None: MemoryZone()}
         self.misc = {}
+        self.view = mmapView(self)
 
     def newzone(self, label):
         z = MemoryZone()
@@ -81,17 +83,18 @@ class MemoryMap(object):
     def reference(self, address):
         if isinstance(address, int):
             return (None, address)
-        elif isinstance(address, str):
+        elif address._is_ext:
             return (address, 0)
-        try:
+        elif address._is_cst:
+            return (None,address.v)
+        elif address._is_ptr:
             r, a = (address.base, address.disp)
             if r._is_cst:
                 return (None, (r + a).v)
-            return (r, a)
-        except AttributeError:
-            if address._is_cst:
-                return (None, address.v)
-        raise MemoryError(address)
+            else:
+                return (r, a)
+        else:
+            raise MemoryError(address)
 
     def __len__(self):
         sta, sto = self._zones[None].range()
@@ -369,6 +372,22 @@ class MemoryZone(object):
                     off += len(s)
         return res
 
+    def is_raw(self):
+        return all((m.data._is_raw for m in self._map))
+
+    def dump(self,start=0,stop=0):
+        r = self.range()
+        if start < r[0]:
+            start = r[0]
+        if stop == 0 or stop > r[1]:
+            stop = r[1]
+        dump = []
+        for p in self.read(start,stop-start):
+            if hasattr(p,'etype'):
+                p = b'\0'*(p.length)
+            dump.append(p)
+        return b''.join(dump)
+
 
 # ------------------------------------------------------------------------------
 class mo(object):
@@ -486,10 +505,13 @@ class datadiv(object):
     def __init__(self, data, endian):
         self.val = data
         self.endian = endian
+        if not self._is_raw:
+            if self.val._is_cst:
+                self.val = self.val.to_bytes(endian)
 
     @property
     def _is_raw(self):
-        return not hasattr(self.val, "_is_def")
+        return not hasattr(self.val, "etype")
 
     def __len__(self):
         return len(self.val)

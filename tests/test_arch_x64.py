@@ -7,6 +7,8 @@ from amoco.arch.x64.env import *
 cpu.instruction_x64.set_formatter(cpu.IA32e_Intel)
 from amoco.ui import render
 render.conf.UI.formatter = 'Null'
+render.conf.UI.unicode = False
+render.conf.Cas.unicode = False
 
 def test_decoder_000():
   c = b'\x90'

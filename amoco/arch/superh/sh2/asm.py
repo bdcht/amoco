@@ -28,7 +28,8 @@ def _pop_(fmap, _l):
 
 def __pc(i_xxx):
     def pcnpc(ins, fmap):
-        fmap[pc] = fmap(pc) + ins.length
+        fmap[pc] = fmap(npc)
+        fmap[npc] = fmap(npc) + ins.length
         i_xxx(ins, fmap)
 
     return pcnpc
@@ -622,6 +623,8 @@ def i_SLEEP(ins, fmap):
 
 @__pc
 def i_TRAPA(ins, fmap):
+    _push_(fmap,fmap(pc))
+    _push_(fmap,fmap(SR))
     fmap[pc] = ext(ins.operands[0])
 
 
@@ -642,68 +645,71 @@ def i_STS(ins, fmap):
 @__pc
 def i_BF(ins, fmap):
     disp = ins.operands[0]
-    if not ins.misc["delayed"]:
-        disp = disp + 2  # "nop" delay slot
-    fmap[pc] = fmap(tst(T == bit0, pc + disp, pc))
+    if ins.misc["delayed"]:
+        dst = npc
+    else:
+        dst = pc
+    fmap[dst] = fmap(tst(T == bit0, npc + disp, dst))
 
 
 @__pc
 def i_BT(ins, fmap):
     disp = ins.operands[0]
-    if not ins.misc["delayed"]:
-        disp = disp + 2  # "nop" delay slot
-    fmap[pc] = fmap(tst(T == bit1, pc + disp, pc))
-
+    if ins.misc["delayed"]:
+        dst = npc
+    else:
+        dst = pc
+    fmap[dst] = fmap(tst(T == bit1, npc + disp, dst))
 
 @__pc
 def i_BRA(ins, fmap):
     disp = ins.operands[0]
-    fmap[pc] = fmap(pc + disp)
+    fmap[npc] = fmap(npc + disp)
 
 
 @__pc
 def i_BRAF(ins, fmap):
     Rm = ins.operands[0]
-    fmap[pc] = fmap(pc + Rm)
+    fmap[npc] = fmap(npc + Rm)
 
 
 @__pc
 def i_BSR(ins, fmap):
     disp = ins.operands[0]
-    fmap[PR] = fmap(pc)
-    fmap[pc] = fmap(pc + disp)
+    fmap[PR] = fmap(npc)
+    fmap[npc] = fmap(npc + disp)
 
 
 @__pc
 def i_BSRF(ins, fmap):
     Rm = ins.operands[0]
-    fmap[PR] = fmap(pc)
-    fmap[pc] = fmap(pc + Rm)
+    fmap[PR] = fmap(npc)
+    fmap[npc] = fmap(npc + Rm)
 
 
 @__pc
 def i_JMP(ins, fmap):
     Rm = ins.operands[0]
-    fmap[pc] = fmap(Rm + 4)
+    fmap[npc] = fmap(Rm + 4)
 
 
 @__pc
 def i_JSR(ins, fmap):
     Rm = ins.operands[0]
-    fmap[PR] = fmap(pc)
-    fmap[pc] = fmap(Rm + 4)
+    fmap[PR] = fmap(npc)
+    fmap[npc] = fmap(Rm + 4)
 
 
 @__pc
 def i_RTS(ins, fmap):
-    fmap[pc] = fmap(PR)
+    fmap[npc] = fmap(PR)
 
 
 @__pc
 def i_RTV(ins, fmap):
     Rm = ins.operands[0]
     fmap[R[0]] = fmap(Rm)
-    fmap[pc] = fmap(PR)
+    fmap[npc] = fmap(PR)
 
 
 @__pc

@@ -3,15 +3,15 @@ import pytest
 @pytest.fixture
 def m():
     '''return a aliasing mapper with function scope'''
-    from amoco.cas.mapper import mapper
-    mapper.assume_no_aliasing = False
+    from amoco.cas.mapper import conf,mapper
+    conf.Cas.noaliasing = False
     return mapper()
 
 @pytest.fixture(scope='module')
 def map():
     '''return a no_aliasing mapper with module scope'''
-    from amoco.cas.mapper import mapper
-    mapper.assume_no_aliasing = True
+    from amoco.cas.mapper import conf,mapper
+    conf.Cas.noaliasing = True
     return mapper()
 
 #------------------------------------------------------------------------------

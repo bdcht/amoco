@@ -191,7 +191,7 @@ def i_stda(ins, fmap):
 
 
 def i_ldstub(ins, fmap):
-    i_ldub(ins, fmap)
+    i_ldub(ins, fmap)       #i_ldub advances the pc/npc
     src = ins.operands[0]
     fmap[__mem(src, 8)] = cst(0xFF, 8)
 

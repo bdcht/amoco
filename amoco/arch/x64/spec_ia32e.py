@@ -427,8 +427,6 @@ def ia32_mov_adr(obj, data, _flg8, _inv):
     op1 = env.getreg(0, opdsz)
     adrsz = obj.misc["adrsz"] or 64
     seg = obj.misc["segreg"]
-    if seg is None:
-        seg = ""
     if data.size < adrsz:
         raise InstructionError(obj)
     moffs8 = env.cst(data[0:adrsz].int(), adrsz)

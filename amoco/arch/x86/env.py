@@ -21,6 +21,7 @@ edi = reg("edi", 32)  # ptr to data in segment pointed by ES; dst ptr for string
 eip = reg("eip", 32)  # instruction pointer in 32 bit mode
 eflags = reg("eflags", 32)
 
+
 is_reg_pc(eip)
 is_reg_flags(eflags)
 is_reg_stack(esp)
@@ -100,3 +101,5 @@ def dr(num):
 
 
 internals = {"mode": 32}
+
+registers = [eax,ecx,edx,ebx,esp,ebp,esi,edi,eip,eflags,cs,ss,ds,es,fs,gs]

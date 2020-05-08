@@ -84,8 +84,6 @@ def getModRM(obj, Mod, RM, data, REX=None):
     opdsz = obj.misc["opdsz"] or 32
     adrsz = obj.misc["adrsz"] or 64
     seg = obj.misc["segreg"]
-    if seg is None:
-        seg = ""
     W, R, X, B = REX or getREX(obj)
     if opdsz != 8 and W == 1:
         opdsz = 64

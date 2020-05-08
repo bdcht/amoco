@@ -65,7 +65,7 @@ setup(
                  'pygments',
                  'z3-solver',
                  'tqdm',
-                 'blessings',
+                 'blessed',
                  'ccrawl>=1.2',
                  'PySide2'],
     },

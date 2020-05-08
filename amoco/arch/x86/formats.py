@@ -25,9 +25,9 @@ def deref(op):
     s = {8: "byte ptr ", 16: "word ptr ", 64: "qword ptr ", 128: "xmmword ptr "}.get(
         op.size, ""
     )
-    s += "%s:" % op.a.seg if (op.a.seg != "") else ""
+    s += "%s:" % op.a.seg if (op.a.seg is not None) else ""
     b = op.a.base
-    if b._is_reg and b.type == regtype.STACK:
+    if b._is_reg and (b.etype & regtype.STACK):
         base10 = True
     else:
         base10 = False
@@ -108,7 +108,7 @@ def mnemo_att(i):
 def deref_att(op):
     assert op._is_mem
     disp = "%+d" % op.a.disp if op.a.disp else ""
-    seg = "%s:" % op.a.seg if (op.a.seg != "") else ""
+    seg = "%s:" % op.a.seg if (op.a.seg is not None) else ""
     b = op.a.base
     if b._is_reg:
         bis = "(%{})".format(b)
@@ -439,7 +439,7 @@ def intel_deref(op):
     d = op.a.disp
     seg = op.a.seg
     if b._is_reg and b.ref == "rip":
-        seg = ""  # Don't display segment
+        seg = None  # Don't display segment
     s, b, d = default_deref(b, d)
     if s is None:
         # Base includes a register; disp may include labels
@@ -458,7 +458,7 @@ def intel_deref(op):
             s = "%s[%s]" % (d0, b)
         else:
             s = "%s[%s%+d]" % (d0, b, d1)
-    if seg != "":
+    if seg is not None:
         s = "%s:%s" % (seg, s)
     return s
 
@@ -772,7 +772,7 @@ def att_deref(op):
         # Base includes a register; disp may include labels
         (b0, b1, b2), (d0, d1) = b, d
         if b0 == "rip":
-            seg = ""  # Don't display segment
+            seg = None  # Don't display segment
         if b1 is None:
             b = "(%{})".format(b0)
         elif b0 is None:
@@ -793,7 +793,7 @@ def att_deref(op):
             s = b
         else:
             s = d + b
-    if seg != "":
+    if seg is not None:
         s = "%{}:{}".format(seg, s)
     return s
 

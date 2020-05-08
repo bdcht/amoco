@@ -25,7 +25,7 @@ def deref(op):
     s = {8: "byte ptr ", 16: "word ptr ", 64: "qword ptr ", 128: "xmmword ptr "}.get(
         op.size, ""
     )
-    s += "%s:" % op.a.seg if (op.a.seg != "") else ""
+    s += "%s:" % op.a.seg if (getattr(op.a.seg, 'ref', "") != "") else ""
     b = op.a.base
     if b._is_reg and b.type == regtype.STACK:
         base10 = True
@@ -108,7 +108,7 @@ def mnemo_att(i):
 def deref_att(op):
     assert op._is_mem
     disp = "%+d" % op.a.disp if op.a.disp else ""
-    seg = "%s:" % op.a.seg if (op.a.seg != "") else ""
+    seg = "%s:" % op.a.seg if (getattr(op.a.seg, 'ref', "") != "") else ""
     b = op.a.base
     if b._is_reg:
         bis = "(%{})".format(b)
@@ -458,7 +458,7 @@ def intel_deref(op):
             s = "%s[%s]" % (d0, b)
         else:
             s = "%s[%s%+d]" % (d0, b, d1)
-    if seg != "":
+    if getattr(seg, 'ref', "") != "":
         s = "%s:%s" % (seg, s)
     return s
 
@@ -793,7 +793,7 @@ def att_deref(op):
             s = b
         else:
             s = d + b
-    if seg != "":
+    if getattr(seg, 'ref', "") != "":
         s = "%{}:{}".format(seg, s)
     return s
 

@@ -236,6 +236,16 @@ def test_decoder_029():
   assert i.mnemonic == 'INC'
   assert i.misc['pfx'] == ['lock', None, None, None]
 
+# push %ds:1234
+def test_decoder_030():
+  i = cpu.disassemble(b'\x3e\xff\x34\x25\xd2\x04\x00\x00')
+  assert i.mnemonic=='PUSH'
+  assert i.operands[0].size == 32
+  assert i.operands[0].a.base == 0x4d2
+  assert i.operands[0].a.disp == 0
+  assert i.operands[0].a.seg.ref == 'ds'
+  assert str(i) == 'push        ds:[0x4d2]'
+
 def test_pickle_instruction():
   import pickle
   pickler = lambda x: pickle.dumps(x,2)

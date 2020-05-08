@@ -200,3 +200,12 @@ def test_decoder_028():
   assert i.mnemonic=='MOVHPD'
   assert i.operands[0].ref == 'xmm2'
   assert i.operands[1].size == 64
+
+def test_decoder_029():
+  i = cpu.disassemble(b'\x3e\xff\x34\x25\xd2\x04\x00\x00')
+  assert i.mnemonic=='PUSH'
+  assert i.operands[0].size == 64
+  assert i.operands[0].a.base == 0x4d2
+  assert i.operands[0].a.disp == 0
+  assert i.operands[0].a.seg.ref == 'ds'
+  assert str(i) == 'push        qword ptr ds:[0x4d2]'

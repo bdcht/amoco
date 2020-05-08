@@ -112,11 +112,90 @@ class sparc_syntax:
     exp.setParseAction(action_exp)
     instr.setParseAction(action_instr)
 
-
+from amoco.cas.expressions import cst, op
+from amoco.arch.sparc.spec_v8 import ISPECS
+from amoco.arch.sparc.formats import CONDB, CONDT
+spec_table = dict([(spec.iattr['mnemonic'], spec) for spec in ISPECS ])
+b_synonyms = {'b':'ba','bgeu':'bcc','blu':'bcs','bz':'be','bnz':'bne'}
+t_synonyms = {'t':'ta','tgeu':'tcc','tlu':'tcs','tz':'te','tnz':'tne'}
+b_cond = dict([(mn,cond) for cond,mn in CONDB.items()])
+t_cond = dict([(mn,cond) for cond,mn in CONDT.items()])
 def asmhelper(i):
-    if i.mnemonic == "mov":
-        i.mnemonic = "or"
-        i.operands.insert(0, env.g0)
+    for idx, a in enumerate(i.operands):
+        if a._is_mem:
+            i.operands[idx] = a.a
+    # Add implicit arguments
+    if i.mnemonic in ['inc','dec'] and len(i.operands) == 1:
+        i.operands.insert(0,cst(1))
+    # Expand reduced forms
+    if i.mnemonic=='bset':
+        i.mnemonic = 'or'
+        i.operands.insert(0,i.operands[1])
+    elif i.mnemonic=='mov':
+        i.mnemonic = 'or'
+        i.operands.insert(0,env.g0)
+    elif i.mnemonic=='retl':
+        i.mnemonic = 'jmpl'
+        i.operands.insert(0,op('+',env.o7,cst(8)))
+        i.operands.insert(1,env.g0)
+    elif i.mnemonic=='jmp':
+        i.mnemonic = 'jmpl'
+        i.operands.insert(1,env.g0)
+    elif i.mnemonic=='clr' and i.operands[0]._is_reg:
+        i.mnemonic = 'or'
+        i.operands.insert(0,env.g0)
+        i.operands.insert(0,env.g0)
+    elif i.mnemonic=='clr':
+        i.mnemonic = 'st'
+        i.operands.insert(0,env.g0)
+    elif i.mnemonic=='inc':
+        i.mnemonic = 'add'
+        i.operands.insert(0,i.operands[1])
+    elif i.mnemonic=='dec':
+        i.mnemonic = 'sub'
+        i.operands.insert(0,i.operands[1])
+    elif i.mnemonic=='cmp':
+        i.mnemonic = 'subcc'
+        i.operands.insert(2,env.g0)
+    elif i.mnemonic=='btst':
+        i.mnemonic = 'andcc'
+        i.operands.insert(2,env.g0)
+        i.operands[0:2] = [ i.operands[1], i.operands[0] ]
+    elif i.mnemonic=='nop':
+        i.mnemonic = 'sethi'
+        i.operands = [ cst(0,22), env.g0 ]
+    elif i.mnemonic=='restore' and len(i.operands) == 0:
+        i.operands = [ env.g0, env.g0, env.g0 ]
+    # Branches and cc
+    if i.mnemonic.endswith('cc') and not i.mnemonic in ['taddcc' , 'tsubcc', 'mulscc']:
+        i.mnemonic = i.mnemonic[:-2]
+        i.misc['icc'] = True
+    if i.mnemonic.endswith(',a'):
+        i.misc['annul'] = True
+        i.mnemonic = i.mnemonic.rstrip(',a')
+    if i.mnemonic in b_synonyms:
+        i.mnemonic = b_synonyms[i.mnemonic]
+    if i.mnemonic in b_cond:
+        i.cond = b_cond[i.mnemonic]
+        i.mnemonic = 'b'
+    if i.mnemonic in t_synonyms:
+        i.mnemonic = t_synonyms[i.mnemonic]
+    if i.mnemonic in t_cond:
+        i.cond = t_cond[i.mnemonic]
+        i.mnemonic = 't'
+    if i.mnemonic=='call':
+        if len(i.operands)>1 and i.operands[1] != cst(0):
+            raise ValueError('call has a non-zero second argument')
+        i.operands = [ i.operands[0] ]
+    # Additional internal tweaks
+    if i.mnemonic=='sethi' and i.operands[0]._is_cst:
+        i.operands[0].size = 22
+    elif i.mnemonic=='std':
+        i.rd = env.r.index(i.operands[0])
+    elif i.mnemonic=='ldd':
+        i.rd = env.r.index(i.operands[1])
+    i.spec = spec_table[i.mnemonic]
+    i.bytes = (0,0,0,0) # To have i.length == 4, for pc_npc emulation
     return i
 
 

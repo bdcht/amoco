@@ -2,6 +2,7 @@ import pytest
 import codecs
 from amoco.arch.sparc import cpu_v8 as cpu
 from amoco.arch.sparc.env import *
+from amoco.arch.sparc.parsers import sparc_syntax
 
 # enforce synthetic syntax and NullFormatter output:
 cpu.instruction_sparc.set_formatter(cpu.SPARC_V8_synthetic)
@@ -84,3 +85,22 @@ def test_decoder_008():
   i = cpu.disassemble(c)
   assert i.mnemonic == 'nop'
   assert str(i) == 'nop  '
+
+def test_parser_001():
+  s = "nop"
+  i = sparc_syntax.instr.parseString(s)[0]
+  assert i.mnemonic == 'sethi'
+  assert str(i) == 'nop'
+
+def test_parser_002():
+  s = "inc 0x42, %g1"
+  i = sparc_syntax.instr.parseString(s)[0]
+  assert i.mnemonic == 'add'
+  assert str(i) == 'inc  0x42, %g1'
+
+def test_parser_002b():
+  s = "add %g1, 66, %g1"
+  i = sparc_syntax.instr.parseString(s)[0]
+  print("- %r"%i)
+  assert i.mnemonic == 'add'
+  assert str(i) == 'inc  0x42, %g1'

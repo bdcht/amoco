@@ -198,8 +198,8 @@ class CoreExec(object):
         "get 64-bit int expression of current state(loc)"
         return self.getx(loc, size=64, sign=True)
 
-        "get 64-bit unsigned int expression of current state(loc)"
     def get_uint64(self, loc):
+        "get 64-bit unsigned int expression of current state(loc)"
         return self.getx(loc, size=64)
 
     def get_int32(self, loc):

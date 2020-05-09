@@ -50,7 +50,6 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
             "data32",
             "addr32",
             "lock",
-            "wait",
             "rep",
             "repz",
             "repe",
@@ -648,7 +647,7 @@ class intel_syntax:
     noprefix = False
 
     pfx = pp.oneOf(
-        ["data16", "addr16", "data32", "addr32", "lock", "wait", "rep", "repe", "repne"]
+        ["data16", "addr16", "data32", "addr32", "lock", "rep", "repe", "repne"]
     )
     spfx = pp.oneOf(["dword", "word", "byte"], caseless=True)
     mpfx = spfx + pp.oneOf(["ptr"], caseless=True)

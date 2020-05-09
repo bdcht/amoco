@@ -145,46 +145,46 @@ def i_BLTZAL(ins,fmap):
 
 @__npc
 def i_BREAK(ins,fmap):
-    ext("BREAK").call(fmap,ins.code)
+    ext("BREAK").call(fmap,code=ins.code)
 
 @__npc
 def i_CFC(ins, fmap):
     rt, rd = ins.operands
     if rt is not zero:
-        fmap[rt] = ext("CFC%d"%(ins.z),size=rt.size).call(fmap,rd)
+        fmap[rt] = ext("CFC%d"%(ins.z),size=rt.size).call(fmap,rd=rd)
 
 @__npc
 def i_MFC(ins, fmap):
     rt, rd = ins.operands
     if rt is not zero:
-        fmap[rt] = ext("MFC%d"%(ins.z),size=rt.size).call(fmap,rd)
+        fmap[rt] = ext("MFC%d"%(ins.z),size=rt.size).call(fmap,rd=rd)
 
 @__npc
 def i_COP(ins, fmap):
     fun = ins.cofun
-    ext("COP%d"%(ins.z)).call(fmap,fun)
+    ext("COP%d"%(ins.z)).call(fmap,cofun=fun)
 
 @__npc
 def i_CTC(ins, fmap):
     rt, rd = ins.operands
-    ext("CTC%d"%(ins.z)).call(fmap,rd,rt)
+    ext("CTC%d"%(ins.z)).call(fmap,rd=rd,rt=rt)
 
 @__npc
 def i_MTC(ins, fmap):
     rt, rd = ins.operands
-    ext("MTC%d"%(ins.z)).call(fmap,rd,rt)
+    ext("MTC%d"%(ins.z)).call(fmap,rd=rd,rt=rt)
 
 @__npc
 def i_LWC(ins, fmap):
     rt, base, offset = ins.operands
     data = mem(base+offset,32)
-    ext("LWC%d"%(ins.z)).call(fmap,rt,data)
+    ext("LWC%d"%(ins.z)).call(fmap,rt=rt,data=data)
 
 @__npc
 def i_SWC(ins, fmap):
     rt, base, offset = ins.operands
     addr = fmap(base+offset)
-    fmap[mem(data,32)] = ext("SWC%d"%(ins.z),size=32).call(fmap,rt)
+    fmap[mem(data,32)] = ext("SWC%d"%(ins.z),size=32).call(fmap,rt=rt)
 
 @__npc
 def i_DIV(ins, fmap):
@@ -407,4 +407,4 @@ def i_SRLV(ins, fmap):
 
 @__npc
 def i_SYSCALL(ins, fmap):
-    ext("SYSCALL").call(fmap,ins.code)
+    ext("SYSCALL").call(fmap,code=ins.code)

@@ -295,7 +295,7 @@ class Config(object):
 
 conf = Config()
 
-from amoco.logger import Log as _LogClass
+from amoco.logger import Log as _LogClass #lgtm [py/unsafe-cyclic-import]
 
 logger = _LogClass(__name__)
 logger.debug("loading module")

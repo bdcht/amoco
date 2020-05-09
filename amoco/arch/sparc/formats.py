@@ -3,7 +3,8 @@
 from .env import *
 from .utils import *
 from amoco.arch.core import Formatter
-from amoco.ui.render import Token, TokenListJoin
+from amoco.ui.render import highlight, Token, TokenListJoin
+from amoco.ui.render import replace_mnemonic_token, replace_opn_token
 
 whitespace = "  "
 
@@ -26,25 +27,25 @@ def address(a):
 
 
 def deref(a):
-    return (
+    return [
         [(Token.Memory, "[")]
         + address(a.base + a.disp)
-        + [(Token.Memory, "]%s" % a.seg)]
-    )
+        + [(Token.Memory, "]%s" % (a.seg or ""))]
+    ]
 
 
 def mnemo_icc(i):
     s = i.mnemonic
     if i.misc["icc"]:
         s += "cc"
-    return [(Token.Mnemonic, s)]
+    return [(Token.Mnemonic, "{:<8}".format(s))]
 
 
 def mnemo_cond(i):
     s = CONDxB[i.mnemonic][i.cond]
     if i.misc["annul"]:
         s += ",a"
-    return [(Token.Mnemonic, s)]
+    return [(Token.Mnemonic, "{:<8}".format(s))]
 
 
 def reg_or_imm(x, t="%d"):
@@ -97,9 +98,10 @@ def label(i):
     if i.operands[0]._is_reg:
         return [(Token.Register, "%" + str(i.operands[0].ref))]
     if i.operands[0]._is_cst:
-        return [(Token.Address, "%s" % i.misc["dst"])]
-    offset = i.operands[0].signextend(32) * 4
-    return [(Token.Address, str(_pc + offset))]
+        offset = i.operands[0].signextend(32) * 4
+        target = i.misc["dst"] or (_pc+offset)
+        return [(Token.Address, str(target))]
+    raise TypeError("operand type not supported")
 
 
 CONDB = {
@@ -177,7 +179,7 @@ CONDT = {
 
 CONDxB = {"b": CONDB, "fb": CONDFB, "cb": CONDCB}
 
-mnemo = lambda i: [(Token.Mnemonic, "{i.mnemonic}".format(i=i))]
+mnemo = lambda i: [(Token.Mnemonic, "{i.mnemonic:<8}".format(i=i))]
 format_mn = [mnemo]
 format_regs = [mnemo, lambda i: TokenListJoin(", ", regs(i))]
 format_ld = [mnemo, lambda i: TokenListJoin(", ", deref(i.operands[0]) + regn(i, 1))]
@@ -205,7 +207,7 @@ format_jmpl = [
     lambda i: address(i.operands[0]) + [(Token.Literal, ", ")] + regn(i, 1),
 ]
 format_addr = [mnemo, lambda i: address(i.operands[0])]
-format_t = [lambda i: [(Token.Mnemonic, CONDT[i.cond])] + reg_or_imm(i.operands[0])]
+format_t = [lambda i: [(Token.Mnemonic, "{:<8}".format(CONDT[i.cond]))] + reg_or_imm(i.operands[0])]
 format_rd = format_regs
 format_wr = [
     mnemo,
@@ -248,11 +250,11 @@ SPARC_V8_full = Formatter(SPARC_V8_full_formats)
 
 
 def SPARC_V8_synthetic(null, i, toks=False):
-    s = SPARC_V8_full(i)
-    return SPARC_Synthetic_renaming(s, i)
+    s = SPARC_V8_full(i, True)
+    return SPARC_Synthetic_renaming(s, i, toks)
 
 
-def SPARC_Synthetic_renaming(s, i):
+def SPARC_Synthetic_renaming(s, i, toks=False):
     if i.mnemonic == "sethi" and i.operands[0] == cst(0, 22) and i.operands[1] == g0:
         return "nop"
     if (
@@ -260,75 +262,95 @@ def SPARC_Synthetic_renaming(s, i):
         and not i.misc["icc"]
         and i.operands[0] == i.operands[1] == g0
     ):
-        return s.replace("or", "clr").replace("%g0, ", "")
-    if i.mnemonic == "or" and not i.misc["icc"] and i.operands[0] == g0:
-        return s.replace("or", "mov").replace("%g0, ", "")
-    if i.mnemonic == "or" and not i.misc["icc"] and i.operands[0] == i.operands[2]:
-        return s.replace("or", "bset").replace("%%%s," % i.operands[0], "", 1)
-    if i.mnemonic == "rd":
+        replace_mnemonic_token(s,"clr")
+        replace_opn_token(s,1,None)
+        replace_opn_token(s,0,None)
+    elif i.mnemonic == "or" and not i.misc["icc"] and i.operands[0] == g0:
+        replace_mnemonic_token(s,"mov")
+        replace_opn_token(s,0,None)
+    elif i.mnemonic == "or" and not i.misc["icc"] and i.operands[0] == i.operands[2]:
+        replace_mnemonic_token(s,"bset")
+        replace_opn_token(s,0,None)
+    elif i.mnemonic == "rd":
         op1 = str(i.operands[0])
         if op1.startswith("asr") or op1 in ("y", "psr", "wim", "tbr"):
-            return s.replace("rd", "mov")
-    if i.mnemonic == "wr" and i.operands[0] == g0:
-        return s.replace("wr", "mov").replace("%g0,", "")
-    if i.mnemonic == "sub" and i.misc["icc"] and i.operands[2] == g0:
-        return s.replace("subcc", "cmp").replace(", %g0", "")
-    if i.mnemonic == "jmpl" and i.operands[1] == g0:
+            replace_mnemonic_token(s,"mov")
+    elif i.mnemonic == "wr" and i.operands[0] == g0:
+        replace_mnemonic_token(s,"mov")
+        replace_opn_token(s,0,None)
+    elif i.mnemonic == "sub" and i.misc["icc"] and i.operands[2] == g0:
+        replace_mnemonic_token(s,"cmp")
+        replace_opn_token(s,2,None)
+    elif i.mnemonic == "jmpl" and i.operands[1] == g0:
         if i.operands[0] == (i7 + cst(8)):
-            return "ret"
-        if i.operands[0] == (o7 + cst(8)):
-            return "retl"
-        return s.replace("jmpl", "jmp").replace(", %g0", "")
-    if i.mnemonic == "jmpl" and i.operands[1] == o7:
-        return s.replace("jmpl", "call").replace(", %o7", "")
-    if (
+            s = [(Token.Mnemonic, "ret")]
+        elif i.operands[0] == (o7 + cst(8)):
+            s = [(Token.Mnemonic, "retl")]
+        else:
+            replace_mnemonic_token(s,"jmp")
+            replace_opn_token(s,1,None)
+    elif i.mnemonic == "jmpl" and i.operands[1] == o7:
+        replace_mnemonic_token(s,"call")
+        replace_opn_token(s,1,None)
+    elif (
         i.mnemonic == "or"
         and i.misc["icc"]
         and i.operands[1]._is_reg
         and i.operands[0] == i.operands[2] == g0
     ):
-        return s.replace("orcc", "tst").replace("%g0,", "").replace(", %g0", "")
-    if (
+        replace_mnemonic_token(s,"tst")
+        replace_opn_token(s,2,None)
+        replace_opn_token(s,0,None)
+    elif (
         i.mnemonic == "restore"
         and i.operands[0] == i.operands[1] == i.operands[2] == g0
     ):
-        return "restore"
+        s = [(Token.Mnemonic, "restore")]
     if i.mnemonic == "save" and i.operands[0] == i.operands[1] == i.operands[2] == g0:
-        return "save"
+        s = [(Token.Mnemonic, "save")]
     if i.mnemonic == "xnor" and i.operands[1] == g0:
-        s = s.replace("xnor", "not").replace("%g0,", "", 1)
+        replace_mnemonic_token(s,"not")
+        replace_opn_token(s,1,None)
         if i.operands[0] == i.operands[2]:
-            return s.rpartition(",")[0]
-        return s
-    if i.mnemonic == "sub" and i.operands[0] == g0 and i.operands[1]._is_reg:
-        s = s.replace("sub", "neg").replace("%g0,", "", 1)
+            replace_opn_token(s,2,None)
+    elif i.mnemonic == "sub" and i.operands[0] == g0 and i.operands[1]._is_reg:
+        replace_mnemonic_token(s,"neg")
+        replace_opn_token(s,0,None)
         if i.operands[1] == i.operands[2]:
-            return s.rpartition(",")[0]
-        return s
-    if i.mnemonic == "add" and i.operands[0] == i.operands[2] and i.operands[1]._is_cst:
+            replace_opn_token(s,2,None)
+    elif i.mnemonic == "add" and i.operands[0] == i.operands[2] and i.operands[1]._is_cst:
         m = "inccc" if i.misc["icc"] else "inc"
+        replace_mnemonic_token(s,m)
         if i.operands[1] == 1:
-            return "{}{}%{}".format(m, whitespace, i.operands[0])
+            replace_opn_token(s,2,None)
+            replace_opn_token(s,1,None)
         else:
-            return "{}{}{}, %{}".format(m, whitespace, i.operands[1], i.operands[0])
-    if i.mnemonic == "sub" and i.operands[0] == i.operands[2] and i.operands[1]._is_cst:
+            replace_opn_token(s,0,None)
+    elif i.mnemonic == "sub" and i.operands[0] == i.operands[2] and i.operands[1]._is_cst:
         m = "deccc" if i.misc["icc"] else "dec"
+        replace_mnemonic_token(s,m)
         if i.operands[1] == 1:
-            return "{} %{}".format(m, i.operands[0])
+            replace_opn_token(s,2,None)
+            replace_opn_token(s,1,None)
         else:
-            return "{}{}{}, %{}".format(m, whitespace, i.operands[1], i.operands[0])
-    if i.mnemonic == "and" and i.misc["icc"] and i.operands[2] == g0:
-        s = s.replace("andcc", "btst").replace(", %g0", "")
-        m = s.split()
-        return "{}{}{}, {}".format(m[0], whitespace, m[2], m[1].replace(",", ""))
-    if i.mnemonic == "andn" and not i.misc["icc"] and i.operands[0] == i.operands[2]:
-        return s.replace("andn", "bclr").replace("%%%s," % i.operands[0], "", 1)
-    if i.mnemonic == "xor" and not i.misc["icc"] and i.operands[0] == i.operands[2]:
-        return s.replace("xor", "btog").replace("%%%s," % i.operands[0], "", 1)
-    if i.mnemonic == "stb" and i.operands[0] == g0:
-        return s.replace("stb", "clrb").replace("%g0, ", "")
-    if i.mnemonic == "sth" and i.operands[0] == g0:
-        return s.replace("sth", "clrh").replace("%g0, ", "")
-    if i.mnemonic == "st" and i.operands[0] == g0:
-        return s.replace("st", "clr").replace("%g0, ", "")
-    return s
+            replace_opn_token(s,0,None)
+    elif i.mnemonic == "and" and i.misc["icc"] and i.operands[2] == g0:
+        replace_mnemonic_token(s,"btst")
+        replace_opn_token(s,2,None)
+        s[1],s[3] = s[3],s[1]
+    elif i.mnemonic == "andn" and not i.misc["icc"] and i.operands[0] == i.operands[2]:
+        replace_mnemonic_token(s,"bclr")
+        replace_opn_token(s,0,None)
+    elif i.mnemonic == "xor" and not i.misc["icc"] and i.operands[0] == i.operands[2]:
+        replace_mnemonic_token(s,"btog")
+        replace_opn_token(s,0,None)
+    elif i.mnemonic == "stb" and i.operands[0] == g0:
+        replace_mnemonic_token(s,"clrb")
+        replace_opn_token(s,0,None)
+    elif i.mnemonic == "sth" and i.operands[0] == g0:
+        replace_mnemonic_token(s,"clrh")
+        replace_opn_token(s,0,None)
+    elif i.mnemonic == "st" and i.operands[0] == g0:
+        replace_mnemonic_token(s,"clr")
+        replace_opn_token(s,0,None)
+    return s if toks else highlight(s)

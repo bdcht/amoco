@@ -69,7 +69,7 @@ class node(Vertex):
     """
 
     def __init__(self, acode):
-        Vertex.__init__(self, data=acode)
+        super().__init__(data=acode)
         pre = "blck_" if acode._is_block else "func_"
         self.name = "{}{}".format(pre, str(self.data.address))
         self._map = None

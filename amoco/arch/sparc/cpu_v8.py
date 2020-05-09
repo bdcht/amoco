@@ -14,7 +14,7 @@ instruction_sparc.set_uarch(uarch)
 from amoco.arch.sparc.formats import SPARC_V8_full
 from amoco.arch.sparc.formats import SPARC_V8_synthetic
 
-instruction_sparc.set_formatter(SPARC_V8_full)
+instruction_sparc.set_formatter(SPARC_V8_synthetic)
 
 # define disassembler:
 from amoco.arch.sparc import spec_v8

@@ -138,10 +138,15 @@ def highlight(toks, formatter=None, outfile=None):
 def TokenListJoin(j, lst):
     if isinstance(j, str):
         j = (Token.Literal, j)
-    res = lst[0:1]
+    res = lst[0]
+    if not isinstance(res,list):
+        res = [res]
     for x in lst[1:]:
         res.append(j)
-        res.append(x)
+        if isinstance(x,list):
+            res.extend(x)
+        else:
+            res.append(x)
     return res
 
 
@@ -495,3 +500,23 @@ icons.mop[">>"]  = "\u226b"
 icons.mop[".>>"] = "\u00B1\u226b"
 icons.mop["<<<"] = "\u22d8"
 icons.mop[">>>"] = "\u22d9"
+
+def replace_mnemonic_token(l,value):
+    for i in range(len(l)):
+        tn,tv = l[i]
+        if tn==Token.Mnemonic:
+            tv = value.ljust(len(tv))
+        l[i] = (tn,tv)
+
+def replace_opn_token(l,n,value):
+    index = 1+(2*n)
+    if value is None:
+        if index+1 < len(l):
+            l.pop(index+1)
+            l.pop(index)
+    else:
+        tn,tv = l[index]
+        if isinstance(value,tuple):
+            l[index] = value
+        else:
+            l[index] = (tn, value)

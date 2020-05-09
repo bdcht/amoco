@@ -630,7 +630,7 @@ class Formatter(object):
 
     def __init__(self, formats):
         self.formats = formats
-        self.default = ("{i.mnemonic} ", lambda i: ", ".join(map(str, i.operands)))
+        self.default = ("{i.mnemonic:<20}", lambda i: ", ".join(map(str, i.operands)))
 
     def getkey(self, i):
         if i.mnemonic in self.formats:

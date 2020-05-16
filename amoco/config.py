@@ -17,8 +17,10 @@ Attributes:
             - 'helper' will use codeblock helper functions to pretty print code if True (default)
             - 'header' will show a dashed header line including the address of the block if True (default)
             - 'footer' will show a dashed footer line if True
+            - 'segment' will show memory section/segment name in codeblock view if True (default)
             - 'bytecode' will show the hex encoded bytecode string of every instruction if True (default)
             - 'padding' will add the specified amount of blank chars to between address/bytecode/instruction (default 4).
+            - 'hist' number of instruction's history shown in emulator view (default 3).
 
         - 'Cas' which deals with parameters of the algebra system:
 
@@ -89,6 +91,7 @@ class Code(Configurable):
         helper (Bool): use block helpers if True.
         header (Bool): display block header dash-line with its name if True.
         footer (Bool): display block footer dash-line if True.
+        segment (Bool): display memory section/segment name if True.
         bytecode (Bool): display instructions' bytes.
         padding (int): add space-padding bytes to bytecode (default=4).
         hist (int): number of history instructions to show in
@@ -98,6 +101,7 @@ class Code(Configurable):
     header = Bool(True, config=True)
     footer = Bool(True, config=True)
     bytecode = Bool(True, config=True)
+    segment = Bool(True, config=True)
     padding = Integer(4, config=True)
     hist = Integer(3, config=True)
 

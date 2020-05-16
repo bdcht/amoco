@@ -97,6 +97,31 @@ class PE(BinFormat):
         self.variables = self.__variables()
         self.tls = self.__tls()
 
+    def checksec(self):
+        R = {}
+        dllc = self.Opt.DllCharacteristics
+        dynamic_base = dllc & IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE
+        R['ASLR'] = "DYNAMIC_BASE" if dynamic_base else False
+        he = dllc & IMAGE_DLLCHARACTERISTICS_HIGH_ENTROPY_VA
+        if he:
+            R['ASLR'] = "HIGH_ENTROPY_VA"
+        R['CFG'] = (dllc & IMAGE_DLLCHARACTERISTICS_GUARD_CF)!=0
+        R['DEP'] = (dllc & IMAGE_DLLCHARACTERISTICS_NX_COMPAT)!=0
+        R['Isolation'] = (dllc & IMAGE_DLLCHARACTERISTICS_NO_ISOLATION)==0
+        R['SEH'] = (dllc & IMAGE_DLLCHARACTERISTICS_NO_SEH)==0
+        cth = self.__LoadConfigTable()
+        if cth:
+            if cth.SEHandlerCount>0:
+                R['Safe-SEH'] = True
+            if (cth.GuardFlags & IMAGE_GUARD_RF_INSTRUMENTED) and\
+               ((cth.GuardFlags & IMAGE_GUARD_RF_ENABLE) or\
+                (cth.GuardFlags & IMAGE_GUARD_RF_STRICT)):
+                   R['RFG'] = True
+        else:
+            R['Safe-SEH'] = False
+            R['RFG'] = False
+        return R
+
     def locate(self, addr, absolute=False):
         """
         returns a tuple with:
@@ -237,6 +262,18 @@ class PE(BinFormat):
                 else:
                     tls.readcallbacks(cbtable)
                 return tls
+        return None
+
+    def __LoadConfigTable(self):
+        lct = self.Opt.DataDirectories.get("LoadConfigTable", None)
+        if lct is not None and lct.RVA != 0:
+            try:
+                data = self.getdata(lct.RVA)
+            except ValueError:
+                logger.warning("invalid LoadLConfigTable RVA")
+            else:
+                lct = LoadConfigTable(data, self.Opt.Magic)
+                return lct
         return None
 
     def __variables(self):
@@ -398,6 +435,7 @@ I : NumberOfRvaAndSizes
 class OptionalHdr(StructFormatter):
     def __init__(self, data=None, offset=0):
         self.name_formatter("Magic")
+        self.name_formatter("Subsystem")
         self.address_formatter(
             "AddressOfEntryPoint", "BaseOfCode", "BaseOfData", "ImageBase"
         )
@@ -456,6 +494,35 @@ class OptionalHdr(StructFormatter):
 with Consts("Magic"):
     OPTIONAL_HEADER_MAGIC_PE = 0x10B
     OPTIONAL_HEADER_MAGIC_PE_PLUS = 0x20B
+
+with Consts("Subsystem"):
+    IMAGE_SUBSYSTEM_UNKOWN = 0
+    IMAGE_SUBSYSTEM_NATIVE = 1
+    IMAGE_SUBSYSTEM_WINDOWS_GUI = 2
+    IMAGE_SUBSYSTEM_WINDOWS_CUI = 3
+    IMAGE_SUBSYSTEM_OS2_CUI = 5
+    IMAGE_SUBSYSTEM_POSIX_CUI = 7
+    IMAGE_SUBSYSTEM_NATIVE_WINDOWS = 8
+    IMAGE_SUBSYSTEM_WINDOWS_CE_GUI = 9
+    IMAGE_SUBSYSTEM_EFI_APPLICATION = 10
+    IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER= 11
+    IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER= 12
+    IMAGE_SUBSYSTEM_EFI_ROM = 13
+    IMAGE_SUBSYSTEM_XBOX = 14
+    IMAGE_SUBSYSTEM_WINDOWS_BOOT_APPLICATION = 16
+
+with Consts("DllCharacteristics"):
+    IMAGE_DLLCHARACTERISTICS_HIGH_ENTROPY_VA = 0x0020
+    IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE = 0x0040
+    IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY = 0x0080
+    IMAGE_DLLCHARACTERISTICS_NX_COMPAT = 0x0100
+    IMAGE_DLLCHARACTERISTICS_NO_ISOLATION = 0x0200
+    IMAGE_DLLCHARACTERISTICS_NO_SEH = 0x0400
+    IMAGE_DLLCHARACTERISTICS_NO_BIND = 0x0800
+    IMAGE_DLLCHARACTERISTICS_APPCONTAINER = 0x1000
+    IMAGE_DLLCHARACTERISTICS_WDM_DRIVER = 0x2000
+    IMAGE_DLLCHARACTERISTICS_GUARD_CF = 0x4000
+    IMAGE_DLLCHARACTERISTICS_TERMINAL_SERVER_AWARE = 0x8000
 
 IMAGE_DIRECTORY_ENTRY_EXPORT = 0
 IMAGE_DIRECTORY_ENTRY_IMPORT = 1
@@ -998,3 +1065,70 @@ class TLSTable(StructFormatter):
 
 
 # ------------------------------------------------------------------------------
+
+with Consts("GuardFlags"):
+    IMAGE_GUARD_CF_INSTRUMENTED = 0x00000100
+    IMAGE_GUARD_CFW_INSTRUMENTED = 0x00000200
+    IMAGE_GUARD_CF_FUNCTION_TABLE_PRESENT = 0x00000400
+    IMAGE_GUARD_SECURITY_COOKIE_UNUSED = 0x00000800
+    IMAGE_GUARD_PROTECT_DELAYLOAD_IAT = 0x00001000
+    IMAGE_GUARD_DELAYLOAD_IAT_IN_ITS_OWN_SECTION = 0x00002000
+    IMAGE_GUARD_CF_EXPORT_SUPPRESSION_INFO_PRESENT = 0x00004000
+    IMAGE_GUARD_CF_ENABLE_EXPORT_SUPPRESSION = 0x00008000
+    IMAGE_GUARD_CF_LONGJUMP_TABLE_PRESENT = 0x00010000
+    IMAGE_GUARD_RF_INSTRUMENTED = 0x00020000
+    IMAGE_GUARD_RF_ENABLE = 0x00040000
+    IMAGE_GUARD_RF_STRICT = 0x00080000
+    IMAGE_GUARD_CF_FUNCTION_TABLE_SIZE_MASK = 0xF0000000
+    IMAGE_GUARD_CF_FUNCTION_TABLE_SIZE_SHIFT = 28
+
+@StructDefine(
+    """
+I : Characteristics
+I : TimeDateStamp
+H : MajorVersion
+H : MinorVersion
+I : GlobalFlagsClear
+I : GlobalFlagsSet
+I : CriticalSectionDefaultTimeout
+I : DeCommitFreeBlockThreshold
+I : DeCommitTotalFreeThreshold
+I : LockPrefixTable
+I : MaximumAllocationSize
+I : VirtualMemoryThreshold
+I : ProcessAffinityMask
+I : ProcessHeapFlags
+H : CSDVersion
+H : reserved
+I : EditList
+I : SecurityCookie
+I : SEHandlerTable
+I : SEHandlerCount
+I : GuardCFCheckFunctionPointer
+I : GuardCFDispatchFunctionPointer
+I : GuardCFFunctionTable
+I : GuardCFFunctionCount
+I : GuardFlags
+I*3: CodeIntegrity
+I : GuardAddressTakenIatEntryTable
+I : GuardAddressTakenIatEntryCount
+I : GuardLongJumpTargetTable
+I : GuardLongJumpTargetCount
+"""
+)
+class LoadConfigTable(StructFormatter):
+    def __init__(self, data, magic):
+        size = {0x20B: 64, 0x10B: 32}[magic]
+        self.elsize = size // 8
+        if magic == 0x20B:
+            for i in (7,8,9,10,11,12,16,17,18,19,20,21,22,23,
+                      26,27,28,29):
+                self.fields[i].typename = "Q"
+        self.flag_formatter("Characteristics",
+                            "ProcessHeapFlags",
+                            "GuardFlags",
+                           )
+        if data:
+            self.unpack(data)
+
+

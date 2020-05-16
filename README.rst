@@ -91,6 +91,8 @@ Changelog
   * add MIPS architecture (R3000 only)
   * improve support for changes in config
   * rework ext/stub interface
+  * fixing sparc formatter
+  * fixing PE32+ DataDirectories parsing
 
 - `v2.9.2`_
 

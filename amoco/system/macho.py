@@ -16,6 +16,7 @@ from amoco.system.core import BinFormat, DataIO
 from amoco.system.utils import read_uleb128
 from amoco.system.structs import Consts, StructFormatter, default_formatter
 from amoco.system.structs import StructDefine, UnionDefine
+from amoco.system.structs import token_name_fmt, token_flag_fmt, Token, highlight
 
 
 from amoco.logger import Log
@@ -168,10 +169,44 @@ class MachO(BinFormat):
         res = (None, 0, 0)
         for c in self.cmds:
             if c.cmd in (LC_SEGMENT, LC_SEGMENT_64,):
-                if c.vmaddr <= target <= (c.vmaddr + c.vmsize):
+                if c.vmaddr <= target < (c.vmaddr + c.vmsize):
                     res = (c, (target - c.vmaddr), c.vmaddr)
+                    for s in c.sections:
+                        if s.addr <= target < s.addr+s.size_:
+                            res = (s, (target - s.addr), s.addr)
+                            break
                     break
         return res
+
+    def checksec(self):
+        "check for usual OSX security features."
+        R = {}
+        R['Arc'] = False
+        R["Canary"] = False
+        for f in iter(self.la_symbol_ptr.values()):
+            if f == b"___stack_chk_fail" or\
+               f == b"___stack_chk_guard":
+                R["Canary"] = True
+            elif f==b'_objc_release':
+                R["Arc"] = True
+        R['Signature'] = False
+        R['Encrypted'] = False
+        R['Restrict'] = False
+        R['RPath'] = False
+        for c in self.cmds:
+            if c.cmd == LC_CODE_SIGNATURE:
+                R['Signature'] = True
+            elif c.cmd in (LC_ENCRYPTION_INFO, LC_ENCRYPTION_INFO_64):
+                R['Encrypted'] = True
+            elif c.cmd in (LC_SEGMENT, LC_SEGMENT_64):
+                if c.segname.decode().strip('\0').lower()=="__restrict":
+                    R['Restrict'] = True
+            elif c.cmd == LC_RPATH:
+                R['RPath'] = True
+        R["NX (heap)"]  = (self.header.flags & MH_NO_HEAP_EXECUTION)!=0
+        R["NX (stack)"] = (self.header.flags & MH_ALLOW_STACK_EXECUTION)==0
+        R["PIE"] = (self.header.flags & MH_PIE)!=0
+        return R
 
     def data(self, target, size):
         "returns 'size' bytes located at target virtual address"
@@ -185,25 +220,57 @@ class MachO(BinFormat):
     def getfileoffset(self, target):
         "converts given target virtual address back to offset in file"
         s, offset, _ = self.getinfo(target)
+        fileoffset = s.fileoffset if hasattr(s,'fileoffset') else s.offset
         return s.fileoffset + offset
 
     def readsegment(self, S):
-        "returns segment S data from file"
-        self.__file.seek(S.fileoffset)
-        return self.__file.read(S.filesize)
+        "returns data of segment/section S"
+        try:
+            self.__file.seek(S.fileoffset)
+            return self.__file.read(S.filesize)
+        except AttributeError:
+            self.__file.seek(S.offset)
+            return self.__file.read(S.size_)
 
     def loadsegment(self, S, pagesize=None):
-        "returns segment S data padded/aligned to S.vmsize and pagesize"
+        "returns padded & aligned data of segment/section S"
         s = self.readsegment(S)
         if pagesize is None:
-            pagesize = S.vmsize
-        n, r = divmod(S.vmsize, pagesize)
+            if hasattr(S,'vmsize'):
+                size = pagesize = S.vmsize
+            else:
+                size = S.size_
+                pagesize = S.align
+        n, r = divmod(size, pagesize)
         if r > 0:
             n += 1
         return s.ljust(n * pagesize, b"\0")
 
-    def readsection(self, s):
-        raise NotImplementedError
+    def readsection(self, sect):
+        "returns the segment/section data bytes matching given sect name"
+        if isinstance(sect,bytes):
+            sect = sect.decode()
+        if isinstance(sect, str):
+            for c in self.cmds:
+                if c.cmd in (LC_SEGMENT,LC_SEGMENT_64):
+                    for s in c.sections:
+                        if s.sectname.decode().strip("\0")==sect:
+                            return self.readsegment(s)
+        else:
+            return self.readsegment(sect)
+        return None
+
+    def getsection(self, sect):
+        "returns the segment/section matching given sect name"
+        if isinstance(sect,bytes):
+            sect = sect.decode()
+        if isinstance(sect, str):
+            for c in self.cmds:
+                if c.cmd in (LC_SEGMENT,LC_SEGMENT_64):
+                    for s in c.sections:
+                        if s.sectname.decode().strip("\0")==sect:
+                            return s
+        return None
 
     def __read_table(self, off, elt, count, sz=0):
         tab = []
@@ -892,6 +959,7 @@ class struct_section(MachoFormatter):
         self.address_formatter("reloff")
         if data:
             self.unpack(data, offset)
+            self.name = self.segname.decode().strip('\0')
 
 
 # ------------------------------------------------------------------------------
@@ -921,6 +989,7 @@ class struct_section_64(MachoFormatter):
         self.address_formatter("reloff")
         if data:
             self.unpack(data, offset)
+            self.name = self.segname.decode().strip('\0')
 
 
 # ------------------------------------------------------------------------------

@@ -118,7 +118,8 @@ class blockView(View):
         except TypeError:
             b = "'%s'"%("--"*(i.length))
         ins = [
-            (Token.Address, "{:<20}".format(str(i.address))),
+            (Token.Address, "{}".format(str(i.address))),
+            (Token.Literal, "  "),
             (Token.Column, ""),
         ]
         if conf.Code.bytecode:
@@ -293,21 +294,12 @@ class execView(View):
             t.rowparams["sep"] = icons.sep
             s = self.of.bin.checksec()
             tokattr = lambda v: Token.Good if v else Token.Alert
-            t.addrow([
-                      (tokattr(s["Canary"]), "Canary: %d"%s["Canary"]),
-                      (Token.Column, ""),
-                      (tokattr(s["NX"]), "NX: %d"%s["NX"]),
-                      (Token.Column, " "),
-                      (tokattr(s["PIE"]), "PIE: %d"%s["PIE"]),
-                      (Token.Column, ""),
-                      (tokattr(s["Fortify"]), "Fortify: %d"%s["Fortify"]),
-                      (Token.Column, ""),
-                      (tokattr(s["Partial RelRO"]),
-                              "Partial RelRO: %d"%s["Partial RelRO"]),
-                      (Token.Column, ""),
-                      (tokattr(s["Full RelRO"]),
-                              "Full RelRO: %d"%s["Full RelRO"]),
-                      ])
+            r = []
+            for k,v in s.items():
+                r.append((tokattr(v), "%s: %s"%(k,v)))
+                r.append((Token.Column,""))
+            r.pop()
+            t.addrow(r)
         else:
             t=""
         return t
@@ -361,6 +353,42 @@ class execView(View):
             r.pop()
             t.addrow(r)
         return t
+
+    def code(self,blk):
+        if not isinstance(blk,vltable):
+            T = blk.view._vltable()
+        else:
+            T = blk
+        for r in T.rows:
+            for c in r.cols[2:]: #skip address and bytecode columns
+                for i in range(len(c)-1,-1,-1):
+                    tn,tv = c[i]
+                    if tn in (Token.Address,Token.Constant):
+                        try:
+                            v = int(tv,0)
+                            tv = self.of.symbol_for(v)
+                        except ValueError:
+                            tv = None
+                        if tv:
+                            c.insert(i+1,(Token.Comment,tv))
+            if conf.Code.segment:
+                try:
+                    address = int(r.cols[0][0][1],0)
+                    segname = self.of.segment_for(address)
+                except ValueError:
+                    segname = None
+                if segname:
+                    r.cols[0].insert(1,(Token.Segment,segname))
+        T.update()
+        if conf.Code.bytecode:
+            pad = conf.Code.padding
+            T.colsize[1] += pad
+        if T.header:
+            T.header = T.header.ljust(T.width, icons.hor)
+        if T.footer:
+            T.footer = T.footer.ljust(T.width, icons.hor)
+        return T
+
 
 # -------------------------------------------------------------------------------
 
@@ -438,10 +466,8 @@ class emulView(View):
             if i.address < here:
                 T.rows.insert(0,tokenrow(blockView.instr(i)))
                 here = i.address
-        T.update()
-        if conf.Code.bytecode:
-            pad = conf.Code.padding
-            T.colsize[1] += pad
+        T = self.of.task.view.code(T)
+        T.header = T.footer = ""
         rest = self.term.width - T.width
         T.addcolsize(-1,rest)
         t.append(str(T))

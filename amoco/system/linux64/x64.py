@@ -77,6 +77,7 @@ class OS(object):
         self.NX = conf.nx
         self.tasks = []
         self.abi = None
+        self.symbols = {}
 
     @classmethod
     def loader(cls, bprm, conf=None):
@@ -136,6 +137,31 @@ class OS(object):
             xfunc = cpu.ext(f, size=64)
             xfunc.stub = p.OS.stub(f)
             p.state.mmap.write(k, xfunc)
+        # we want to add .plt addresses as symbols as well
+        # to improve asm block views:
+        plt = got = None
+        for s in p.bin.Shdr:
+            if s.name=='.plt':
+                plt = s
+            elif s.name=='.got':
+                got = s
+        if plt and got:
+            address = plt.sh_addr
+            pltco = p.bin.readsection(plt)
+            while(pltco):
+                i = p.cpu.disassemble(pltco)
+                if i.mnemonic=='JMP' and i.operands[0]._is_mem:
+                    target = i.operands[0].a
+                    if target.base is p.cpu.rip:
+                        target = address+target.disp
+                    elif target.base._is_reg:
+                        target = got.sh_addr+target.disp
+                    elif target.base._is_cst:
+                        target = target.base.value+target.disp
+                    if target in p.bin.functions:
+                        p.bin.functions[address] = p.bin.functions[target]
+                pltco = pltco[i.length:]
+                address += i.length
 
     def stub(self, refname):
         return self.stubs.get(refname, self.default_stub)

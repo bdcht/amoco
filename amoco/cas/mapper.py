@@ -74,9 +74,11 @@ class mapper(object):
         "list antecedent locations (used in the mapping)"
         r = []
         for l, v in iter(self.__map.items()):
+            if (l==v):
+                continue
             for lv in locations_of(v):
                 if lv._is_reg and l._is_reg:
-                    if (lv == l) or (lv.etype & l.etype & regtype.FLAGS):
+                    if (lv.etype & l.etype & regtype.FLAGS):
                         continue
                 r.append(lv)
         return r

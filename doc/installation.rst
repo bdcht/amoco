@@ -17,7 +17,7 @@ Recommended *optional* packages are:
 Some optional features related to UI and persistence require:
 
 - click_ used to define amoco command-line app
-- blessings_ used for terminal based debugger frontend
+- blessed_ used for terminal based debugger frontend
 - tqdm_ used for terminal based debugger frontend
 - ply_ for parsing *GNU as* files
 - sqlalchemy_ for persistence of amoco objects in a database
@@ -39,7 +39,7 @@ If you want to use the graphical interface you will need **all** packages.
 .. _pygments: http://pygments.org/
 .. _ccrawl: https://github.com/bdcht/ccrawl
 .. _click: https://click.palletsprojects.com/
-.. _blessings: https://github.com/erikrose/blessings
+.. _blessed: https://github.com/jquast/blessed
 .. _tqdm: https://github.com/tqdm/tqdm
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org/

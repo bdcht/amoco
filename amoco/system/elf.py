@@ -160,14 +160,13 @@ class Elf(BinFormat):
         # but this may lead to errors because what really matters are segments
         # loaded by the kernel binfmt_elf.c loader.
         if self.Shdr:
-            for s in self.Shdr[::-1]:
-                if s.sh_type == SHT_NULL:
+            for s in reversed(self.Shdr):
+                if s.sh_type != SHT_PROGBITS:
                     continue
                 if s.sh_addr <= addr < s.sh_addr + s.sh_size:
                     return s, addr - s.sh_addr, s.sh_addr
-            ##
         elif self.Phdr:
-            for s in self.Phdr[::-1]:
+            for s in reversed(self.Phdr):
                 if s.p_type != PT_LOAD:
                     continue
                 if s.p_vaddr <= addr < s.p_vaddr + s.p_filesz:
@@ -423,7 +422,8 @@ class Elf(BinFormat):
             R["PIE"] = 1
         R["Full RelRO"] = 0
         for d in self.readsection(".dynamic") or []:
-            if d.d_tag == DT_BIND_NOW:
+            if d.d_tag == DT_BIND_NOW or\
+              (d.d_tag == DT_FLAGS and d.d_un==DF_BIND_NOW):
                 R["Full RelRO"] = 1
                 break
         return R
@@ -1155,6 +1155,12 @@ with Consts("d_un"):
     DT_SYMINFO = 0x6FFFFEFF
     DT_ADDRRNGHI = 0x6FFFFEFF
     DT_ADDRNUM = 10
+
+    DF_ORIGIN = 0x1
+    DF_SYMBOLIC = 0x2
+    DF_TEXTREL = 0x4
+    DF_BIND_NOW = 0x8
+    DF_STATIC_TLS = 0x10
 
 
 @StructDefine(

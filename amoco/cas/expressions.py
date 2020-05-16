@@ -1505,7 +1505,7 @@ class slc(exp):
 
     def setref(self, ref):
         if self.x._is_reg:
-            self.etype |= et_reg
+            self.etype |= self.x.etype
             if ref is None:
                 ref = self.x._subrefs.get((self.pos, self.size), None)
             else:

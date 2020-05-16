@@ -6,10 +6,29 @@
 
 from amoco.system.pe import *
 from amoco.system.core import CoreExec
-from amoco.code import tag, xfunc
+from amoco.code import tag
 import amoco.arch.x64.cpu_x64 as cpu
 
 # ------------------------------------------------------------------------------
+
+with Consts("COFFRelocation.Type"):
+    IMAGE_REL_AMD64_ABSOLUTE = 0x0000
+    IMAGE_REL_AMD64_ADDR64 = 0x0001
+    IMAGE_REL_AMD64_ADDR32 = 0x0002
+    IMAGE_REL_AMD64_ADDR32NB = 0x0003
+    IMAGE_REL_AMD64_REL32 = 0x0004
+    IMAGE_REL_AMD64_REL32_1 = 0x0005
+    IMAGE_REL_AMD64_REL32_2 = 0x0006
+    IMAGE_REL_AMD64_REL32_3 = 0x0007
+    IMAGE_REL_AMD64_REL32_4 = 0x0008
+    IMAGE_REL_AMD64_REL32_5 = 0x0009
+    IMAGE_REL_AMD64_SECTION = 0x000A
+    IMAGE_REL_AMD64_SECREL = 0x000B
+    IMAGE_REL_AMD64_SECREL7 = 0x000C
+    IMAGE_REL_AMD64_TOKEN = 0x000D
+    IMAGE_REL_AMD64_SREL32 = 0x000E
+    IMAGE_REL_AMD64_PAIR = 0x000F
+    IMAGE_REL_AMD64_SSPAN32 = 0x0010
 
 
 class OS(object):
@@ -33,6 +52,8 @@ class OS(object):
         self.ASLR = conf.aslr
         self.NX = conf.nx
         self.tasks = []
+        self.abi = None
+        self.symbols = {}
 
     @classmethod
     def loader(cls, pe, conf=None):
@@ -57,6 +78,15 @@ class OS(object):
         p.state[cpu.rdx] = cpu.cst(0, 64)
         p.state[cpu.rsi] = cpu.cst(0, 64)
         p.state[cpu.rdi] = cpu.cst(0, 64)
+        p.state[cpu.r8] = cpu.cst(0, 64)
+        p.state[cpu.r9] = cpu.cst(0, 64)
+        p.state[cpu.r10] = cpu.cst(0, 64)
+        p.state[cpu.r11] = cpu.cst(0, 64)
+        p.state[cpu.r12] = cpu.cst(0, 64)
+        p.state[cpu.r13] = cpu.cst(0, 64)
+        p.state[cpu.r14] = cpu.cst(0, 64)
+        p.state[cpu.r15] = cpu.cst(0, 64)
+        p.state[cpu.rflags] = cpu.cst(0, 64)
         # create the stack space:
         if self.ASLR:
             p.state.mmap.newzone(p.cpu.rsp)
@@ -64,7 +94,7 @@ class OS(object):
             ssz = pe.Opt.SizeOfStackReserve
             stack_base = 0x00007FFFFFFFFFFF & ~(self.PAGESIZE - 1)
             p.state.mmap.write(stack_base - ssz, b"\0" * ssz)
-            p.state[cpu.esp] = cpu.cst(stack_base, 64)
+            p.state[cpu.rsp] = cpu.cst(stack_base, 64)
         # create the dynamic segments:
         if len(pe.functions) > 0:
             self.load_pe_iat(p)

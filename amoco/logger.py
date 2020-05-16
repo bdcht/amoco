@@ -30,7 +30,7 @@ Examples:
 
     Setting all modules loggers to ``'ERROR'`` level::
 
-        In [2]: amoco.set_quiet()
+        In [2]: amoco.logger.set_quiet()
 
 Note:
 All loggers can be configured to log both to *stderr* with selected level

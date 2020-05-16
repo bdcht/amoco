@@ -135,6 +135,27 @@ class CoreExec(object):
                 i.xdata(i, xdata)
             return i
 
+    def symbol_for(self,address):
+        info = None
+        if address in self.bin.variables:
+            info = self.bin.variables[address]
+            if isinstance(info,tuple):
+                info = info[0]
+            info = "$%s"%info
+        elif address in self.bin.functions:
+            info = self.bin.functions[address]
+            if isinstance(info,tuple):
+                info = info[0]
+            info = "<%s>"%info
+        elif self.OS and (address in self.OS.symbols):
+            info = self.OS.symbols[address]
+            info = "#%s"%info
+        return info or ""
+
+    def segment_for(self,address,stype=None):
+        s = self.bin.getinfo(address)[0]
+        return s.name if hasattr(s,'name') else ""
+
     def getx(self, loc, size=8, sign=False):
         """
         high level method to get the expressions value associated
@@ -261,8 +282,8 @@ class BinFormat(object):
     symtab = None
     strtab = None
     reltab = None
-    functions = None
-    variables = None
+    functions = {}
+    variables = {}
 
     @property
     def entrypoints(self):
@@ -274,6 +295,9 @@ class BinFormat(object):
 
     def loadsegment(self, S, pagesize=None, raw=None):
         raise NotImplementedError
+
+    def getinfo(self, target):
+        return (None, 0, 0)
 
 
 class DataIO(BinFormat):

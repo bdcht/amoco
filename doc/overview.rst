@@ -11,6 +11,7 @@ Amoco is composed of 5 sub-packages
   - x86, x64
   - armv7, armv8 (aarch64)
   - sparc (v8)
+  - MIPS (R3000)
   - riscv
   - msp430
   - avr

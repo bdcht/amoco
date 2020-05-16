@@ -745,7 +745,21 @@ class StructCore(object):
         return sz
 
     def __len__(self):
-        return self.size()
+        """size method is a class method, __len__ computes
+        the actual size of the instance"""
+        A = self.align_value()
+        sz = 0
+        for f in self.fields:
+            if self.union is False and not self.packed:
+                sz = f.align(sz)
+            if self.union is False:
+                sz += f.size()
+            elif f.size > sz:
+                sz = f.size()
+        r = sz % A
+        if (not self.packed) and r > 0:
+            sz += A - r
+        return sz
 
     def __eq__(self, other):
         if (

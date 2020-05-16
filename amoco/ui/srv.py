@@ -513,3 +513,21 @@ class cmd_clear(object):
             srv.msgs.put('error: no task loaded')
         return 0
 
+
+# -----------------------------------------------------------------------------
+
+
+@DefineSrvCommand(srv,"checksec")
+class cmd_checksec(object):
+    "checksec: security parameters related to the current task."
+
+    @staticmethod
+    def run(srv, args):
+        if srv.obj:
+            srv.msgs.put(str(srv.obj.task.view.checksec))
+        else:
+            srv.msgs.put('error: no task loaded')
+        return 0
+
+
+# -----------------------------------------------------------------------------

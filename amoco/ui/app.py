@@ -103,11 +103,11 @@ def cli(ctx, verbose, debug, quiet, configfile):
         amoco.conf.load(configfile)
     c = amoco.conf
     if quiet:
-        amoco.set_quiet()
+        amoco.logger.set_quiet()
     if verbose:
-        amoco.set_log_all("VERBOSE")
+        amoco.logger.set_log_all("VERBOSE")
     if debug:
-        amoco.set_debug()
+        amoco.logger.set_debug()
     if verbose | debug:
         if c.src:
             click.echo("config file '%s' loaded" % c.f)

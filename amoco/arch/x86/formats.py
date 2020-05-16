@@ -39,6 +39,9 @@ def opers(i):
     s = []
     for op in i.operands:
         if op._is_mem:
+            if op.a.base._is_reg and op.a.base.etype & regtype.PC:
+                if i.address is not None:
+                    op = op.__class__(i.address+i.length+op.a.disp,op.size,seg=op.a.seg)
             s.append((Token.Memory, deref(op)))
         elif op._is_cst:
             if i.misc["imm_ref"] is not None:
@@ -58,11 +61,11 @@ def opers(i):
 def oprel(i):
     to = i.misc["to"]
     if to is not None:
-        return [(Token.Address, "*" + str(to))]
+        return [(Token.Address, str(to))]
     if (i.address is not None) and i.operands[0]._is_cst:
         v = i.address + i.operands[0].signextend(32) + i.length
         i.misc["to"] = v
-        return [(Token.Address, "*" + str(v))]
+        return [(Token.Address, str(v))]
     return [(Token.Constant, ".%+d" % i.operands[0].value)]
 
 
@@ -147,11 +150,11 @@ def opers_att(i):
 def oprel_att(i):
     to = i.misc["to"]
     if to is not None:
-        return [(Token.Address, "*" + str(to))]
+        return [(Token.Address, str(to))]
     if (i.address is not None) and i.operands[0]._is_cst:
         v = i.address + i.operands[0].signextend(32) + i.length
         i.misc["to"] = v
-        return [(Token.Address, "*" + str(v))]
+        return [(Token.Address, str(v))]
     return [(Token.Constant, "$.%+d" % i.operands[0].value)]
 
 
@@ -849,7 +852,7 @@ def att_opers(i, operands=None):
 def att_oprel(i):
     to = i.misc["to"]
     if to is not None:
-        return [(Token.Address, "*" + str(to))]
+        return [(Token.Address, str(to))]
     op = i.operands[0]
     if op._is_lab:
         return [(Token.Address, str(op.ref))]

@@ -79,6 +79,7 @@ class BIOS(object):
             conf = System()
         self.tasks = []
         self.abi = None
+        self.symbols = {}
 
     @classmethod
     def loader(cls, bprm, conf=None):

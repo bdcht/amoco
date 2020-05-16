@@ -346,7 +346,7 @@ def test_asm_010(map):
   i.address = 0x08040005
   map[eip] = cst(i.address,32)
   i(map)
-  assert str(i)=='call        *0x803ffa5'
+  assert str(i)=='call        0x803ffa5'
   assert map(mem(esp))==i.address+5
   assert map(eip)==(i.address+5-101)
 

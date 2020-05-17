@@ -1057,9 +1057,12 @@ class ext(reg):
 
 class lab(ext):
     "label expression used by the assembler"
-    etype = et_lab
     __hash__ = ext.__hash__
     __eq__ = exp.__eq__
+
+    def __init__(self, refname, **kargs):
+        super().__init__(refname,**kargs)
+        self.etype = et_reg | et_lab
 
 # ------------------------------------------------------------------------------
 

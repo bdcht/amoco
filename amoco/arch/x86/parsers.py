@@ -212,7 +212,8 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
             toks.pop(0)
             toks.pop(0)
         else:
-            seg = ""
+            # default seg attribute is None
+            seg = None
         if len(toks) == 2:
             addr = toks[1]
             disp = toks[0]

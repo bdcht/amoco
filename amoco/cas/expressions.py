@@ -80,6 +80,7 @@ def _checkarg_slice(f):
 
 et_cst = 0x00001
 et_reg = 0x00002
+# note:  0x000#0 is for reg subtypes (STD/PC/FLAG/STACK/OTHER)
 et_slc = 0x00100
 et_ext = 0x00200
 et_lab = 0x00400
@@ -458,7 +459,7 @@ class top(exp):
     algebra. Any expression that involves a top
     expression results in a top expression.
     """
-    etype = -et_msk
+    etype = -et_msk-1
     __hash__ = exp.__hash__
     __eq__ = exp.__eq__
 

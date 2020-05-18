@@ -6,8 +6,6 @@ from amoco.arch.core import Formatter
 from amoco.ui.render import highlight, Token, TokenListJoin
 from amoco.ui.render import replace_mnemonic_token, replace_opn_token
 
-whitespace = "  "
-
 
 def regs(i):
     return [(Token.Register, "%{0}".format(r)) for r in i.operands]
@@ -19,7 +17,7 @@ def regn(i, n):
 
 def address(a):
     if not a._is_eqn:
-        return "%" + str(a)
+        return reg_or_imm(a)
     l = reg_or_imm(a.l)
     op = a.op.symbol
     r = reg_or_imm(a.r)
@@ -27,10 +25,14 @@ def address(a):
 
 
 def deref(a):
+    if a.seg is None:
+        seg = ""
+    else:
+        seg = a.seg
     return [
         [(Token.Memory, "[")]
         + address(a.base + a.disp)
-        + [(Token.Memory, "]%s" % (a.seg or ""))]
+        + [(Token.Memory, "]%s"%seg)]
     ]
 
 
@@ -79,14 +81,10 @@ def reg_or_imm(x, t="%d"):
         return [(Token.Constant, res)]
     # Now dealing with hilo
     if hilo is None:
-        return str(x)
-    elif hilo[1]._is_eqn:
-        hilo[1] = address(hilo[1])
-    elif hilo[1]._is_cst:
-        pass
-    else:
-        hilo[1] = hilo[1].ref
-    return [(Token.Constant, "%s(%s)" % tuple(hilo))]
+        return [(Token.Register, str(x))]
+    return [(Token.Register, hilo[0]),(Token.Literal,"(")]+\
+           address(hilo[1])+\
+           [(Token.Literal,"(")]
 
 
 def label(i):

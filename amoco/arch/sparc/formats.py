@@ -84,7 +84,7 @@ def reg_or_imm(x, t="%d"):
         return [(Token.Register, str(x))]
     return [(Token.Register, hilo[0]),(Token.Literal,"(")]+\
            address(hilo[1])+\
-           [(Token.Literal,"(")]
+           [(Token.Literal,")")]
 
 
 def label(i):

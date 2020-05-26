@@ -350,6 +350,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.4: https://github.com/bdcht/amoco/releases/tag/v2.9.4
 .. _v2.9.3: https://github.com/bdcht/amoco/releases/tag/v2.9.3
 .. _v2.9.2: https://github.com/bdcht/amoco/releases/tag/v2.9.2
 .. _v2.9.1: https://github.com/bdcht/amoco/releases/tag/v2.9.1

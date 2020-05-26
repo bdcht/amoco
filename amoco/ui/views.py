@@ -220,39 +220,6 @@ class mmapView(View):
             t.addrow((Token.Memory,icons.hor*8))
         return t
 
-class mmapView(View):
-    """Class that implements view of MemoryMap objects.
-    A mmapView additionnally implements the _vltable method which allows to
-    pretty print the memory through ui.render.highlight method.
-    The str() representation of a memoryView instance uses this pretty printer
-    through engines' pp method.
-    """
-
-    _is_map = True
-
-    def __init__(self, m):
-        super().__init__(of=m)
-
-    def _vltable(self, **kargs):
-        t = vltable(**kargs)
-        t.rowparams["sep"] = icons.sep
-        for k,z in self.of._zones.items():
-            if k is None:
-                a = ""
-            else:
-                a = str(k)
-            for o in z._map:
-                lv = []
-                lv.append((Token.Address,"%s%+08x"%(a,o.vaddr)))
-                lv.append((Token.Column,""))
-                data = str(o.data)
-                lv.append((Token.Literal,data))
-                lv.append((Token.Column,""))
-                lv.append((Token.Address,".%+08x"%(o.end)))
-                t.addrow(lv)
-            t.addrow((Token.Memory,icons.hor*8))
-        return t
-
 # -------------------------------------------------------------------------------
 
 

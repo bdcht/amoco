@@ -27,3 +27,5 @@ def PC():
 
 def get_data_endian():
     return 1
+
+registers = R+[pc]

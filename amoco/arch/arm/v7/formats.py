@@ -61,7 +61,7 @@ def label(i, pos=0):
     pcoffset = 4 if internals["isetstate"] == 0 else 2
     _pc = _pc + 2 * pcoffset
     offset = i.operands[pos]
-    return [(Token.Address, "*" + str(_pc + offset))]
+    return [(Token.Address, str(_pc + offset))]
 
 
 def setend(i):

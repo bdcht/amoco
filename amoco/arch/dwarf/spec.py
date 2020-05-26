@@ -76,7 +76,6 @@ def dw_op_leb128(obj, data):
 
 
 for i in range(0x30, 0x50):
-
     @ispec("8>[ {%2x} ]" % i, mnemonic="DW_OP_lit", _num=i - 0x30)
     def dw_op_lit(obj, _num):
         obj.operands = [env.cst(_num, WORD)]
@@ -137,7 +136,6 @@ def dw_op_const(obj, data):
 
 
 for i in range(0x50, 0x70):
-
     @ispec("8>[ {%2x} ]" % i, mnemonic="DW_OP_reg", _num=i - 0x50)
     def dw_op_reg(obj, _num):
         sz = env.op_ptr.size
@@ -157,7 +155,6 @@ def dw_op_regx(obj, data):
 
 
 for i in range(0x70, 0x90):
-
     @ispec("*>[ {%2x} ~data(*) ]" % i, mnemonic="DW_OP_breg", _num=i - 0x70)
     def dw_op_breg(obj, data, _num):
         data = pack(data)

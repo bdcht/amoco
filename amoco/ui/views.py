@@ -11,6 +11,7 @@ views.py
 This module ...
 """
 
+import re
 from blessed import Terminal
 
 from amoco.config import conf
@@ -219,6 +220,39 @@ class mmapView(View):
             t.addrow((Token.Memory,icons.hor*8))
         return t
 
+class mmapView(View):
+    """Class that implements view of MemoryMap objects.
+    A mmapView additionnally implements the _vltable method which allows to
+    pretty print the memory through ui.render.highlight method.
+    The str() representation of a memoryView instance uses this pretty printer
+    through engines' pp method.
+    """
+
+    _is_map = True
+
+    def __init__(self, m):
+        super().__init__(of=m)
+
+    def _vltable(self, **kargs):
+        t = vltable(**kargs)
+        t.rowparams["sep"] = icons.sep
+        for k,z in self.of._zones.items():
+            if k is None:
+                a = ""
+            else:
+                a = str(k)
+            for o in z._map:
+                lv = []
+                lv.append((Token.Address,"%s%+08x"%(a,o.vaddr)))
+                lv.append((Token.Column,""))
+                data = str(o.data)
+                lv.append((Token.Literal,data))
+                lv.append((Token.Column,""))
+                lv.append((Token.Address,".%+08x"%(o.end)))
+                t.addrow(lv)
+            t.addrow((Token.Memory,icons.hor*8))
+        return t
+
 # -------------------------------------------------------------------------------
 
 
@@ -363,6 +397,18 @@ class execView(View):
             for c in r.cols[2:]: #skip address and bytecode columns
                 for i in range(len(c)-1,-1,-1):
                     tn,tv = c[i]
+                    # we take 1st level token id. For example,
+                    # Token.Address.Mark is reduced to Token.Address
+                    tn = tn.split()
+                    use_Mark = '.Mark' in str(tn)
+                    tn = tn[1]
+                    if tn == Token.Memory:
+                        tn = Token.Address
+                        tv = re.findall('\[(0x[0-9a-zA-Z]+)\]',tv)
+                        if len(tv)==1:
+                            tv = tv[0]
+                        else:
+                            continue
                     if tn in (Token.Address,Token.Constant):
                         try:
                             v = int(tv,0)
@@ -370,7 +416,11 @@ class execView(View):
                         except ValueError:
                             tv = None
                         if tv:
-                            c.insert(i+1,(Token.Comment,tv))
+                            if use_Mark:
+                                tn = Token.Comment.Mark
+                            else:
+                                tn = Token.Comment
+                            c.insert(i+1,(tn,tv))
             if conf.Code.segment:
                 try:
                     address = int(r.cols[0][0][1],0)
@@ -378,7 +428,11 @@ class execView(View):
                 except ValueError:
                     segname = None
                 if segname:
-                    r.cols[0].insert(1,(Token.Segment,segname))
+                    if use_Mark:
+                        tn = Token.Segment.Mark
+                    else:
+                        tn = Token.Segment
+                    r.cols[0].insert(1,(tn,segname))
         T.update()
         if conf.Code.bytecode:
             pad = conf.Code.padding
@@ -509,5 +563,38 @@ class emulView(View):
                 logger.warning("emulView.%s: %s"%(f.__name__,e))
         t.append(self.line())
         return '\n'.join(t)
+
+# -------------------------------------------------------------------------------
+
+class archView(View):
+    _is_emul = True
+
+    def __init__(self,of):
+        super().__init__(of)
+        self.term = Terminal()
+
+    def show_spec(self,s):
+        mnemo = s.iattr.get("mnemonic","?")
+        specf = s.format
+        return "{0:<16}: {1}".format(mnemo, specf)
+
+    def show_subtree(self,root,wh=""):
+        f, l = root
+        if f == 0: # leaves:
+            t = [wh+icons.hor+self.show_spec(s) for s in l]
+        else:
+            t = []
+            c = "%s%s[& %x =="%(wh, icons.hor, f)
+            wh += "  "+icons.ver
+            for k,fl in l.items():
+                t.append("%s %x]"%(c,k))
+                t.extend(self.show_subtree(fl,wh))
+        return t
+
+    def __str__(self):
+        t = []
+        for root in self.of.specs:
+            t.extend(self.show_subtree(root))
+        return "\n".join(t)
 
 # -------------------------------------------------------------------------------

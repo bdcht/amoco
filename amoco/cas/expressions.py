@@ -1049,7 +1049,8 @@ class ext(reg):
     def __call__(self, env):
         "used when the expression is used as a target instruction"
         logger.info("stub %s implicit call" % self.ref)
-        self.stub(env, **self._subrefs)
+        f = self.stub
+        f(env, **self._subrefs)
 
 # ------------------------------------------------------------------------------
 # lab holds labels/symbols, e.g. from relocations
@@ -1062,7 +1063,7 @@ class lab(ext):
 
     def __init__(self, refname, **kargs):
         super().__init__(refname,**kargs)
-        self.etype = et_reg | et_lab
+        self.etype |= et_lab
 
 # ------------------------------------------------------------------------------
 

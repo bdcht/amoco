@@ -57,6 +57,21 @@ INSTRUCTION_TYPES = {
 
 
 class icore(object):
+    """This is the core class for the generic parent instruction class below.
+       It defines the mandatory API for all instructions.
+
+       Attributes:
+         bytes (bytes)  : instruction's bytes
+         type  (int)    : one of (type_data_processing, type_control_flow,
+                          type_cpu_state, type_system, type_other) or
+                          type_undefined (default) or type_unpredictable.
+         spec  (ispec)  : the specification that was decoded by the disassembler
+                          to instanciate this instruction.
+         mnemonic (str) : the mnemonic string as defined by the specification.
+         operands (list): the list of operands' expressions.
+         misc (dict)    : a defaultdict for passing various arch-dependent infos
+                          (which returns None for undefined keys.)
+    """
     def __init__(self, istr=b""):
         self.bytes = bytes(istr)
         self.type = type_undefined
@@ -69,13 +84,17 @@ class icore(object):
 
     @classmethod
     def set_uarch(cls, uarch):
+        "class method to define the instructions' semantics uarch dict"
         cls._uarch = uarch
 
     def typename(self):
+        "returns the instruction's type as a string"
         return INSTRUCTION_TYPES[self.type]
 
-    # calling the asm implementation of this instruction:
     def __call__(self, fmap):
+        """calls the uarch[mnemonic] semantics function for this instruction
+           or warns if no semantics is found.
+        """
         if self.type in (type_undefined, type_unpredictable):
             logger.error("%s instruction" % self.typename())
         try:
@@ -89,10 +108,10 @@ class icore(object):
 
     @property
     def length(self):
+        "length of the instruction in bytes"
         return len(self.bytes)
 
 
-##
 
 # instruction class
 # -----------------
@@ -103,6 +122,9 @@ class instruction(icore):
     instructions set and provides a common API for all arch-independent methods.
     It extends the :class:`icore` with an :attr:`address` attribute and formatter
     methods.
+
+    Attributes:
+        address (cst): the memory address where this instruction as been disassembled. 
     """
 
     def __init__(self, istr):
@@ -132,10 +154,15 @@ class instruction(icore):
 
     @classmethod
     def set_formatter(cls, f):
+        "classmethod that defines the formatter for all instances"
         cls.formatter = f
 
     @staticmethod
     def formatter(i, toks=False):
+        """default formatter if no formatter has been set, will return
+           the highlighted list from tokens for raw mnemonic,
+           and comma-separated operands expressions.
+        """
         t = [(Token.Mnemonic, i.mnemonic)]
         t += [(Token.Literal, op) for op in map(str, i.operands[0:1])]
         t += [(Token.Literal, ", " + op) for op in map(str, i.operands[1:])]
@@ -145,6 +172,7 @@ class instruction(icore):
         return self.formatter(i=self)
 
     def toks(self):
+        "returns the (unjoined) list of formatted tokens."
         return self.formatter(i=self, toks=True)
 
 
@@ -313,16 +341,25 @@ class ispec(object):
             (on request) decode a given bytestring and how it will expose various 
             decoded entities to the decorated function in order to define an instruction.
         **kargs: 
-            additional arguments to ispec decorator **must** be provided with ``symbol=value``
+            additional arguments to ispec decorator **must** be provided with ``name=value``
             form and are declared as attributes/values within the instruction instance *before* 
-            calling the decorated function.
+            calling the decorated function. See below for conventions about names.
 
     Attributes:
 
-        format (str): the spec format passed as argument (see above).
-        hook (callable): the decorated python function to be called during decoding.
+        format (str): the spec format passed as argument (see Note below).
+        hook (callable): the decorated python function to be called during decoding. The hook
+                         function name is relevant only for instructions' formatter.
+                         See :class:`arch.core.Formatter`.
         iattr (dict): the dictionary of instruction attributes to add before decoding.
-        fargs (dict): the dictionary of keywords arguments to pass the hook.
+                      Attributes and their values are passed from the spec's kargs when the
+                      name does not start with an underscore.
+        fargs (dict): the dictionary of keywords arguments to pass to the hook.
+                      These keywords are decoded from the format or given by the spec's kargs
+                      when name starts with an underscore.
+        precond (func): an optional function that takes the instruction object as argument
+                        and returns a boolean to indicate wether the hook can be called or not.
+                        (This allows to avoid decoding when a prefix is missing for example.)
         size (int): the bit length of the format (``LEN`` value)
         fix (Bits): the values of fixed bits within the format
         mask (Bits): the mask of fixed bits within the format
@@ -353,7 +390,7 @@ class ispec(object):
         The ``spec`` string format is  ``LEN ('<' or '>') '[' FORMAT ']' ('+' or '&' NUMBER)``
 
           - ``LEN`` is either an integer that represents the bit length of the instruction or '*'.
-              Length must be a multiple of 8, '*' is used for variable length
+              Length must be a multiple of 8, '*' is used for a variable length
               instruction.
           - ``FORMAT`` is a series of *directives* (see below.)
              Each directive represents a sequence of bits ordered according to the spec
@@ -393,9 +430,12 @@ class ispec(object):
            * ``SYMBOL``: is a mandatory string matching regex ``[A-Za-z_][0-9A-Za-z_]*``
            * ``location``: is an optional string matching the following expressions:
 
-             * ``( len )``    : indicates that the value is decoded from the next len bits starting from the current position of the directive within the ``FORMAT`` string.
-             * ``(*)``        : indicates a *variable length directive* for which the value is decoded from the current position with all remaining bits in the ``FORMAT``.\
-                                If the ``LEN`` is also variable then all remaining bits from the instruction buffer input string are used.
+             * ``( len )``    : indicates that the value is decoded from the next len bits starting
+                                from the current position of the directive within the ``FORMAT`` string.
+             * ``(*)``        : indicates a *variable length directive* for which the value is decoded
+                                from the current position with all remaining bits in the ``FORMAT``.\
+                                If the ``LEN`` is also variable then all remaining bits from the instruction
+                                buffer input string are used.
 
              default location value is ``(1)``.
              
@@ -407,6 +447,7 @@ class ispec(object):
         "format",
         "iattr",
         "fargs",
+        "precond",
         "ast",
         "fix",
         "mask",
@@ -440,9 +481,13 @@ class ispec(object):
     def setup(self, kargs):
         self.iattr = {}
         self.fargs = {}
+        self.precond = None
         for k, v in iter(kargs.items()):
             if k.startswith("_"):
-                self.fargs[k] = v
+                if k=="__obj":
+                    self.precond = v
+                else:
+                    self.fargs[k] = v
             else:
                 self.iattr[k] = v
         self.ast = self.buildspec()
@@ -574,6 +619,11 @@ class ispec(object):
             i = iclass(bs)
         else:
             i.bytes += bs
+        # check any precondition on i:
+        if self.precond:
+            if not self.precond(i):
+                raise DecodeError
+        # ok, lets call the spec hook...
         i.spec = self
         # set instruction attributes from directives, and then
         # call hook function with instruction as first parameter
@@ -587,7 +637,7 @@ class ispec(object):
             if isinstance(v, FunctionType):
                 v = v(b)
             kargs[k] = v
-        # and call hooks:
+        # and finally call the hook:
         try:
             self.hook(obj=i, **kargs)
         except InstructionError:

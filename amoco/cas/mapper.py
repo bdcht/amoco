@@ -52,6 +52,7 @@ class mapper(object):
     def __init__(self, instrlist=None, csi=None):
         self.__map = generation()
         self.__map.lastw = 0
+        self.__map.delayed = None
         self.__Mem = MemoryMap()
         self.conds = []
         self.csi = csi
@@ -104,7 +105,20 @@ class mapper(object):
         return False
 
     def history(self, loc):
-        return self.__map._generation__getall(loc)
+        k, v = self.__map.hist
+        if k==loc:
+            return v
+        else:
+            return self[k]
+
+    def delayed(self, k ,v):
+        self.__map.delayed = (k,v)
+
+    def update_delayed(self):
+        kv = self.__map.delayed
+        if kv is not None:
+            self.__map.delayed = None
+            self.__setitem__(*kv)
 
     def rw(self):
         "get the read sizes and written sizes tuple"

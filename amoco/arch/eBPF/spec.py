@@ -99,7 +99,10 @@ def ebpf_exit_(obj, s, dreg, sreg, off, imm):
 
 
 # MEM LOAD from reg instructions:
-@ispec("64>[ 100 sz(2) 110 dreg(4) sreg(4) ~off(16) imm(32) ]", mnemonic="ldx")
+@ispec("64>[ 100 00=sz(2) 110 dreg(4) sreg(4) ~off(16) imm(32) ]", mnemonic="ldxw")
+@ispec("64>[ 100 01=sz(2) 110 dreg(4) sreg(4) ~off(16) imm(32) ]", mnemonic="ldxb")
+@ispec("64>[ 100 10=sz(2) 110 dreg(4) sreg(4) ~off(16) imm(32) ]", mnemonic="ldxh")
+@ispec("64>[ 100 11=sz(2) 110 dreg(4) sreg(4) ~off(16) imm(32) ]", mnemonic="ldxdw")
 def ebpf_ldx_(obj, sz, dreg, sreg, off, imm):
     size = {0: 32, 1: 16, 2: 8, 3: 64}[sz]
     if imm != 0:
@@ -108,13 +111,18 @@ def ebpf_ldx_(obj, sz, dreg, sreg, off, imm):
     src = env.R[sreg]
     src = env.mem(src + off.int(-1), size)
     obj.operands = [dst, src]
-    obj.mnemonic += {8: "b", 16: "h", 32: "w", 64: "dw"}[size]
     obj.type = type_data_processing
 
 
 # MEM STORE immediate or reg instructions:
-@ispec("64>[ 010 sz(2) 110 dreg(4) sreg(4) ~off(16) ~imm(32) ]", mnemonic="st")
-@ispec("64>[ 110 sz(2) 110 dreg(4) sreg(4) ~off(16) ~imm(32) ]", mnemonic="stx")
+@ispec("64>[ 010 00=sz(2) 110 dreg(4) sreg(4) ~off(16) ~imm(32) ]", mnemonic="stw")
+@ispec("64>[ 010 01=sz(2) 110 dreg(4) sreg(4) ~off(16) ~imm(32) ]", mnemonic="stb")
+@ispec("64>[ 010 10=sz(2) 110 dreg(4) sreg(4) ~off(16) ~imm(32) ]", mnemonic="sth")
+@ispec("64>[ 010 11=sz(2) 110 dreg(4) sreg(4) ~off(16) ~imm(32) ]", mnemonic="stdw")
+@ispec("64>[ 110 00=sz(2) 110 dreg(4) sreg(4) ~off(16) ~imm(32) ]", mnemonic="stxw")
+@ispec("64>[ 110 01=sz(2) 110 dreg(4) sreg(4) ~off(16) ~imm(32) ]", mnemonic="stxh")
+@ispec("64>[ 110 10=sz(2) 110 dreg(4) sreg(4) ~off(16) ~imm(32) ]", mnemonic="stxb")
+@ispec("64>[ 110 11=sz(2) 110 dreg(4) sreg(4) ~off(16) ~imm(32) ]", mnemonic="stxdw")
 def ebpf_st_(obj, sz, dreg, sreg, off, imm):
     size = {0: 32, 1: 16, 2: 8, 3: 64}[sz]
     dst = env.mem(env.R[dreg] + off.int(-1), size)
@@ -126,12 +134,14 @@ def ebpf_st_(obj, sz, dreg, sreg, off, imm):
         src = env.cst(imm.int(-1), 32).zeroextend(64)
     src = src[0:size]
     obj.operands = [dst, src]
-    obj.mnemonic += {8: "b", 16: "h", 32: "w", 64: "dw"}[size]
     obj.type = type_data_processing
 
 
 # XADD instructions:
-@ispec("64>[ 110 sz(2) 011 dreg(4) sreg(4) ~off(16) imm(32) ]", mnemonic="xadd")
+@ispec("64>[ 110 00=sz(2) 011 dreg(4) sreg(4) ~off(16) imm(32) ]", mnemonic="xaddw")
+@ispec("64>[ 110 01=sz(2) 011 dreg(4) sreg(4) ~off(16) imm(32) ]", mnemonic="xaddb")
+@ispec("64>[ 110 10=sz(2) 011 dreg(4) sreg(4) ~off(16) imm(32) ]", mnemonic="xaddh")
+@ispec("64>[ 110 11=sz(2) 011 dreg(4) sreg(4) ~off(16) imm(32) ]", mnemonic="xadddw")
 def ebpf_xadd_(obj, sz, dreg, sreg, off, imm):
     size = {0: 32, 1: 16, 2: 8, 3: 64}[sz]
     if (size < 32) or imm != 0:
@@ -139,7 +149,6 @@ def ebpf_xadd_(obj, sz, dreg, sreg, off, imm):
     dst = env.mem(env.R[dreg] + off.int(-1), size)
     src = env.R[sreg][0:size]
     obj.operands = [dst, src]
-    obj.mnemonic += {8: "b", 16: "h", 32: "w", 64: "dw"}[size]
     obj.type = type_data_processing
 
 
@@ -156,12 +165,14 @@ def ebpf_ld64_(obj, dreg, sreg, off, imm, unused, imm2):
 
 
 # ABS/IND LOAD instructions:
-@ispec(
-    "64>[ 000 sz(2) 100 dreg(4) sreg(4) off(16) ~imm(32) ]", mnemonic="ld", _abs=True
-)
-@ispec(
-    "64>[ 000 sz(2) 010 dreg(4) sreg(4) off(16) ~imm(32) ]", mnemonic="ld", _abs=False
-)
+@ispec("64>[ 000 00=sz(2) 100 dreg(4) sreg(4) off(16) ~imm(32) ]", mnemonic="ldw", _abs=True)
+@ispec("64>[ 000 01=sz(2) 100 dreg(4) sreg(4) off(16) ~imm(32) ]", mnemonic="ldb", _abs=True)
+@ispec("64>[ 000 10=sz(2) 100 dreg(4) sreg(4) off(16) ~imm(32) ]", mnemonic="ldh", _abs=True)
+@ispec("64>[ 000 11=sz(2) 100 dreg(4) sreg(4) off(16) ~imm(32) ]", mnemonic="lddw", _abs=True)
+@ispec("64>[ 000 00=sz(2) 010 dreg(4) sreg(4) off(16) ~imm(32) ]", mnemonic="ldw", _abs=False)
+@ispec("64>[ 000 01=sz(2) 010 dreg(4) sreg(4) off(16) ~imm(32) ]", mnemonic="ldb", _abs=False)
+@ispec("64>[ 000 10=sz(2) 010 dreg(4) sreg(4) off(16) ~imm(32) ]", mnemonic="ldh", _abs=False)
+@ispec("64>[ 000 11=sz(2) 010 dreg(4) sreg(4) off(16) ~imm(32) ]", mnemonic="lddw", _abs=False)
 def ebpf_ld_(obj, sz, dreg, sreg, off, imm, _abs):
     size = {0: 32, 1: 16, 2: 8, 3: 64}[sz]
     dst = env.R[0]
@@ -170,5 +181,4 @@ def ebpf_ld_(obj, sz, dreg, sreg, off, imm, _abs):
         adr += env.R[sreg]
     src = env.mem(adr, size, disp=imm.int(-1))
     obj.operands = [dst, src]
-    obj.mnemonic += {8: "b", 16: "h", 32: "w", 64: "dw"}[size]
     obj.type = type_data_processing

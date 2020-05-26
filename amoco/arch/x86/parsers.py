@@ -1,17 +1,40 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# This code is part of Amoco
-# Copyright (C) 2013 Axel Tillequin (bdcht3@gmail.com)
-# published under GPLv2 license
-
 import pyparsing as pp
 
+from amoco.arch.x86 import spec_ia32, spec_fpu, spec_sse
 from amoco.logger import Log
 
 logger = Log(__name__)
 logger.debug("loading module")
-# logger.level = 10
+
+spec_table = {}
+for spec in spec_ia32.ISPECS + spec_fpu.ISPECS + spec_sse.ISPECS:
+    mnemo = spec.iattr.get('mnemonic', None)
+    if not mnemo in spec_table:
+        spec_table[mnemo] = [spec]
+    elif not spec in spec_table[mnemo]:
+        spec_table[mnemo].append(spec)
+
+def set_spec(i, spec_table):
+    spec_list = spec_table[i.mnemonic]
+    ispec_idx = 0
+    if i.mnemonic in ('CALL','JMP'):
+        if i.operands[0]._is_mem:
+            ispec_idx = 0
+        elif i.operands[0]._is_reg and not i.operands[0]._is_lab:
+            ispec_idx = 0
+        else:
+            ispec_idx = 1
+    if i.mnemonic.lower()[:-1] in mnemo_string_rep:
+        if not len(i.operands):
+            ispec_idx = -1
+    i.spec = spec_list[ispec_idx]
+    if 'type' in i.spec.iattr:
+        i.type = i.spec.iattr['type']
+    else:
+        i.type = type_data_processing
 
 # ------------------------------------------------------------------------------
 # parser for x86 or x64 AT&T assembler syntax.
@@ -704,7 +727,6 @@ def test_parser(cls):
             print(E)
         except EOFError:
             return
-
 
 if __name__ == "__main__":
     test_parser(att_syntax)

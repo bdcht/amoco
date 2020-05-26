@@ -120,3 +120,10 @@ def msp430_jumps(obj, offset):
     off = env.cst(offset * 2, 11).signextend(16)
     obj.operands = [off]
     obj.type = type_control_flow
+
+@ispec("16<[ 001 111 offset(10) ]", mnemonic="JMP", BW=0)
+def msp430_jumps(obj, offset):
+    obj.cond = 0b111
+    off = env.cst(offset * 2, 11).signextend(16)
+    obj.operands = [off]
+    obj.type = type_control_flow

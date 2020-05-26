@@ -92,6 +92,7 @@ def hi(r):
 def lo(r):
     return slc(r, 0, 10)
 
+registers = r + [psr, y, pc, npc]
 
 # psr symbols:
 impl = slc(psr, 28, 4)  # implementation

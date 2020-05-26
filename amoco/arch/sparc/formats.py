@@ -3,7 +3,8 @@
 from .env import *
 from .utils import *
 from amoco.arch.core import Formatter
-from amoco.ui.render import highlight, Token, TokenListJoin
+from amoco.ui.render import highlight, Token
+from amoco.ui.render import TokenListJoin, LambdaTokenListJoin
 from amoco.ui.render import replace_mnemonic_token, replace_opn_token
 
 
@@ -66,9 +67,9 @@ def reg_or_imm(x, t="%d"):
             hilo = ["%lo", x.x]
     # Other cases
     elif x._is_ext:
-        return [(Token.Address, x.ref)]
+        return [(Token.Address, "%s"%x.ref)]
     elif x._is_reg:
-        return [(Token.Register, "%" + x.ref)]
+        return [(Token.Register, "%"+x.ref)]
     elif x._is_cst:
         return [(Token.Constant, t % x.value)]
     elif x._is_eqn:
@@ -94,7 +95,7 @@ def label(i):
     if i.operands[0]._is_ext:
         return [(Token.Address, str(i.operands[0].ref))]
     if i.operands[0]._is_reg:
-        return [(Token.Register, "%" + str(i.operands[0].ref))]
+        return [(Token.Register, "%%%s"%(i.operands[0].ref))]
     if i.operands[0]._is_cst:
         offset = i.operands[0].signextend(32) * 4
         target = i.misc["dst"] or (_pc+offset)
@@ -179,7 +180,7 @@ CONDxB = {"b": CONDB, "fb": CONDFB, "cb": CONDCB}
 
 mnemo = lambda i: [(Token.Mnemonic, "{i.mnemonic:<8}".format(i=i))]
 format_mn = [mnemo]
-format_regs = [mnemo, lambda i: TokenListJoin(", ", regs(i))]
+format_regs = [mnemo, LambdaTokenListJoin(", ", regs)]
 format_ld = [mnemo, lambda i: TokenListJoin(", ", deref(i.operands[0]) + regn(i, 1))]
 format_st = [mnemo, lambda i: TokenListJoin(", ", regn(i, 0) + deref(i.operands[1]))]
 format_logic = [
@@ -190,7 +191,7 @@ format_logic = [
 ]
 format_sethi = [
     mnemo,
-    lambda i: TokenListJoin(", ", reg_or_imm(i.operands[0]) + regn(i, 1)),
+    lambda i: TokenListJoin(", ", [reg_or_imm(i.operands[0])] + regn(i, 1)),
 ]
 format_arith = [
     mnemo_icc,
@@ -199,23 +200,27 @@ format_arith = [
     ),
 ]
 format_xb = [mnemo_cond, label]
-format_call = [mnemo, lambda i: TokenListJoin(", ", label(i) + [(Token.Constant, "0")])]
+format_call = [mnemo, lambda i: TokenListJoin(", ", label(i) +
+                                                    [(Token.Constant, "0")])]
 format_jmpl = [
     mnemo,
     lambda i: address(i.operands[0]) + [(Token.Literal, ", ")] + regn(i, 1),
 ]
 format_addr = [mnemo, lambda i: address(i.operands[0])]
-format_t = [lambda i: [(Token.Mnemonic, "{:<8}".format(CONDT[i.cond]))] + reg_or_imm(i.operands[0])]
+format_t = [lambda i: [(Token.Mnemonic, "{:<8}".format(CONDT[i.cond]))] +
+            reg_or_imm(i.operands[0])]
 format_rd = format_regs
 format_wr = [
     mnemo,
-    lambda i: regn(i, 0) + reg_or_imm(i.operands[1], "%#x") + regn(i, 2),
+    lambda i: TokenListJoin(", ",regn(i, 0) +
+                                 reg_or_imm(i.operands[1], "%#x") +
+                                 regn(i, 2)),
 ]
 format_fpop = format_regs
 format_cpop = [
     mnemo,
     lambda i: [(Token.Constant, "{i.operands[0]:d}")]
-    + TokenListJoin(", ", regs(i)[1:]),
+              + TokenListJoin(", ", regs(i)[1:]),
 ]
 
 SPARC_V8_full_formats = {

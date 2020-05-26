@@ -7,8 +7,9 @@
 from amoco.system.elf import *
 from amoco.system.core import CoreExec, DefineStub
 from amoco.code import tag
-import amoco.arch.riscv.cpu_rvi32 as cpu
+import amoco.arch.riscv.cpu_rv32i as cpu
 
+# TODO implement OS and Task classes in remplacement of ELF CoreExec.
 
 class ELF(CoreExec):
     PAGESIZE = 4096
@@ -86,6 +87,6 @@ def block_helper_(block, m):
 # HOOKS DEFINED HERE :
 # ----------------------------------------------------------------------------
 
-# @DefineStub('*',default=True)
-# def pop_pc(m,**kargs):
-#    cpu.pop(m,cpu.pc)
+#@DefineStub('*',default=True)
+#def pop_pc(m,**kargs):
+#   cpu.pop(m,cpu.pc)

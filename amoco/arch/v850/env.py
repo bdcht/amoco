@@ -43,6 +43,8 @@ R[5] = reg("tp", 32)  # text area ptr
 R[30] = reg("ep", 32)  # array/struct base ptr
 R[31] = reg("lp", 32)  # link ptr
 
+registers = R + [PSW, pc]
+
 # system registers:
 EIPC = reg("eipc", 32)
 EIPSW = reg("eipsw", 32)

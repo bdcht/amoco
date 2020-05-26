@@ -459,6 +459,7 @@ def i_POP(i, fmap):
 
 def i_CALL(i, fmap):
     pc = fmap[rip] + i.length
+    fmap[rip] = pc # needed because op0 can depend on rip
     push(fmap, pc)
     op1 = fmap(i.operands[0])
     op1 = op1.signextend(pc.size)

@@ -261,10 +261,14 @@ class DefineStub(object):
 
     def __call__(self, f):
         if self.default:
-            self.obj.stub_default = f
+            self.obj.default_stub = staticmethod(f)
         else:
             self.obj.stubs[self.ref] = f
         return f
+
+    @staticmethod
+    def warning(env, **kargs):
+        logger.warning("no default stub defined, this will not ret!")
 
 
 # ------------------------------------------------------------------------------
@@ -558,20 +562,47 @@ def load_program(f, cpu=None):
         try:
             x = Loaders["elf"][p.Ehdr.e_machine](p)
         except KeyError:
-            logger.error("ELF machine type not supported:\n%s" % p.Ehdr)
+            logger.error("ELF machine type not supported")
+            x = None
+        except Exception:
+            logger.error("ELF loader error")
             x = None
     elif p.is_PE:
         try:
             x = Loaders["pe"][p.NT.Machine](p)
         except KeyError:
-            logger.error("PE machine type not supported:\n%s" % p.NT)
+            logger.error("PE machine type not supported")
+            x = None
+        except Exception:
+            logger.error("PE loader error")
             x = None
     elif p.is_MachO:
         try:
             x = Loaders["macho"][p.header.cputype](p)
-        except KeyError:
-            logger.error("Mach-O machine type not supported:\n%s" % p.header.cputype)
+        except Exception:
+            logger.error("Mach-O machine type not supported")
+            x = None
+        except Exception:
+            logger.error("Mach-O loader error")
             x = None
     else:
         x = Loaders["raw"](p, cpu)
+
+    if x is not None:
+        logger.info("a new task is loaded %s"%str(x.view))
+    else:
+        logger.info("no loader for this program, trying baremetal...")
+        if p.is_ELF:
+            try:
+                x = Loaders["elf-baremetal"][p.Ehdr.e_machine](p)
+            except KeyError:
+                logger.error("No baremetal for this ELF machine type")
+                x = None
+            except Exception:
+                logger.error("elf-baremetal loader error")
+                x = None
+            else:
+                logger.info("a new baremetal is loaded")
+        else:
+            logger.info("no baremetal for this binary format")
     return x

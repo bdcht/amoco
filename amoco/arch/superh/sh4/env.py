@@ -80,3 +80,5 @@ SQMD = slc(MMUCR, 9, 1, "MMUCR.SQMD")
 URC = slc(MMUCR, 10, 6, "MMUCR.URC")
 URB = slc(MMUCR, 18, 6, "MMUCR.URB")
 LRUI = slc(MMUCR, 26, 6, "MMUCR.LRUI")
+
+registers = R + r + [SR, PC, npc, nnpc]

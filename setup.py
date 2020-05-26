@@ -30,7 +30,7 @@ It features:
 
 setup(
     name = 'amoco',
-    version = '2.9.3',
+    version = '2.9.4',
     description = 'yet another binary analysis framework',
     long_description = long_descr,
     # Metadata

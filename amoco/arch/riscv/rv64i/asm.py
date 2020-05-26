@@ -5,7 +5,7 @@
 # published under GPLv2 license
 
 from .env import *
-from .utils import *
+from ..utils import *
 
 from amoco.cas.utils import *
 
@@ -41,28 +41,28 @@ def trap(ins, fmap, trapname):
 def i_LB(ins, fmap):
     dst, src = ins.operands
     if dst is not zero:
-        fmap[dst] = fmap(src).signextend(32)
+        fmap[dst] = fmap(src).signextend(64)
 
 
 @__npc
 def i_LBU(ins, fmap):
     dst, src = ins.operands
     if dst is not zero:
-        fmap[dst] = fmap(src).zeroextend(32)
+        fmap[dst] = fmap(src).zeroextend(64)
 
 
 @__npc
 def i_LH(ins, fmap):
     dst, src = ins.operands
     if dst is not zero:
-        fmap[dst] = fmap(src).signextend(32)
+        fmap[dst] = fmap(src).signextend(64)
 
 
 @__npc
 def i_LHU(ins, fmap):
     dst, src = ins.operands
     if dst is not zero:
-        fmap[dst] = fmap(src).zeroextend(32)
+        fmap[dst] = fmap(src).zeroextend(64)
 
 
 @__npc
@@ -161,7 +161,7 @@ def i_SLT(ins, fmap):
     dst, rs1, rs2 = ins.operands
     if dst is not zero:
         _t = rs1 < rs2
-        fmap[dst] = fmap(tst(_t, cst(1, 32), cst(0, 32)))
+        fmap[dst] = fmap(tst(_t, cst(1, 64), cst(0, 64)))
 
 
 @__npc
@@ -169,7 +169,7 @@ def i_SLTU(ins, fmap):
     dst, rs1, rs2 = ins.operands
     if dst is not zero:
         _t = oper(OP_LTU, rs1, rs2)
-        fmap[dst] = fmap(tst(_t, cst(1, 32), cst(0, 32)))
+        fmap[dst] = fmap(tst(_t, cst(1, 64), cst(0, 64)))
 
 
 @__npc
@@ -177,7 +177,7 @@ def i_SLTI(ins, fmap):
     dst, rs1, rs2 = ins.operands
     if dst is not zero:
         _t = rs1 < rs2
-        fmap[dst] = fmap(tst(_t, cst(1, 32), cst(0, 32)))
+        fmap[dst] = fmap(tst(_t, cst(1, 64), cst(0, 64)))
 
 
 @__npc
@@ -185,7 +185,7 @@ def i_SLTIU(ins, fmap):
     dst, rs1, rs2 = ins.operands
     if dst is not zero:
         _t = oper(OP_LTU, rs1, rs2)
-        fmap[dst] = fmap(tst(_t, cst(1, 32), cst(0, 32)))
+        fmap[dst] = fmap(tst(_t, cst(1, 64), cst(0, 64)))
 
 
 @__npc
@@ -318,7 +318,7 @@ def i_SW(ins, fmap):
 @__npc
 def i_LB(ins, fmap):
     dst, src = ins.operands
-    fmap[dst] = fmap(src).signextend(32)
+    fmap[dst] = fmap(src).signextend(64)
 
 
 i_LH = i_LW = i_LB
@@ -327,7 +327,7 @@ i_LH = i_LW = i_LB
 @__npc
 def i_LBU(ins, fmap):
     dst, src = ins.operands
-    fmap[dst] = fmap(src).zeroextend(32)
+    fmap[dst] = fmap(src).zeroextend(64)
 
 
 i_LHU = i_LBU

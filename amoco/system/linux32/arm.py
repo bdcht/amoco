@@ -5,7 +5,7 @@
 # published under GPLv2 license
 
 from amoco.system.elf import *
-from amoco.system.core import CoreExec
+from amoco.system.core import CoreExec, DefineStub
 import amoco.arch.arm.cpu_armv7 as cpu
 
 with Consts("e_flags"):
@@ -174,12 +174,12 @@ class OS(object):
     It is responsible for setting up the (virtual) memory of the Task as well
     as providing stubs for dynamic library calls and possibly system calls.
 
-    In the specific case of linux32.x86, the OS class will stub all libc
+    In the specific case of linux32.arm, the OS class will stub all libc
     functions including a simulated heap memory allocator API.
     """
 
     stubs = {}
-    default_stub = lambda env, **kargs: None
+    default_stub = DefineStub.warning
 
     def __init__(self, conf=None):
         if conf is None:
@@ -222,7 +222,7 @@ class OS(object):
         p.state[cpu.pc] = entry
         # create the stack space:
         if self.ASLR:
-            p.state.mmap.newzone(p.cpu.esp)
+            p.state.mmap.newzone(p.cpu.sp)
         else:
             stack_base = 0x7FFFFFFF & ~(self.PAGESIZE - 1)
             stack_size = 2 * self.PAGESIZE
@@ -237,9 +237,34 @@ class OS(object):
 
     def load_elf_interp(self, p, interp):
         for k, f in p.bin._Elf__dynamic(None).items():
-            xfunc = cpu.ext(f, size=32)
-            xfunc.stub = p.OS.stub(f)
-            p.state.mmap.write(k, xfunc)
+            xf = cpu.ext(f, size=32)
+            xf.stub = self.stub(xf.ref)
+            p.state.mmap.write(k, xf)
+        # we want to add .plt addresses as symbols as well
+        # to improve asm block views:
+        plt = got = None
+        for s in p.bin.Shdr:
+            if s.name=='.plt':
+                plt = s
+            elif s.name=='.got':
+                got = s
+        if plt and got:
+            address = plt.sh_addr
+            pltco = p.bin.readsection(plt)
+            while(pltco):
+                i = p.cpu.disassemble(pltco)
+                if i.mnemonic=='JMP' and i.operands[0]._is_mem:
+                    target = i.operands[0].a
+                    if target.base is p.cpu.pc:
+                        target = address+target.disp
+                    elif target.base._is_reg:
+                        target = got.sh_addr+target.disp
+                    elif target.base._is_cst:
+                        target = target.base.value+target.disp
+                    if target in p.bin.functions:
+                        p.bin.functions[address] = p.bin.functions[target]
+                pltco = pltco[i.length:]
+                address += i.length
 
     def stub(self, refname):
         return self.stubs.get(refname, self.default_stub)
@@ -278,10 +303,42 @@ class Task(CoreExec):
         self.state[x] = v
 
 
-# LIBC HOOKS DEFINED HERE :
 # ----------------------------------------------------------------------------
 
-# ----------------------------------------------------------------------------
+@DefineStub(OS, "*", default=True)
+def nullstub(m, **kargs):
+    m[cpu.pc] = m(cpu.lr)
 
-# SYSCALLS:
-# ----------------------------------------------------------------------------
+
+@DefineStub(OS, "__libc_start_main")
+def libc_start_main(m, **kargs):
+    "tags: func_call"
+    m[cpu.pc] = m(cpu.mem(cpu.sp + 4, 32))
+    cpu.push(m, cpu.ext("exit", size=32))
+
+
+@DefineStub(OS, "exit")
+def libc_exit(m, **kargs):
+    m[cpu.pc] = top(32)
+
+
+@DefineStub(OS, "abort")
+def libc_abort(m, **kargs):
+    m[cpu.pc] = top(32)
+
+
+@DefineStub(OS, "__assert")
+def libc_assert(m, **kargs):
+    m[cpu.pc] = top(32)
+
+
+@DefineStub(OS, "__assert_fail")
+def libc_assert_fail(m, **kargs):
+    m[cpu.pc] = top(32)
+
+
+@DefineStub(OS, "_assert_perror_fail")
+def _assert_perror_fail(m, **kargs):
+    m[cpu.pc] = top(32)
+
+

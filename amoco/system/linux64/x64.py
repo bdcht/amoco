@@ -5,7 +5,7 @@
 # published under GPLv2 license
 
 from amoco.system.elf import *
-from amoco.system.core import CoreExec
+from amoco.system.core import CoreExec, DefineStub
 from amoco.code import tag
 import amoco.arch.x64.cpu_x64 as cpu
 
@@ -65,7 +65,7 @@ class OS(object):
     """
 
     stubs = {}
-    default_stub = lambda env, **kargs: None
+    default_stub = DefineStub.warning
 
     def __init__(self, conf=None):
         if conf is None:
@@ -134,9 +134,9 @@ class OS(object):
 
     def load_elf_interp(self, p, interp):
         for k, f in p.bin._Elf__dynamic(None).items():
-            xfunc = cpu.ext(f, size=64)
-            xfunc.stub = p.OS.stub(f)
-            p.state.mmap.write(k, xfunc)
+            xf = cpu.ext(f, size=64)
+            xf.stub = self.stub(xf.ref)
+            p.state.mmap.write(k, xf)
         # we want to add .plt addresses as symbols as well
         # to improve asm block views:
         plt = got = None
@@ -168,132 +168,10 @@ class OS(object):
 
 
 class Task(CoreExec):
-
-    # seqhelper provides arch-dependent information to amoco.main classes
-    def seqhelper(self, seq):
-        for i in seq:
-            # some basic hints:
-            if i.mnemonic.startswith("RET"):
-                i.misc[tag.FUNC_END] = 1
-                continue
-            elif i.mnemonic in ("PUSH", "ENTER"):
-                i.misc[tag.FUNC_STACK] = 1
-                if i.operands and i.operands[0] is cpu.rbp:
-                    i.misc[tag.FUNC_START] = 1
-                    continue
-            elif i.mnemonic in ("POP", "LEAVE"):
-                i.misc[tag.FUNC_UNSTACK] = 1
-                if i.operands and i.operands[0] is cpu.rbp:
-                    i.misc[tag.FUNC_END] = 1
-                    continue
-            # provide hints of absolute location from relative offset:
-            elif i.mnemonic in ("CALL", "JMP", "Jcc"):
-                if i.mnemonic == "CALL":
-                    i.misc[tag.FUNC_CALL] = 1
-                    i.misc["retto"] = i.address + i.length
-                else:
-                    i.misc[tag.FUNC_GOTO] = 1
-                    if i.mnemonic == "Jcc":
-                        i.misc["cond"] = i.cond
-                if (i.address is not None) and i.operands[0]._is_cst:
-                    v = i.address + i.operands[0].signextend(64) + i.length
-                    x = self.check_sym(v)
-                    if x is not None:
-                        v = x
-                    i.misc["to"] = v
-                    if i.misc[tag.FUNC_CALL] and i.misc["retto"] == v:
-                        # this looks like a fake call
-                        i.misc[tag.FUNC_CALL] = -1
-                    continue
-            # check operands (globals & .got calls):
-            for op in i.operands:
-                if op._is_mem:
-                    if op.a.base is cpu.rbp:
-                        if op.a.disp < 0:
-                            i.misc[tag.FUNC_VAR] = True
-                        elif op.a.disp >= 16:
-                            i.misc[tag.FUNC_ARG] = True
-                    elif op.a.base._is_cst or (op.a.base is cpu.rip):
-                        b = op.a.base
-                        if b is cpu.rip:
-                            b = i.address + i.length
-                        x = self.check_sym(b + op.a.disp)
-                        if x is not None:
-                            op.a.base = x
-                            op.a.disp = 0
-                            if i.mnemonic == "JMP":  # PLT jumps:
-                                i.misc[tag.FUNC_START] = 1
-                                i.misc[tag.FUNC_END] = 1
-                elif op._is_cst:
-                    x = self.check_sym(op)
-                    i.misc["imm_ref"] = x
-        return seq
-
-    def blockhelper(self, block):
-        block._helper = block_helper_
-        return CoreExec.blockhelper(self, block)
-
-    def funchelper(self, f):
-        # check single root node:
-        roots = f.cfg.roots()
-        if len(roots) == 0:
-            roots = filter(lambda n: n.data.misc[tag.FUNC_START], f.cfg.sV)
-            if len(roots) == 0:
-                logger.warning("no entry to function %s found" % f)
-        if len(roots) > 1:
-            logger.verbose("multiple entries into function %s ?!" % f)
-        # check start symbol:
-        elif roots[0].data.address == self.bin.entrypoints[0]:
-            f.name = "_start"
-        # get section symbol if any:
-        f.misc["section"] = section = self.bin.getinfo(f.address.value)[0]
-        rets = f.cfg.leaves()
-        if len(rets) == 0:
-            logger.warning("no exit to function %s found" % f)
-        if len(rets) > 1:
-            logger.verbose("multiple exits in function %s" % f)
-        for r in rets:
-            # export PLT external symbol name:
-            if section and section.name == ".plt":
-                if isinstance(r.data, xfunc):
-                    f.name = section.name + r.name
-            if r.data.misc[tag.FUNC_CALL]:
-                f.misc[tag.FUNC_CALL] += 1
-        if f.map:
-            # check vars & args: should reflect x64 register calling convention
-            f.misc[tag.FUNC_VAR] = []
-            f.misc[tag.FUNC_ARG] = []
-            for x in set(f.map.inputs()):
-                f.misc[tag.FUNC_IN] += 1
-                if x._is_mem and x.a.base == cpu.rsp:
-                    if x.a.disp >= 8:
-                        f.misc[tag.FUNC_ARG].append(x)
-            for x in set(f.map.outputs()):
-                if x in (cpu.rsp, cpu.rbp):
-                    continue
-                f.misc[tag.FUNC_OUT] += 1
-                if x._is_mem and x.a.base == cpu.rsp:
-                    if x.a.disp < 0:
-                        f.misc[tag.FUNC_VAR].append(x)
-
-
-def block_helper_(block, m):
-    # annotations based on block semantics:
-    sta, sto = block.support
-    if m[cpu.mem(cpu.rbp - 8, 64)] == cpu.rbp:
-        block.misc[tag.FUNC_START] = 1
-    if m[cpu.rip] == cpu.mem(cpu.rsp - 8, 64):
-        block.misc[tag.FUNC_END] = 1
-    if m[cpu.mem(cpu.rsp, 64)] == sto:
-        block.misc[tag.FUNC_CALL] = 1
+    pass
 
 
 # ----------------------------------------------------------------------------
-
-# STUBS DEFINED HERE :
-# ----------------------------------------------------------------------------
-
-from amoco.system.core import DefineStub
 
 
 @DefineStub(OS, "*", default=True)

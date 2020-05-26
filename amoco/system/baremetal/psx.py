@@ -70,7 +70,7 @@ class EXE(BinFormat):
 
 class BIOS(object):
     stubs = {}
-    default_stub = lambda env, **kargs: None
+    default_stub = DefineStub.warning
 
     def __init__(self, conf=None):
         if conf is None:
@@ -145,7 +145,7 @@ def bios_a0(m, **kargs):
         logger.debug("BIOS A0(0x%02x) '%s'"%(index.value,name))
         return BIOS.stubs.get(name,nullstub)(m,**kargs)
     else:
-        logger.warning("BIOS A0(0x%02x) not implemented, using nullstub")
+        logger.warning("BIOS A0(0x%02x) not implemented, using nullstub"%index)
         return nullstub(m,**kargs)
 
 @DefineStub(BIOS, "bios_b0")
@@ -156,7 +156,7 @@ def bios_b0(m, **kargs):
         logger.debug("BIOS B0(0x%02x) '%s'"%(index.value,name))
         return BIOS.stubs.get(name,nullstub)(m,**kargs)
     else:
-        logger.warning("BIOS B0(0x%02x) not implemented, using nullstub")
+        logger.warning("BIOS B0(0x%02x) not implemented, using nullstub"%index)
         return nullstub(m,**kargs)
 
 @DefineStub(BIOS, "bios_c0")
@@ -167,7 +167,7 @@ def bios_c0(m, **kargs):
         name = C0.get(index.value,None)
         return BIOS.stubs.get(name,nullstub)(m,**kargs)
     else:
-        logger.warning("BIOS C0(0x%02x) not implemented, using nullstub")
+        logger.warning("BIOS C0(0x%02x) not implemented, using nullstub"%index)
         return nullstub(m,**kargs)
 
 A0 = {

@@ -1,27 +1,25 @@
 # -*- coding: utf-8 -*-
 
 # This code is part of Amoco
-# Copyright (C) 2017 Axel Tillequin (bdcht3@gmail.com)
+# Copyright (C) 2020 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 # import expressions:
 from amoco.cas.expressions import *
 
 # reference documentations:
-# The RISC-V Instruction Set Manual, volume I, User level ISA, version 1.2.
-# https://riscv.org/specifications/
-# and the tiny risc-v instruction set architecture:
-# http://www.csl.cornell.edu/courses/ece4750/handouts/ece4750-tinyrv-isa.txt
+# The RISC-V Instruction Set Manual, volume I, Unpriviledged ISA, version 20190608.
+# https://content.riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf
 
 # registers :
 # -----------
 
 # general registers:
-x = [reg("x%d" % r, 32) for r in range(32)]
+x = [reg("x%d" % r, 64) for r in range(32)]
 # fpu registers:
-f = [reg("f%d" % r, 32) for r in range(32)]
+f = [reg("f%d" % r, 64) for r in range(32)]
 
-x[0] = cst(0, 32).to_sym("zero")
+x[0] = cst(0, 64).to_sym("zero")
 x[1].ref = "ra"
 x[2].ref = "sp"
 x[3].ref = "gp"
@@ -77,7 +75,9 @@ csr = {
 }
 
 fcsr = reg("fcsr", 32)
-pc = reg("pc", 32)
+pc = reg("pc", 64)
 
 is_reg_pc(pc)
 is_reg_stack(sp)
+
+registers = x+[pc]

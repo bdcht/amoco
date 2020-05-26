@@ -359,14 +359,22 @@ def A_default(obj, Rn, Rt, imm12):
     obj.cond = env.CONDITION_AL
 
 
-@ispec("32[ Rt(4) 1 P U W imm8(8) 11111 00 0 0 10 1 Rn(4) ]", mnemonic="LDR")
-@ispec("32[ Rt(4) 1 P U W imm8(8) 11111 00 0 0 00 1 Rn(4) ]", mnemonic="LDRB")
-@ispec("32[ Rt(4) 1 P U W imm8(8) 11111 00 0 0 01 1 Rn(4) ]", mnemonic="LDRH")
-@ispec("32[ Rt(4) 1 P U W imm8(8) 11111 00 1 0 00 1 Rn(4) ]", mnemonic="LDRSB")
-@ispec("32[ Rt(4) 1 P U W imm8(8) 11111 00 1 0 01 1 Rn(4) ]", mnemonic="LDRSH")
-@ispec("32[ Rt(4) 1 P U W imm8(8) 11111 00 0 0 10 0 Rn(4) ]", mnemonic="STR")
-@ispec("32[ Rt(4) 1 P U W imm8(8) 11111 00 0 0 00 0 Rn(4) ]", mnemonic="STRB")
-@ispec("32[ Rt(4) 1 P U W imm8(8) 11111 00 0 0 01 0 Rn(4) ]", mnemonic="STRH")
+@ispec("32[ Rt(4) 1   P   U   W imm8(8) 11111 00 0 0 10 1 Rn(4) ]", mnemonic="LDR")
+@ispec("32[ Rt(4) 1   P   U   W imm8(8) 11111 00 0 0 00 1 Rn(4) ]", mnemonic="LDRB")
+@ispec("32[ Rt(4) 1   P   U   W imm8(8) 11111 00 0 0 01 1 Rn(4) ]", mnemonic="LDRH")
+@ispec("32[ Rt(4) 1   P   U   W imm8(8) 11111 00 1 0 00 1 Rn(4) ]", mnemonic="LDRSB")
+@ispec("32[ Rt(4) 1   P   U   W imm8(8) 11111 00 1 0 01 1 Rn(4) ]", mnemonic="LDRSH")
+@ispec("32[ Rt(4) 1   P   U   W imm8(8) 11111 00 0 0 10 0 Rn(4) ]", mnemonic="STR")
+@ispec("32[ Rt(4) 1   P   U   W imm8(8) 11111 00 0 0 00 0 Rn(4) ]", mnemonic="STRB")
+@ispec("32[ Rt(4) 1   P   U   W imm8(8) 11111 00 0 0 01 0 Rn(4) ]", mnemonic="STRH")
+@ispec("32[ Rt(4) 1 1=P 1=U 0=W imm8(8) 11111 00 0 0 10 1 Rn(4) ]", mnemonic="LDRT")
+@ispec("32[ Rt(4) 1 1=P 1=U 0=W imm8(8) 11111 00 0 0 00 1 Rn(4) ]", mnemonic="LDRBT")
+@ispec("32[ Rt(4) 1 1=P 1=U 0=W imm8(8) 11111 00 0 0 01 1 Rn(4) ]", mnemonic="LDRHT")
+@ispec("32[ Rt(4) 1 1=P 1=U 0=W imm8(8) 11111 00 1 0 00 1 Rn(4) ]", mnemonic="LDRSBT")
+@ispec("32[ Rt(4) 1 1=P 1=U 0=W imm8(8) 11111 00 1 0 01 1 Rn(4) ]", mnemonic="LDRSHT")
+@ispec("32[ Rt(4) 1 1=P 1=U 0=W imm8(8) 11111 00 0 0 10 0 Rn(4) ]", mnemonic="STRT")
+@ispec("32[ Rt(4) 1 1=P 1=U 0=W imm8(8) 11111 00 0 0 00 0 Rn(4) ]", mnemonic="STRBT")
+@ispec("32[ Rt(4) 1 1=P 1=U 0=W imm8(8) 11111 00 0 0 01 0 Rn(4) ]", mnemonic="STRHT")
 def A_deref(obj, Rn, Rt, P, U, W, imm8):
     obj.n = env.regs[Rn]
     obj.t = env.regs[Rt]
@@ -374,7 +382,6 @@ def A_deref(obj, Rn, Rt, P, U, W, imm8):
         raise InstructionError(obj)  # see PLDxx
     obj.imm32 = env.cst(imm8, 32)
     if P == 1 and U == 1 and W == 0:
-        obj.mnemonic += "T"
         obj.postindex = False
         obj.register_form = False
     else:
@@ -525,9 +532,7 @@ def A_deref(obj, Rn, Rt, Rt2, Rd):
     obj.cond = env.CONDITION_AL
 
 
-@ispec(
-    "32[ Ra(4) Rd(4) 0000 Rm(4) 11111 0110 000 Rn(4) ]", mnemonic="MLA", setflags=False
-)
+@ispec("32[ Ra(4) Rd(4) 0000 Rm(4) 11111 0110 000 Rn(4) ]", mnemonic="MLA", setflags=False)
 @ispec("32[ Ra(4) Rd(4) 0001 Rm(4) 11111 0110 000 Rn(4) ]", mnemonic="MLS")
 def A_default(obj, Rn, Ra, Rd, Rm):
     obj.n = env.regs[Rn]

@@ -143,6 +143,7 @@ class OS(object):
             xf = cpu.ext(f, size=32)
             xf.stub = p.OS.stub(f)
             p.mmap.write(k, xf)
+        #TODO: update plt info
 
     def stub(self, refname):
         return self.stubs.get(refname, self.default_stub)

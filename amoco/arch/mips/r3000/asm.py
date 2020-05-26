@@ -24,44 +24,59 @@ def __npc(i_xxx):
 @__npc
 def i_ADD(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(src1+src2)
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src1+src2)
+        fmap[dst] = _v
+
 
 @__npc
 def i_SUB(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(src1-src2)
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src1-src2)
+        fmap[dst] = _v
 
 @__npc
 def i_SUBU(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(src1-src2)
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src1-src2)
+        fmap[dst] = _v
 
 @__npc
 def i_AND(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(src1&src2)
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src1&src2)
+        fmap[dst] = _v
 
 @__npc
 def i_OR(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(src1|src2)
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src1|src2)
+        fmap[dst] = _v
 
 @__npc
 def i_NOR(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(~(src1|src2))
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(~(src1|src2))
+        fmap[dst] = _v
 
 @__npc
 def i_XOR(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(src1^src2)
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src1^src2)
+        fmap[dst] = _v
 
 i_ADDI = i_ADDIU = i_ADDU = i_ADD
 i_SUBU = i_SUB
@@ -72,49 +87,63 @@ i_XORI = i_XOR
 def i_J(ins,fmap):
     t = ins.operands[0]
     target = composer([cst(0,2),t,fmap(pc)[28:32]])
-    fmap[pc] = fmap(npc)
+    _v = fmap(npc)
+    fmap.update_delayed()
+    fmap[pc] = _v
     fmap[npc] = target
 
 def i_JAL(ins,fmap):
     t = ins.operands[0]
     target = composer([cst(0,2),t,fmap(pc)[28:32]])
-    fmap[pc] = fmap(npc)
-    fmap[ra] = fmap(npc+4)
+    _v = fmap(npc)
+    fmap.update_delayed()
+    fmap[pc] = _v
+    fmap[ra] = _v+4
     fmap[npc] = target
 
 @__npc
 def i_JALR(ins,fmap):
     rd, rs = ins.operands
-    fmap[rd] = fmap(npc)
-    fmap[npc] = fmap(rs)
+    _v = fmap(npc)
+    target = fmap(rs)
+    fmap.update_delayed()
+    if rd is not zero:
+        fmap[rd] = _v
+    fmap[npc] = target
 
 @__npc
 def i_JR(ins,fmap):
     rs = ins.operands[0]
-    fmap[npc] = fmap(rs)
+    target = fmap(rs)
+    fmap.update_delayed()
+    fmap[npc] = target
 
 @__npc
 def i_BEQ(ins,fmap):
     rs, rt, offset = ins.operands
     cond = (fmap(rs)==fmap(rt))
+    fmap.update_delayed()
     fmap[npc] = tst(cond,fmap(npc-4)+offset,fmap(npc))
 
 @__npc
 def i_BNE(ins,fmap):
     rs, rt, offset = ins.operands
     cond = (fmap(rs)!=fmap(rt))
+    fmap.update_delayed()
     fmap[npc] = tst(cond,fmap(npc-4)+offset,fmap(npc))
 
 @__npc
 def i_BGEZ(ins,fmap):
     rs, offset = ins.operands
     cond = fmap(rs.bit(31))==bit0
+    fmap.update_delayed()
     fmap[npc] = tst(cond,fmap(npc-4)+offset,fmap(npc))
 
 @__npc
 def i_BGEZAL(ins,fmap):
     rs, offset = ins.operands
     cond = fmap(rs.bit(31))==bit0
+    fmap.update_delayed()
     fmap[ra] = fmap(npc)
     fmap[npc] = tst(cond,fmap(npc-4)+offset,fmap(npc))
 
@@ -122,24 +151,28 @@ def i_BGEZAL(ins,fmap):
 def i_BGTZ(ins,fmap):
     rs, offset = ins.operands
     cond = fmap( (rs.bit(31)==bit0) & (rs!=zero) )
+    fmap.update_delayed()
     fmap[npc] = tst(cond,fmap(npc-4)+offset,fmap(npc))
 
 @__npc
 def i_BLEZ(ins,fmap):
     rs, offset = ins.operands
     cond = fmap( (rs.bit(31)==bit1) | (rs==zero) )
+    fmap.update_delayed()
     fmap[npc] = tst(cond,fmap(npc-4)+offset,fmap(npc))
 
 @__npc
 def i_BLTZ(ins,fmap):
     rs, offset = ins.operands
     cond = fmap(rs.bit(31))==bit1
+    fmap.update_delayed()
     fmap[npc] = tst(cond,fmap(npc-4)+offset,fmap(npc))
 
 @__npc
 def i_BLTZAL(ins,fmap):
     rs, offset = ins.operands
     cond = fmap(rs.bit(31))==bit1
+    fmap.update_delayed()
     fmap[ra] = fmap(npc)
     fmap[npc] = tst(cond,fmap(npc-4)+offset,fmap(npc))
 
@@ -150,14 +183,12 @@ def i_BREAK(ins,fmap):
 @__npc
 def i_CFC(ins, fmap):
     rt, rd = ins.operands
-    if rt is not zero:
-        fmap[rt] = ext("CFC%d"%(ins.z),size=rt.size).call(fmap,rd=rd)
+    ext("CFC%d"%(ins.z)).call(fmap,rt=rt,rd=rd)
 
 @__npc
 def i_MFC(ins, fmap):
     rt, rd = ins.operands
-    if rt is not zero:
-        fmap[rt] = ext("MFC%d"%(ins.z),size=rt.size).call(fmap,rd=rd)
+    ext("MFC%d"%(ins.z)).call(fmap,rt=rt,rd=rd)
 
 @__npc
 def i_COP(ins, fmap):
@@ -184,15 +215,19 @@ def i_LWC(ins, fmap):
 def i_SWC(ins, fmap):
     rt, base, offset = ins.operands
     addr = fmap(base+offset)
-    fmap[mem(data,32)] = ext("SWC%d"%(ins.z),size=32).call(fmap,rt=rt)
+    ext("SWC%d"%(ins.z)).call(fmap,rt=rt,addr=addr)
 
 @__npc
 def i_DIV(ins, fmap):
     rs, rt = ins.operands
     if fmap(rt!=zero):
-        fmap[HI] = fmap(rs/rt)
-        fmap[LO] = fmap(rs%rt)
+        _v_hi = fmap(rs/rt)
+        _v_lo = fmap(rs%rt)
+        fmap.update_delayed()
+        fmap[HI] = _v_hi
+        fmap[LO] = _v_lo
     else:
+        fmap.update_delayed()
         fmap[HI] = top(32)
         fmap[LO] = top(32)
 
@@ -202,6 +237,7 @@ i_DIVU = i_DIV
 def i_MULT(ins, fmap):
     rs, rt = ins.operands
     res = fmap(rs**rt)
+    fmap.update_delayed()
     fmap[LO] = res[0:32]
     fmap[HI] = res[32:64]
 
@@ -211,61 +247,84 @@ i_MULTU = i_MULT
 def i_LH(ins, fmap):
     dst, base, src = ins.operands
     addr = base+src
+    _v = fmap(mem(addr,16)).signextend(32)
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(mem(addr,16)).signextend(32)
+        fmap.delayed(dst, _v)
 
 @__npc
 def i_LHU(ins, fmap):
     dst, base, src = ins.operands
     addr = base+src
+    _v = fmap(mem(addr,16)).zeroextend(32)
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(mem(addr,16)).zeroextend(32)
+        fmap.delayed(dst, _v)
 
 @__npc
 def i_LUI(ins, fmap):
     dst, src1 = ins.operands
+    _v = src1.zeroextend(32)<<16
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = src1.zeroextend(32)<<16
+        fmap[dst] = _v
 
 @__npc
 def i_LW(ins, fmap):
     dst, base, src = ins.operands
     addr = base+src
+    _v = fmap(mem(addr,32))
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(mem(addr,32))
+        fmap.delayed(dst, _v)
 
 @__npc
 def i_LWL(ins, fmap):
     dst, base, src = ins.operands
-    addr = base+src
+    addr  = base+src
+    _v_b3 = fmap(mem(addr,8))
+    cond1 = (addr%4)!=0
+    _v_b2 = fmap(tst(cond1,mem(addr-1,8),dst[16:24]))
+    addr  = addr - 1
+    cond2 = cond1 & ((addr%4)!=0)
+    _v_b1 = fmap(tst(cond2,mem(addr-1,8),dst[8:16]))
+    _v_b0 = fmap(dst[0:8])
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst[24:32]] = fmap(mem(addr,8))
-        cond1 = (addr%4)!=0
-        fmap[dst[16:24]]  = fmap(tst(cond1,mem(addr-1,8),dst[16:24]))
-        addr = addr - 1
-        cond2 = cond1 & ((addr%4)!=0)
-        fmap[dst[8:16]] = fmap(tst(cond2,mem(addr-1,8),dst[8:16]))
-        fmap[dst] = fmap[dst].simplify()
+        _v = comp(dst.size)
+        _v[24:32] = _v_b3
+        _v[16:24] = _v_b2
+        _v[ 8:16] = _v_b1
+        _v[ 0: 8] = _v_b0
+        fmap.delayed(dst, _v.simplify())
 
 @__npc
 def i_LWR(ins, fmap):
     dst, base, src = ins.operands
-    addr = base+src
+    addr  = base+src
+    _v_b0 = fmap(mem(addr,8))
+    addr  = addr + 1
+    cond1 = (addr%4)!=0
+    _v_b1 = fmap(tst(cond1,mem(addr,8),dst[8:16]))
+    addr  = addr + 1
+    cond2 = cond1 & ((addr%4)!=0)
+    _v_b2 = fmap(tst(cond2,mem(addr,8),dst[16:24]))
+    _v_b3 = fmap(dst[24:32])
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst[0:8]] = fmap(mem(addr,8))
-        addr = addr + 1
-        cond1 = (addr%4)!=0
-        fmap[dst[8:16]]  = fmap(tst(cond1,mem(addr,8),dst[8:16]))
-        addr = addr + 1
-        cond2 = cond1 & ((addr%4)!=0)
-        fmap[dst[16:24]] = fmap(tst(cond2,mem(addr,8),dst[16:24]))
-        fmap[dst] = fmap[dst].simplify()
+        _v = comp(dst.size)
+        _v[0 : 8] = _v_b0
+        _v[8 :16] = _v_b1
+        _v[16:24] = _v_b2
+        _v[24:32] = _v_b3
+        fmap.delayed(dst, _v.simplify())
 
 @__npc
 def i_SWL(ins, fmap):
     src, base, off = ins.operands
     addr = fmap(base+off)
     val = fmap(src)
+    fmap.update_delayed()
     fmap[mem(addr,8)] = val[24:32]
     cond1 = (addr%4)!=0
     fmap[mem(addr-1,8)] = tst(cond1,val[16:24],fmap[mem(addr-1,8)])
@@ -278,6 +337,7 @@ def i_SWR(ins, fmap):
     src, base, off = ins.operands
     addr = fmap(base+off)
     val = fmap(src)
+    fmap.update_delayed()
     fmap[mem(addr,8)] = val[0:8]
     addr = addr + 1
     cond1 = (addr%4)!=0
@@ -290,66 +350,84 @@ def i_SWR(ins, fmap):
 def i_LB(ins, fmap):
     dst, base, src = ins.operands
     addr = base+src
+    _v = fmap(mem(addr,8)).signextend(32)
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(mem(addr,8)).signextend(32)
+        fmap.delay(dst, _v)
 
 @__npc
 def i_LBU(ins, fmap):
     dst, base, src = ins.operands
     addr = base+src
+    _v = fmap(mem(addr,8)).zeroextend(32)
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(mem(addr,8)).zeroextend(32)
+        fmap.delay(dst, _v)
 
 @__npc
 def i_MFHI(ins,fmap):
     dst = ins.operands[0]
-    fmap[dst] = fmap(HI)
+    _v = fmap(HI)
+    fmap.update_delayed()
+    fmap[dst] = _v
 
 @__npc
 def i_MFLO(ins,fmap):
     dst = ins.operands[0]
-    fmap[dst] = fmap(LO)
+    _v = fmap(LO)
+    fmap.update_delayed()
+    fmap[dst] = _v
 
 @__npc
 def i_MTHI(ins,fmap):
     src = ins.operands[0]
-    fmap[HI] = fmap(src)
+    _v = fmap(src)
+    fmap.update_delayed()
+    fmap[HI] = _v
 
 @__npc
 def i_MTLO(ins,fmap):
     src = ins.operands[0]
-    fmap[LO] = fmap(src)
+    _v = fmap(src)
+    fmap.update_delayed()
+    fmap[LO] = _v
 
 @__npc
 def i_SB(ins, fmap):
     src, base, off = ins.operands
     addr = fmap(base+off)
+    fmap.update_delayed()
     fmap[mem(addr,8)] = fmap(src[0:8])
 
 @__npc
 def i_SH(ins, fmap):
     src, base, off = ins.operands
     addr = fmap(base+off)
+    fmap.update_delayed()
     fmap[mem(addr,16)] = fmap(src[0:16])
 
 @__npc
 def i_SW(ins, fmap):
     src, base, off = ins.operands
     addr = fmap(base+off)
+    fmap.update_delayed()
     fmap[mem(addr,32)] = fmap(src)
 
 @__npc
 def i_SLL(ins, fmap):
     rt, rd, sa = ins.operands
+    res = fmap(rt<<sa).unsigned()
+    fmap.update_delayed()
     if rd is not zero:
-        res = fmap(rt<<sa).unsigned()
         fmap[rd] = res
 
 @__npc
 def i_SLLV(ins, fmap):
     dst, src, s2 = ins.operands
+    _v = fmap(src << s2).unsigned()
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src << s2).unsigned()
+        fmap[dst] = _v
 
 @__npc
 def i_SLT(ins, fmap):
@@ -364,6 +442,7 @@ def i_SLTU(ins, fmap):
     dst, src1, src2 = ins.operands
     s1 = fmap(src1).unsigned()
     s2 = fmap(src2).unsigned()
+    fmap.update_delayed()
     if dst is not zero:
         fmap[dst] = tst(s1<s2,cst(1,32),cst(0,32)).simplify()
 
@@ -371,6 +450,7 @@ def i_SLTU(ins, fmap):
 def i_SLTI(ins, fmap):
     dst, src1, imm = ins.operands
     s1 = fmap(src1).signed()
+    fmap.update_delayed()
     if dst is not zero:
         fmap[dst] = tst(s1<imm,cst(1,32),cst(0,32)).simplify()
 
@@ -378,32 +458,41 @@ def i_SLTI(ins, fmap):
 def i_SLTIU(ins, fmap):
     dst, src1, imm = ins.operands
     s1 = fmap(src1).unsigned()
+    fmap.update_delayed()
     if dst is not zero:
         fmap[dst] = tst(s1<imm,cst(1,32),cst(0,32)).simplify()
 
 @__npc
 def i_SRA(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(src1//src2).signed()
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src1//src2).signed()
+        fmap[dst] = _v
 
 @__npc
 def i_SRAV(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(src1//src2).signed()
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src1//src2).signed()
+        fmap[dst] = _v
 
 @__npc
 def i_SRL(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(src1>>src2).unsigned()
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src1>>src2).unsigned()
+        fmap[dst] = _v
 
 @__npc
 def i_SRLV(ins, fmap):
     dst, src1, src2 = ins.operands
+    _v = fmap(src1>>src2).unsigned()
+    fmap.update_delayed()
     if dst is not zero:
-        fmap[dst] = fmap(src1>>src2).unsigned()
+        fmap[dst] = _v
 
 @__npc
 def i_SYSCALL(ins, fmap):

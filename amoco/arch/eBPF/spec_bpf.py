@@ -74,7 +74,9 @@ def bpf_mov_(obj, s, jt, jf, k):
 
 
 # BPF_LD (0x0) instructions:
-@ispec("64>[ 000 sz(2) md(3) {00} jt(8) jf(8) ~k(32) ]", mnemonic="ld")
+@ispec("64>[ 000 00=sz(2) md(3) {00} jt(8) jf(8) ~k(32) ]", mnemonic="ldw")
+@ispec("64>[ 000 01=sz(2) md(3) {00} jt(8) jf(8) ~k(32) ]", mnemonic="ldh")
+@ispec("64>[ 000 10=sz(2) md(3) {00} jt(8) jf(8) ~k(32) ]", mnemonic="ldb")
 def bpf_ld_(obj, sz, md, jt, jf, k):
     if sz == 3:
         raise InstructionError(obj)
@@ -94,7 +96,6 @@ def bpf_ld_(obj, sz, md, jt, jf, k):
     else:
         raise InstructionError(obj)
     obj.operands = [dst, src]
-    obj.mnemonic += {8: "b", 16: "h", 32: "w"}[size]
     obj.type = type_data_processing
 
 

@@ -154,13 +154,12 @@ def v850_ld_st(obj, reg2, disp, _size):
 
 
 # format V
-@ispec("32<[ ~dlo(15) 0 reg2(5) 11110 ~dhi(6) ]", mnemonic="JARL")
+@ispec("32<[ ~dlo(15) 0       reg2(5) 11110 ~dhi(6) ]", mnemonic="JARL")
+@ispec("32<[ ~dlo(15) 0 00000=reg2(5) 11110 ~dhi(6) ]", mnemonic="JR")
 def v850_jmp(obj, dhi, reg2, dlo):
     disp = env.cst((dlo // dhi).int(), 22).signextend(32)
     obj.operands = [disp]
-    if reg2 == 0:
-        obj.mnemonic = "JR"
-    else:
+    if reg2 != 0:
         dst = env.R[reg2]
         obj.operands.append(dst)
     obj.type = type_control_flow
@@ -184,14 +183,14 @@ def v850_3ops(obj, imm, reg2, reg1, _chk=0):
     obj.type = type_data_processing
 
 
-@ispec("48<[ disp(31) 0 00000 010111 reg1(5) ]", mnemonic="JARL")
-@ispec("48<[ disp(31) 0 00000 110111 reg1(5) ]", mnemonic="JMP")
+@ispec("48<[ disp(31) 0 00000 010111       reg1(5) ]", mnemonic="JARL")
+@ispec("48<[ disp(31) 0 00000 010111 00000=reg1(5) ]", mnemonic="JR")
+@ispec("48<[ disp(31) 0 00000 110111       reg1(5) ]", mnemonic="JMP")
 def v850_3ops(obj, disp, reg1):
     dst = env.R[reg1]
     disp32 = env.cst(disp << 1, 32)
     obj.operands = [disp32, dst]
-    if obj.mnemonic == "JARL" and reg1 == 0:
-        obj.mnemonic = "JR"
+    if obj.mnemonic == "JR":
         obj.operands.pop()
     obj.type = type_control_flow
 

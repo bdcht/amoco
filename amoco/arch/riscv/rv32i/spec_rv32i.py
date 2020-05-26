@@ -4,7 +4,7 @@
 # Copyright (C) 2017 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from amoco.arch.riscv import env
+from amoco.arch.riscv.rv32i import env
 
 from amoco.arch.core import *
 

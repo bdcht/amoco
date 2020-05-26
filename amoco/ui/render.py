@@ -138,8 +138,24 @@ def highlight(toks, formatter=None, outfile=None):
 
 
 def TokenListJoin(j, lst):
+    """
+    insert token j (Literal if j is str) between elements of lst.
+    If lst[0] is a list, it is updated with following elements, else
+    a new list is returned.
+
+    Arguments:
+        j (token or str): the token tuple (Token.type, str) or
+                          the str used as (Token.Literal, str) "join".
+        lst (list)      : the list of token tuples to "join" with j.
+
+    Returns:
+        lst[0] updated with joined lst[1:] iff lst[0] is a list,
+        or a new list joined from elements of lst otherwise.
+    """
+    # define join token:
     if isinstance(j, str):
         j = (Token.Literal, j)
+    # init output list:
     res = lst[0]
     if not isinstance(res,list):
         res = [res]
@@ -150,6 +166,13 @@ def TokenListJoin(j, lst):
         else:
             res.append(x)
     return res
+
+def LambdaTokenListJoin(j,f):
+    """
+    returns a lambda that takes instruction i and returns the TokenListJoin
+    build from join argument j and lst argument f(i).
+    """
+    return lambda i: TokenListJoin(j, f(i))
 
 
 class vltable(object):

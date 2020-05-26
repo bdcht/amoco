@@ -528,6 +528,7 @@ def i_POP(i, fmap):
 
 def i_CALL(i, fmap):
     pc = fmap[eip] + i.length
+    fmap[eip] = pc
     push(fmap, pc)
     op1 = fmap(i.operands[0])
     op1 = op1.signextend(pc.size)

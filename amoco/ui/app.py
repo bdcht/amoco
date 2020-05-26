@@ -154,9 +154,10 @@ def bin_info(ctx, filename, header):
 @cli.command("emul_program")
 @click.argument("filename", nargs=1, type=click.Path(exists=True, dir_okay=False))
 @click.option("--gui", is_flag=True, default=False, help="load with GUI")
-@click.option("--fallback", is_flag=True, default=False, help="fallback to console")
+@click.option("-i","--interact", is_flag=True, default=False,
+              help="fallback to python interactive console")
 @click.pass_context
-def emul_program(ctx, filename, gui, fallback):
+def emul_program(ctx, filename, gui, interact):
     p = amoco.load_program(filename)
     q = amoco.emul(p)
     ctx.obj["p"] = p
@@ -164,4 +165,6 @@ def emul_program(ctx, filename, gui, fallback):
     if gui:
         spawn_gui(ctx)
     else:
-        spawn_emul(ctx,fallback)
+        spawn_emul(ctx,interact)
+
+# ------------------------------------------------------------------------------

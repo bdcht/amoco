@@ -83,6 +83,19 @@ Please see `LICENSE`_.
 Changelog
 =========
 
+- `v2.9.4`_
+
+  * add linux32 loaders for mips_le/sparc/riscv
+  * update win32/win64 system interfaces
+  * add mapper support for non-interlocking pipeline
+  * fix MIPS R3000 load/store delayed pipeline effects
+  * add archView class
+  * add RISCV64 architecture (riscv.rv64i)
+  * add precondition test for specs
+  * update *all* arch specs to avoid collisions
+  * improve/fix various arch formats
+  * fix x86 parser
+
 - `v2.9.3`_
 
   * merge/update dbgui emul and srv commands

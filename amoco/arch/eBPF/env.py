@@ -44,3 +44,4 @@ E = [slc(R[i], 0, 32, "e%d" % i) for i in range(10)]
 
 pc = reg("pc", 64)
 is_reg_pc(pc)
+

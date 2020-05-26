@@ -41,3 +41,5 @@ COND = {
     0b110: ("L", vf != nf),
     0b111: ("", bit1),
 }
+
+registers = R

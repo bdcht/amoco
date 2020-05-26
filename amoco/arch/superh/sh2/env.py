@@ -82,3 +82,5 @@ BN3 = slc(IBNR, 3, 1, "BN3")
 BOVE = slc(IBNR, 13, 1, "BOVE")
 BE0 = slc(IBNR, 14, 1, "BE0")
 BE1 = slc(IBNR, 15, 1, "BE1")
+
+registers = R+[SR,pc,npc]

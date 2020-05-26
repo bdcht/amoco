@@ -24,47 +24,29 @@ ISPECS = []
 # ---------
 
 # ld instructions:
-@ispec(
-    "32[ 11 rd(5) 0 a 1001 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]",
-    mnemonic="ldsb",
-)
-@ispec(
-    "32[ 11 rd(5) 0 a 1010 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]",
-    mnemonic="ldsh",
-)
-@ispec(
-    "32[ 11 rd(5) 0 a 0001 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]",
-    mnemonic="ldub",
-)
-@ispec(
-    "32[ 11 rd(5) 0 a 0010 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]",
-    mnemonic="lduh",
-)
-@ispec(
-    "32[ 11 rd(5) 0 a 0000 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]", mnemonic="ld"
-)
-@ispec(
-    "32[ 11 rd(5) 0 a 0011 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]", mnemonic="ldd"
-)
-@ispec(
-    "32[ 11 rd(5) 0 a 1101 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]",
-    mnemonic="ldstub",
-)
-@ispec(
-    "32[ 11 rd(5) 0 a 1111 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]",
-    mnemonic="swap",
-)
+@ispec("32[ 11 rd(5) 0 0=a 1001 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="ldsb")
+@ispec("32[ 11 rd(5) 0 0=a 1010 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="ldsh",)
+@ispec("32[ 11 rd(5) 0 0=a 0001 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="ldub",)
+@ispec("32[ 11 rd(5) 0 0=a 0010 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="lduh",)
+@ispec("32[ 11 rd(5) 0 0=a 0000 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="ld")
+@ispec("32[ 11 rd(5) 0 0=a 0011 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="ldd")
+@ispec("32[ 11 rd(5) 0 0=a 1101 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="ldstub",)
+@ispec("32[ 11 rd(5) 0 0=a 1111 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="swap",)
+@ispec("32[ 11 rd(5) 0 1=a 1001 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="ldsba")
+@ispec("32[ 11 rd(5) 0 1=a 1010 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="ldsha",)
+@ispec("32[ 11 rd(5) 0 1=a 0001 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="lduba",)
+@ispec("32[ 11 rd(5) 0 1=a 0010 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="lduha",)
+@ispec("32[ 11 rd(5) 0 1=a 0000 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="lda")
+@ispec("32[ 11 rd(5) 0 1=a 0011 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="ldda")
+@ispec("32[ 11 rd(5) 0 1=a 1101 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="ldstuba",)
+@ispec("32[ 11 rd(5) 0 1=a 1111 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="swapa",)
 def sparc_ld_(obj, rd, a, op3, rs1, i, asi, rs2, simm13):
     adr = env.r[rs1]
     if i == 0:
         adr += env.r[rs2]
-        if a == 1:
-            obj.mnemonic += "a"
         src = env.ptr(adr, seg=asi)
     else:
         adr += env.cst(simm13, 13).signextend(32)
-        if a == 1:
-            raise InstructionError(obj)
         src = env.ptr(adr)
     dst = env.r[rd]
     if op3 & 0xF == 0b0011 and rd % 1 == 1:
@@ -101,30 +83,22 @@ def sparc_ldf_ldc(obj, rd, a, op3, rs1, i, unused, rs2, simm13):
 
 
 # st instructions:
-@ispec(
-    "32[ 11 rd(5) 0 a 0101 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]", mnemonic="stb"
-)
-@ispec(
-    "32[ 11 rd(5) 0 a 0110 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]", mnemonic="sth"
-)
-@ispec(
-    "32[ 11 rd(5) 0 a 0100 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]", mnemonic="st"
-)
-@ispec(
-    "32[ 11 rd(5) 0 a 0111 =op3(6) rs1(5) i asi(8) rs2(5) =simm13(13) ]", mnemonic="std"
-)
+@ispec("32[ 11 rd(5) 0 0=a 0101 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="stb")
+@ispec("32[ 11 rd(5) 0 0=a 0110 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="sth")
+@ispec("32[ 11 rd(5) 0 0=a 0100 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="st")
+@ispec("32[ 11 rd(5) 0 0=a 0111 =op3(6) rs1(5)   i asi(8) rs2(5) =simm13(13) ]", mnemonic="std")
+@ispec("32[ 11 rd(5) 0 1=a 0101 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="stba")
+@ispec("32[ 11 rd(5) 0 1=a 0110 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="stha")
+@ispec("32[ 11 rd(5) 0 1=a 0100 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="sta")
+@ispec("32[ 11 rd(5) 0 1=a 0111 =op3(6) rs1(5) 0=i asi(8) rs2(5) =simm13(13) ]", mnemonic="stda")
 def sparc_st_(obj, rd, a, op3, rs1, i, asi, rs2, simm13):
     adr = env.r[rs1]
     if i == 0:
         adr += env.r[rs2]
-        if a == 1:
-            obj.mnemonic += "a"
         dst = env.ptr(adr, asi)
     else:
         adr += env.cst(simm13, 13).signextend(32)
         dst = env.ptr(adr)
-        if a == 1:
-            raise InstructionError(obj)
     src = env.r[rd]
     if obj.mnemonic == "std" and rd % 1 == 1:
         raise InstructionError(obj)
@@ -270,6 +244,12 @@ def sparc_rd_(obj, rd, rs1, _src):
     obj.operands = [_src, dst]
     obj.type = type_other
 
+@ispec("32[ 10 00000 101000 01111 - ------------- ]", mnemonic="stbar")
+def sparc_rd_(obj, _src):
+    _src == env.y
+    dst = env.r[rd]
+    obj.operands = [_src, dst]
+    obj.type = type_other
 
 @ispec(
     "32[ 10 rd(5) 101000 rs1(5) i -------- rs2(5) =simm13(13) ]",
@@ -315,12 +295,13 @@ def sparc_flush(obj, rs1, i, rs2, simm13):
 
 @ispec("32[ 00 rd(5) 100 imm22(22) ]", mnemonic="sethi")
 def sparc_sethi(obj, rd, imm22):
-    if rd == 0 and imm22 == 0:
-        obj.mnemonic = "nop"
-    else:
-        src = env.cst(imm22, 22)
-        dst = env.r[rd]
-        obj.operands = [src, dst]
+    src = env.cst(imm22, 22)
+    dst = env.r[rd]
+    obj.operands = [src, dst]
+    obj.type = type_data_processing
+
+@ispec("32[ 00 00000 100 0000000000000000000000 ]", mnemonic="nop")
+def sparc_nop(obj):
     obj.type = type_data_processing
 
 

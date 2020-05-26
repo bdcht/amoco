@@ -19,3 +19,5 @@ with is_reg_stack:
     sp = reg("sp", 64)
 
 stack_elt = reg("stack_elt", 6)
+
+registers = [op_ptr, sp, stack_elt]

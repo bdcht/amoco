@@ -3,6 +3,12 @@
 from .env64 import *
 from .utils import *
 from amoco.arch.core import Formatter
+from amoco.ui.render import Token
+from amoco.ui.render import TokenListJoin, LambdaTokenListJoin
+
+
+def tok_mnemo(x):
+    return [(Token.Mnemonic, "{:<12}".format(m.lower()))]
 
 
 def mnemo(i):
@@ -11,14 +17,14 @@ def mnemo(i):
         m += "S"
     if m == "Bcond":
         m = "B.%s" % (i.misc["cond"])
-    return "%s" % (m.lower()).ljust(12)
+    return tok_mnemo(m)
 
 
 def regs(i, limit=None):
     ops = i.operands
     if limit:
         ops = ops[:limit]
-    return ["{0}".format(r) for r in ops]
+    return [r.toks() for r in ops]
 
 
 def deref(i, pos=-2):
@@ -35,7 +41,7 @@ def deref(i, pos=-2):
             loc = "[%s], %s" % (base, ostr)
         else:
             loc = "[%s, %s]%s" % (base, ostr, wb)
-    return [loc]
+    return [(Token.Memory, loc)]
 
 
 def label(i, pos=0):
@@ -43,7 +49,7 @@ def label(i, pos=0):
     if _pc is None:
         _pc = pc
     offset = i.operands[pos]
-    return str(_pc + offset)
+    return [(Token.Address, str(_pc + offset))]
 
 
 def label_adr(i):
@@ -52,7 +58,7 @@ def label_adr(i):
         _pc = pc
     _pc = _pc & 0xFFFFFFFFFFFFF000
     offset = i.operands[1]
-    return str(_pc + offset)
+    return [(Token.Address, str(_pc + offset))]
 
 
 # -----------------------------------------------------------------------------
@@ -64,12 +70,12 @@ def alias_ADD(i):
     r = regs(i)
     if not i.setflags:
         if (i.d == 0 or i.n == 0) and i.operands[-1] == 0:
-            m = "mov"
-            r.pop()
+            m = tok_mnemo("mov")
+            r.pop(0)
     elif i.setflags and i.d == 0:
-        m = "cmn"
-        r.pop(0)
-    return m.ljust(12) + ", ".join(r)
+        m = tok_mnemo("cmn")
+        r  = r.pop(0)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_SUB(i):
@@ -77,37 +83,37 @@ def alias_SUB(i):
     r = regs(i)
     if not i.setflags:
         if i.n == 0:
-            m = "neg"
+            m = tok_mnemo("neg")
             r.pop(1)
     elif i.setflags:
         if i.d == 0:
-            m = "cmp"
-            r.pop(0)
-        elif i.n == 0:
-            m = "negs"
+            m = tok_mnemo("cmp")
             r.pop(1)
-    return m.ljust(12) + ", ".join(r)
+        elif i.n == 0:
+            m = tok_mnemo("negs")
+            r.pop(1)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_AND(i):
     m = mnemo(i)
     r = regs(i)
     if i.setflags and i.d == 0:
-        m = "tst"
-        r.pop(0)
-    return m.ljust(12) + ", ".join(r)
+        m = tok_mnemo("tst")
+        r = r[1:]
+    return m + TokenListJoin(", ",r)
 
 
 def alias_BFM(i):
     r = regs(i)
     if i.imms < i.immr:
-        r[3] = str(i.immr + 1)
-        r[2] = str(-i.imms % i.datasize)
-        m = "bfi"
+        r[3] = (Token.Constant, str(i.immr + 1))
+        r[2] = (Token.Constant, str(-i.imms % i.datasize))
+        m = tok_mnemo("bfi")
     else:
-        r[3] = str(i.imms - i.immr + 1)
-        m = "bfxil"
-    return m.ljust(12) + ", ".join(r)
+        r[3] = (Token.Constant, str(i.imms - i.immr + 1))
+        m = tok_mnemo("bfxil")
+    return m + TokenListJoin(", ",r)
 
 
 def alias_SBFM(i):
@@ -115,20 +121,20 @@ def alias_SBFM(i):
     r = regs(i)
     if i.imms == i.datasize - 1:
         r.pop()
-        m = "asr"
+        m = tok_mnemo("asr")
     elif i.imms < i.immr:
-        m = "sbfiz"
-        r[3] = str(i.immr + 1)
-        r[2] = str(-i.imms % i.datasize)
+        m = tok_mnemo("sbfiz")
+        r[3] = (Token.Constant, str(i.immr + 1))
+        r[2] = (Token.Constant, str(-i.imms % i.datasize))
     elif i.immr == 0:
         if i.immr == 7:
-            m = "sxtb"
+            m = tok_mnemo("sxtb")
         if i.immr == 15:
-            m = "sxth"
+            m = tok_mnemo("sxth")
         if i.immr == 31:
-            m = "sxtw"
-        r = r[:2]
-    return m.ljust(12) + ", ".join(r)
+            m = tok_mnemo("sxtw")
+        r.pop(1)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_UBFM(i):
@@ -136,24 +142,24 @@ def alias_UBFM(i):
     r = regs(i)
     if i.imms == i.datasize - 1:
         r.pop()
-        m = "lsr"
+        m = tok_mnemo("lsr")
     elif i.imms + 1 == i.immr:
-        m = "lsl"
-        r[2] = str(-i.imms % i.datasize)
+        m = tok_mnemo("lsl")
+        r[2] = (Token.Constant, str(-i.imms % i.datasize))
         r.pop()
     elif i.imms < i.immr:
-        m = "ubfiz"
-        r[3] = str(i.immr + 1)
-        r[2] = str(-i.imms % i.datasize)
+        m = tok_mnemo("ubfiz")
+        r[3] = (Token.Constant, str(i.immr + 1))
+        r[2] = (Token.Constant, str(-i.imms % i.datasize))
     elif i.immr == 0:
         if i.immr == 7:
-            m = "uxtb"
+            m = tok_mnemo("uxtb")
         if i.immr == 15:
-            m = "uxth"
+            m = tok_mnemo("uxth")
         if i.immr == 31:
-            m = "uxtw"
+            m = tok_mnemo("uxtw")
         r = r[:2]
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_CSINC(i):
@@ -162,13 +168,13 @@ def alias_CSINC(i):
     if i.n is i.m:
         if i.cond >> 1 != 0b111:
             if i.n != 0:
-                m = "cinc"
+                m = tok_mnemo("cinc")
                 r = r[:2]
             else:
-                m = "cset"
+                m = tok_mnemo("cset")
                 r = r[:1]
-            r.append(CONDITION[i.cond ^ 1][0])
-    return m.ljust(12) + ", ".join(r)
+            r.append((Token.Literal,"%s"%CONDITION[i.cond ^ 1][0]))
+    return m + TokenListJoin(", ",r)
 
 
 def alias_CSINV(i):
@@ -177,13 +183,13 @@ def alias_CSINV(i):
     if i.n is i.m:
         if i.cond >> 1 != 0b111:
             if i.n != 0:
-                m = "cinv"
+                m = tok_mnemo("cinv")
                 r = r[:2]
             else:
-                m = "csetm"
+                m = tok_mnemo("csetm")
                 r = r[:1]
-            r.append(CONDITION[i.cond ^ 1][0])
-    return m.ljust(12) + ", ".join(r)
+            r.append((Token.Literal,"%s"%CONDITION[i.cond ^ 1][0]))
+    return m + TokenListJoin(", ",r)
 
 
 def alias_CSNEG(i):
@@ -191,116 +197,120 @@ def alias_CSNEG(i):
     r = regs(i)
     if i.n is i.m:
         if i.cond >> 1 != 0b111:
-            m = "cneg"
+            m = tok_mnemo("cneg")
             r = r[:2]
-            r.append(CONDITION[i.cond ^ 1][0])
-    return m.ljust(12) + ", ".join(r)
+            r.append((Token.Literal,"%s"%CONDITION[i.cond ^ 1][0]))
+    return m + TokenListJoin(", ",r)
 
 
 def alias_EXTR(i):
     m = mnemo(i)
     r = regs(i)
     if i.n is i.m:
-        m = "ror"
+        m = tok_mnemo("ror")
         r.pop(1)
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_HINT(i):
     m = {0: "nop", 5: "sevl", 4: "sev", 2: "wfe", 3: "wfi", 1: "yield"}
-    return m.get(i.imm.value, "nop")
+    return tok_mnemo(m.get(i.imm.value, "nop"))
 
 
 def alias_MADD(i):
     m = mnemo(i)
     r = regs(i)
     if i.a == 0:
-        m = "mul"
+        m = tok_mnemo("mul")
         r.pop()
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_SMADDL(i):
     m = mnemo(i)
     r = regs(i)
     if i.a == 0:
-        m = "smull"
+        m = tok_mnemo("smull")
         r.pop()
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_UMADDL(i):
     m = mnemo(i)
     r = regs(i)
     if i.a == 0:
-        m = "umull"
+        m = tok_mnemo("umull")
         r.pop()
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_MSUB(i):
     m = mnemo(i)
     r = regs(i)
     if i.a == 0:
-        m = "mneg"
+        m = tok_mnemo("mneg")
         r.pop()
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_SMSUBL(i):
     m = mnemo(i)
     r = regs(i)
     if i.a == 0:
-        m = "smnegl"
+        m = tok_mnemo("smnegl")
         r.pop()
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_UMSUBL(i):
     m = mnemo(i)
     r = regs(i)
     if i.a == 0:
-        m = "umnegl"
+        m = tok_mnemo("umnegl")
         r.pop()
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_ORR(i):
     m = mnemo(i)
     r = regs(i)
     if i.n == 0:
-        m = "mov"
+        m = tok_mnemo("mov")
         r.pop(1)
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_ORN(i):
     m = mnemo(i)
     r = regs(i)
     if i.n == 0:
-        m = "mvn"
+        m = tok_mnemo("mvn")
         r.pop(1)
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
 def alias_SBC(i):
     m = mnemo(i)
     r = regs(i)
     if i.n == 0:
-        m = m.replace("sbc", "ngc")
+        m = m[0][1].replace("sbc","ngc")
+        m = tok_mnemo(m)
         r.pop(1)
-    return m.ljust(12) + ", ".join(r)
+    return m + TokenListJoin(", ",r)
 
 
-condreg = lambda i: "'%s'" % CONDITION[i.cond][0]
-
-format_allregs = [lambda i: ", ".join(regs(i))]
-format_default = [mnemo] + format_allregs
-format_ld_st = [mnemo, lambda i: ", ".join(regs(i, -2) + deref(i, -2))]
+condreg = lambda i: [(Token.Literal, "'%s'" % CONDITION[i.cond][0])]
+allregs = LambdaTokenListJoin(", ",regs)
+format_default = [mnemo, LambdaTokenListJoin(", ",regs)]
+format_ld_st = [mnemo, lambda i: TokenListJoin(", ",regs(i, -2) +
+                                                    deref(i, -2))]
 format_B = [mnemo, label]
-format_ADR = [mnemo, lambda i: "%s, %s" % (i.operands[0], label_adr(i))]
-format_CBx = [mnemo, lambda i: "%s, %s" % (i.t, label(i, 1))]
-format_CCMx = [mnemo, lambda i: regs(i, 2), lambda i: bin(i.flags.value), condreg]
+format_ADR = [mnemo, lambda i: TokenListJoin(", ", i.operands[0].toks() +
+                                                   label_adr(i))]
+format_CBx = [mnemo, lambda i: TokenListJoin(", ",  i.t.toks() + label(i, 1))]
+format_CCMx = [mnemo, lambda i: TokenListJoin(", ", regs(i, 2)),
+                      lambda i: i.flags.toks(),
+                      condreg]
 
 ARM_V8_full_formats = {
     "A64_generic": format_default,
@@ -310,10 +320,10 @@ ARM_V8_full_formats = {
     "A64_B": format_B,
     "A64_CBx": format_CBx,
     "A64_CCMx": format_CCMx,
-    "ASRV": ["asr "] + format_allregs,
-    "LSLV": ["lsl "] + format_allregs,
-    "LSRV": ["lsr "] + format_allregs,
-    "RORV": ["ror "] + format_allregs,
+    "ASRV": ["asr ", allregs],
+    "LSLV": ["lsl ", allregs],
+    "LSRV": ["lsr ", allregs],
+    "RORV": ["ror ", allregs],
     "ADD": [alias_ADD],
     "SUB": [alias_SUB],
     "AND": [alias_AND],

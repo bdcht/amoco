@@ -4,12 +4,16 @@
 # Copyright (C) 2012 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from collections import OrderedDict
-
+from collections import deque
 
 class generation(dict):
+
     def lastdict(self):
         return self
+
+    def __setitem__(self, k, v):
+        self.hist = (k, self.get(k,k))
+        return super().__setitem__(k, v)
 
     def __getitem__(self, k):
         return self.get(k, None)
@@ -17,7 +21,7 @@ class generation(dict):
 
 class nextgeneration(object):
     def __init__(self, *args, **kargs):
-        self.od = OrderedDict(*args, **kargs)
+        self.od = dict(*args, **kargs)
 
     def __getall(self, k):
         return self.od.get(k, [])

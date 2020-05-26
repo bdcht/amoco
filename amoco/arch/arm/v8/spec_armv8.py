@@ -133,11 +133,11 @@ def A64_generic(obj, sf, S, shift, Rm, imm6, Rn, Rd):
     obj.type = type_data_processing
 
 
-@ispec("32[ p immlo(2) 10000 immhi(19) Rd(5) ]", mnemonic="ADR")
+@ispec("32[ 0=p immlo(2) 10000 immhi(19) Rd(5) ]", mnemonic="ADR")
+@ispec("32[ 1=p immlo(2) 10000 immhi(19) Rd(5) ]", mnemonic="ADRP")
 def A64_adr(obj, p, immlo, immhi, Rd):
     obj.page = p == 1
     if obj.page == 1:
-        obj.mnemonic += "P"
         obj.imm = env.cst((immhi << 14) + (immlo << 12), 64)
     else:
         obj.imm = env.cst((immhi << 2) + immlo, 64)

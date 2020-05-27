@@ -9,35 +9,40 @@ from amoco.ui.render import replace_mnemonic_token, replace_opn_token
 
 
 def regs(i):
+    "returns a list of Register tokens"
     return [(Token.Register, "%{0}".format(r)) for r in i.operands]
 
 
 def regn(i, n):
+    "returns a list of a single Register token from n-th operand"
     return [(Token.Register, "%{0}".format(i.operands[n]))]
 
 
 def address(a):
+    "returns a list of a single Address token from given expression"
     if not a._is_eqn:
         return reg_or_imm(a)
-    l = reg_or_imm(a.l)
+    l = reg_or_imm(a.l)[0][1]
     op = a.op.symbol
-    r = reg_or_imm(a.r)
-    return l + [(Token.Literal, op)] + r
+    r = reg_or_imm(a.r)[0][1]
+    return [(Token.Address, "%s%s%s"%(l, op, r))]
 
 
 def deref(a):
+    "returns a list of a single Memory token for address a"
     if a.seg is None:
         seg = ""
     else:
         seg = a.seg
-    return [
-        [(Token.Memory, "[")]
-        + address(a.base + a.disp)
-        + [(Token.Memory, "]%s"%seg)]
-    ]
+    res = "[%s]%s"%(address(a.base+a.disp)[0][1],seg)
+    return [(Token.Memory, res)]
 
+def mnemo(i):
+    "returns a list of a single Mnemonic token"
+    return [(Token.Mnemonic, "{i.mnemonic:<8}".format(i=i))]
 
 def mnemo_icc(i):
+    "returns a list of a single Mnemonic token with condition code"
     s = i.mnemonic
     if i.misc["icc"]:
         s += "cc"
@@ -45,6 +50,7 @@ def mnemo_icc(i):
 
 
 def mnemo_cond(i):
+    "returns a list of a single Mnemonic token with CONDxB and annul suffix"
     s = CONDxB[i.mnemonic][i.cond]
     if i.misc["annul"]:
         s += ",a"
@@ -52,6 +58,7 @@ def mnemo_cond(i):
 
 
 def reg_or_imm(x, t="%d"):
+    "returns a list of a single token constructed from x"
     # Special detections for %hi or %lo
     hilo = None
     if x._is_cmp:
@@ -83,12 +90,13 @@ def reg_or_imm(x, t="%d"):
     # Now dealing with hilo
     if hilo is None:
         return [(Token.Register, str(x))]
-    return [(Token.Register, hilo[0]),(Token.Literal,"(")]+\
-           address(hilo[1])+\
-           [(Token.Literal,")")]
+    else:
+        res = "%s(%s)"%(hilo[0],address(hilo[1])[0][1])
+    return [(Token.Address, res)]
 
 
 def label(i):
+    "returns a list of a single token for label cases"
     _pc = i.address
     if _pc is None:
         _pc = pc
@@ -102,6 +110,74 @@ def label(i):
         return [(Token.Address, str(target))]
     raise TypeError("operand type not supported")
 
+
+format_ld = [mnemo, lambda i: TokenListJoin(", ", deref(i.operands[0]) + regn(i, 1))]
+format_st = [mnemo, lambda i: TokenListJoin(", ", regn(i, 0) + deref(i.operands[1]))]
+format_logic = [
+    mnemo_icc,
+    lambda i: TokenListJoin(
+        ", ", regn(i, 0) + reg_or_imm(i.operands[1], "%#x") + regn(i, 2)
+    ),
+]
+format_sethi = [
+    mnemo,
+    lambda i: TokenListJoin(", ", reg_or_imm(i.operands[0]) + regn(i, 1)),
+]
+format_arith = [
+    mnemo_icc,
+    lambda i: TokenListJoin(
+        ", ", regn(i, 0) + reg_or_imm(i.operands[1], "%d") + regn(i, 2)
+    ),
+]
+format_xb = [mnemo_cond, label]
+format_call = [mnemo, lambda i: TokenListJoin(", ", label(i) +
+                                                    [(Token.Constant, "0")])]
+format_jmpl = [
+    mnemo,
+    lambda i: TokenListJoin(", ", address(i.operands[0]) + regn(i, 1)),
+]
+format_addr = [mnemo, lambda i: address(i.operands[0])]
+format_t = [lambda i: [(Token.Mnemonic, "{:<8}".format(CONDT[i.cond]))] +
+            reg_or_imm(i.operands[0])]
+format_wr = [
+    mnemo,
+    lambda i: TokenListJoin(", ",regn(i, 0) +
+                                 reg_or_imm(i.operands[1], "%#x") +
+                                 regn(i, 2)),
+]
+format_cpop = [
+    mnemo,
+    lambda i: [(Token.Constant, "{i.operands[0]:d}")]
+              + TokenListJoin(", ", regs(i)[1:]),
+]
+
+SPARC_V8_full_formats = {
+    "sparc_ld_"           : format_ld,
+    "sparc_ldf_ldc"       : format_ld,
+    "sparc_st_"           : format_st,
+    "sparc_stf_stc"       : format_st,
+    "sparc_logic_"        : format_logic,
+    "sethi"               : format_sethi,
+    "nop"                 : [mnemo],
+    "sparc_arith_"        : format_arith,
+    "sparc_shift_"        : format_arith,
+    "sparc_tagged_"       : format_arith,
+    "sparc_Bicc"          : format_xb,
+    "call"                : format_call,
+    "jmpl"                : format_jmpl,
+    "rett"                : format_addr,
+    "t"                   : format_t,
+    "sparc_rd_"           : [mnemo, LambdaTokenListJoin(", ", regs)],
+    "sparc_wr_"           : format_wr,
+    "stbar"               : [mnemo],
+    "flush"               : format_addr,
+    "sparc_Fpop1_group1"  : [mnemo, LambdaTokenListJoin(", ", regs)],
+    "sparc_Fpop1_group2"  : [mnemo, LambdaTokenListJoin(", ", regs)],
+    "sparc_Fpop2_"        : [mnemo, LambdaTokenListJoin(", ", regs)],
+    "sparc_Cpop"          : format_cpop,
+}
+
+SPARC_V8_full = Formatter(SPARC_V8_full_formats)
 
 CONDB = {
     0b1000: "ba",
@@ -177,79 +253,6 @@ CONDT = {
 }
 
 CONDxB = {"b": CONDB, "fb": CONDFB, "cb": CONDCB}
-
-mnemo = lambda i: [(Token.Mnemonic, "{i.mnemonic:<8}".format(i=i))]
-format_mn = [mnemo]
-format_regs = [mnemo, LambdaTokenListJoin(", ", regs)]
-format_ld = [mnemo, lambda i: TokenListJoin(", ", deref(i.operands[0]) + regn(i, 1))]
-format_st = [mnemo, lambda i: TokenListJoin(", ", regn(i, 0) + deref(i.operands[1]))]
-format_logic = [
-    mnemo_icc,
-    lambda i: TokenListJoin(
-        ", ", regn(i, 0) + reg_or_imm(i.operands[1], "%#x") + regn(i, 2)
-    ),
-]
-format_sethi = [
-    mnemo,
-    lambda i: TokenListJoin(", ", [reg_or_imm(i.operands[0])] + regn(i, 1)),
-]
-format_arith = [
-    mnemo_icc,
-    lambda i: TokenListJoin(
-        ", ", regn(i, 0) + reg_or_imm(i.operands[1], "%d") + regn(i, 2)
-    ),
-]
-format_xb = [mnemo_cond, label]
-format_call = [mnemo, lambda i: TokenListJoin(", ", label(i) +
-                                                    [(Token.Constant, "0")])]
-format_jmpl = [
-    mnemo,
-    lambda i: address(i.operands[0]) + [(Token.Literal, ", ")] + regn(i, 1),
-]
-format_addr = [mnemo, lambda i: address(i.operands[0])]
-format_t = [lambda i: [(Token.Mnemonic, "{:<8}".format(CONDT[i.cond]))] +
-            reg_or_imm(i.operands[0])]
-format_rd = format_regs
-format_wr = [
-    mnemo,
-    lambda i: TokenListJoin(", ",regn(i, 0) +
-                                 reg_or_imm(i.operands[1], "%#x") +
-                                 regn(i, 2)),
-]
-format_fpop = format_regs
-format_cpop = [
-    mnemo,
-    lambda i: [(Token.Constant, "{i.operands[0]:d}")]
-              + TokenListJoin(", ", regs(i)[1:]),
-]
-
-SPARC_V8_full_formats = {
-    "sparc_ld_": format_ld,
-    "sparc_ldf_ldc": format_ld,
-    "sparc_st_": format_st,
-    "sparc_stf_stc": format_st,
-    "sparc_logic_": format_logic,
-    "sethi": format_sethi,
-    "nop": format_mn,
-    "sparc_arith_": format_arith,
-    "sparc_shift_": format_arith,
-    "sparc_tagged_": format_arith,
-    "sparc_Bicc": format_xb,
-    "call": format_call,
-    "jmpl": format_jmpl,
-    "rett": format_addr,
-    "t": format_t,
-    "sparc_rd_": format_rd,
-    "sparc_wr_": format_wr,
-    "stbar": format_mn,
-    "flush": format_addr,
-    "sparc_Fpop1_group1": format_rd,
-    "sparc_Fpop1_group2": format_fpop,
-    "sparc_Fpop2_": format_rd,
-    "sparc_Cpop": format_cpop,
-}
-
-SPARC_V8_full = Formatter(SPARC_V8_full_formats)
 
 
 def SPARC_V8_synthetic(null, i, toks=False):

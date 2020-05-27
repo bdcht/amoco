@@ -86,6 +86,17 @@ def test_decoder_008():
   assert i.mnemonic == 'nop'
   assert str(i) == 'nop     '
 
+def test_decoder_009():
+  class Symbol(object):
+     def __init__(self, s):
+       self.s = s
+     def __str__(self):
+       return self.s
+  c = b'\x03\x00\x00\x00'
+  i = cpu.disassemble(c)
+  i.operands[0] = cpu.slc(cpu.lab(Symbol('foo'), size=32), 10,22)
+  assert str(i) == 'sethi   %hi(foo), %g1'
+
 def test_parser_001():
   s = "nop"
   i = sparc_syntax.instr.parseString(s)[0]
@@ -104,3 +115,21 @@ def test_parser_002b():
   print("- %r"%i)
   assert i.mnemonic == 'add'
   assert str(i) == 'inc     66, %g1'
+
+def test_parser_003():
+  s = "bset   %lo(.LLC1), %g1"
+  i = sparc_syntax.instr.parseString(s)[0]
+  assert str(i) == 'bset    %lo(.LLC1), %g1'
+
+def test_parser_004():
+  s = "sethi   %hi(.LLC1), %g1"
+  i = sparc_syntax.instr.parseString(s)[0]
+  assert str(i) == 'sethi   %hi(.LLC1), %g1'
+
+def test_parser_005():
+  s = "ld [%g1], %g1"
+  i = sparc_syntax.instr.parseString(s)[0]
+  assert str(i) == 'ld      [%g1], %g1'
+
+
+

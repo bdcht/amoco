@@ -239,6 +239,14 @@ def test_decoder_029():
   assert i.mnemonic == 'INC'
   assert i.misc['pfx'] == ['lock', None, None, None]
 
+def test_decoder_rep_scasd():
+  c = b'\xf3\xaf'
+  i = cpu.disassemble(c)
+  i.set_formatter(cpu.IA32_Binutils_ATT)
+  assert str(i).strip() == 'repz scasl'
+  i.set_formatter(cpu.IA32_Intel)
+  assert i.length == 2
+
 def test_pickle_instruction():
   import pickle
   pickler = lambda x: pickle.dumps(x,2)

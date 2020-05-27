@@ -619,11 +619,6 @@ class ispec(object):
             i = iclass(bs)
         else:
             i.bytes += bs
-        # check any precondition on i:
-        if self.precond:
-            if not self.precond(i):
-                raise DecodeError
-        # ok, lets call the spec hook...
         i.spec = self
         # set instruction attributes from directives, and then
         # call hook function with instruction as first parameter
@@ -639,6 +634,10 @@ class ispec(object):
             kargs[k] = v
         # and finally call the hook:
         try:
+            # check any precondition on i:
+            if self.precond and (not self.precond(i)):
+                raise InstructionError(i)
+            # ok, lets call the spec hook...
             self.hook(obj=i, **kargs)
         except InstructionError:
             # clean up:

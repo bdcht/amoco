@@ -56,6 +56,7 @@ setup(
                         'crysp>=1.1',
                         'pyparsing',
                         'traitlets',
+                        'blessed',
                        ],
     entry_points={
         'console_scripts': [ 'amoco=amoco.ui.app:cli [app]' ],
@@ -65,7 +66,6 @@ setup(
                  'pygments',
                  'z3-solver',
                  'tqdm',
-                 'blessed',
                  'ccrawl>=1.2',
                  'PySide2'],
     },

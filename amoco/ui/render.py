@@ -156,7 +156,7 @@ def TokenListJoin(j, lst):
     if isinstance(j, str):
         j = (Token.Literal, j)
     # init output list:
-    res = lst[0]
+    res = lst[0] if len(lst)>0 else []
     if not isinstance(res,list):
         res = [res]
     for x in lst[1:]:

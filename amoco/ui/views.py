@@ -315,6 +315,8 @@ class execView(View):
                     if _r._is_slc:
                         sta,sto = _r.pos,_r.pos+_r.size
                         _r = _r.x
+                    else:
+                        sta,sto = 0,_r.size
                     val = [(Token.Literal,'[ ')]
                     for pos,sz in _r._subrefs:
                         if (sta<=pos<sto) and (sz<(sto-sta)):

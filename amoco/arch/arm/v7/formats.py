@@ -17,7 +17,7 @@ def mnemo(i):
 
 
 def regs(i, limit=None):
-    ops = i.operands
+    ops = list(filter(lambda x: isinstance(x,exp),i.operands))
     if limit:
         ops = ops[:limit]
     return [(Token.Register, "{0}".format(r)) for r in ops]

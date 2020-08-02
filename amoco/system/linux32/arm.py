@@ -18,7 +18,6 @@ with Consts("e_flags"):
     EF_ARM_OLD_ABI = 0x100
     EF_ARM_INTERWORK = 0x4
     EF_ARM_ABI_FLOAT_SOFT = 0x200
-    EF_ARM_EABI_VERSION = "(flags)((flags) & EF_ARM_EABIMASK)"
     EF_ARM_EABI_VER5 = 0x5000000
     EF_ARM_EABI_VER2 = 0x2000000
     EF_ARM_ABI_FLOAT_HARD = 0x400
@@ -216,10 +215,7 @@ class OS(object):
         for r in cpu.regs:
             p.state[r] = cpu.cst(0, 32)
         entry = cpu.cst(p.bin.entrypoints[0], 32)
-        if entry & 1:
-            p.cpu.internals["isetstate"] = 1
-            entry = (entry >> 1) << 1
-        p.state[cpu.pc] = entry
+        p.setx(cpu.pc_,entry)
         # create the stack space:
         if self.ASLR:
             p.state.mmap.newzone(p.cpu.sp)
@@ -249,22 +245,33 @@ class OS(object):
             elif s.name=='.got':
                 got = s
         if plt and got:
-            address = plt.sh_addr
+            address = p.cpu.cst(plt.sh_addr,32)
+            thunk = address.value
             pltco = p.bin.readsection(plt)
+            # we assume that plt code is not in Thumb...
+            mode = p.cpu.internals['isetstate']
+            p.cpu.internals['isetstate']=0
+            m = None
             while(pltco):
                 i = p.cpu.disassemble(pltco)
-                if i.mnemonic=='JMP' and i.operands[0]._is_mem:
-                    target = i.operands[0].a
-                    if target.base is p.cpu.pc:
-                        target = address+target.disp
-                    elif target.base._is_reg:
-                        target = got.sh_addr+target.disp
-                    elif target.base._is_cst:
-                        target = target.base.value+target.disp
-                    if target in p.bin.functions:
-                        p.bin.functions[address] = p.bin.functions[target]
+                if i is None:
+                    pltco = pltco[4:]
+                    address += 4
+                    continue
+                if i.mnemonic=='ADR':
+                   thunk = address.value
+                   m = p.state.__class__()
+                   m[p.cpu.pc_] = address
+                   m[p.cpu.pc] = address + 4
+                if m is not None:
+                    i(m)
+                    target = p.state(m(p.cpu.pc))
+                    if target._is_ext:
+                        p.bin.functions[thunk] = target.ref
                 pltco = pltco[i.length:]
                 address += i.length
+            #restore mode:
+            p.cpu.internals['isetstate']=mode
 
     def stub(self, refname):
         return self.stubs.get(refname, self.default_stub)
@@ -307,38 +314,38 @@ class Task(CoreExec):
 
 @DefineStub(OS, "*", default=True)
 def nullstub(m, **kargs):
-    m[cpu.pc] = m(cpu.lr)
+    m[cpu.pc_] = m(cpu.lr)
 
 
 @DefineStub(OS, "__libc_start_main")
 def libc_start_main(m, **kargs):
     "tags: func_call"
-    m[cpu.pc] = m(cpu.mem(cpu.sp + 4, 32))
+    m[cpu.pc_] = m(cpu.mem(cpu.sp + 4, 32))
     cpu.push(m, cpu.ext("exit", size=32))
 
 
 @DefineStub(OS, "exit")
 def libc_exit(m, **kargs):
-    m[cpu.pc] = top(32)
+    m[cpu.pc_] = top(32)
 
 
 @DefineStub(OS, "abort")
 def libc_abort(m, **kargs):
-    m[cpu.pc] = top(32)
+    m[cpu.pc_] = top(32)
 
 
 @DefineStub(OS, "__assert")
 def libc_assert(m, **kargs):
-    m[cpu.pc] = top(32)
+    m[cpu.pc_] = top(32)
 
 
 @DefineStub(OS, "__assert_fail")
 def libc_assert_fail(m, **kargs):
-    m[cpu.pc] = top(32)
+    m[cpu.pc_] = top(32)
 
 
 @DefineStub(OS, "_assert_perror_fail")
 def _assert_perror_fail(m, **kargs):
-    m[cpu.pc] = top(32)
+    m[cpu.pc_] = top(32)
 
 

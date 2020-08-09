@@ -528,9 +528,10 @@ class ispec(object):
                     loc = d[2]
                     if loc == "*":
                         break
-                    size += loc
+                    if d[0]!='=':
+                        size += loc
         if size % 8 != 0:
-            logger.error("ispec length not a multiple of 8 %s" % self.format)
+            logger.error("ispec length %d not a multiple of 8 %s" % (size,self.format))
         self.fix = Bits(0, size)  # values of fixed bits
         self.mask = Bits(0, size)  # location of fixed bits
         i = 0

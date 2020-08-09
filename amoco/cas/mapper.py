@@ -293,15 +293,15 @@ class mapper(object):
 
     def safe_update(self, instr):
         "update of the self mapper with instruction *only* if no exception occurs"
-        try:
-            m = mapper()
-            instr(m)
-            _ = self >> m
-        except Exception as e:
-            logger.error("instruction @ %s raises exception %s" % (instr.address, e))
-            raise e
-        else:
-            self.update(instr)
+        if not isinstance(instr,ext):
+            try:
+                m = mapper()
+                instr(m)
+                _ = self >> m
+            except Exception as e:
+                logger.error("instruction @ %s raises exception %s" % (instr.address, e))
+                raise e
+        self.update(instr)
 
     def __call__(self, x):
         """evaluation of expression x in this map:

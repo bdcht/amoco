@@ -188,8 +188,9 @@ class OS(object):
         self.PAGESIZE = conf.pagesize
         self.ASLR = conf.aslr
         self.NX = conf.nx
-        self.tasks = []
         self.abi = None
+        self.tasks = []
+        self.symbols = {}
 
     @classmethod
     def loader(cls, bprm, conf=None):

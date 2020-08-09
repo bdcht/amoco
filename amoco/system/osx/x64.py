@@ -65,7 +65,8 @@ class OS(object):
                     do_stack = True
                     stack_size = 2 * self.PAGESIZE
             elif s.cmd == LC_MAIN:
-                p.state[cpu.rip] = cpu.cst(s.entryoff, 64)
+                entry = bprm.entrypoints[0]
+                p.state[cpu.rip] = cpu.cst(entry, 64)
                 bprm.__entry = p.state[cpu.rip]
                 if s.stacksize:
                     do_stack = True

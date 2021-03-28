@@ -59,7 +59,7 @@ merged from develop branch or to be more thoroughly implemented.
 User documentation and API can be found at
 `http://amoco.readthedocs.io/en/latest/index.html`
 
-.. image:: ../../_static/images/gui_load.png
+.. image:: https://github.com/bdcht/amoco/blob/release/doc/gui_load.png
    :width: 600
 
 Todo

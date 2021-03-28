@@ -18,13 +18,13 @@ class RawExec(CoreExec):
         CoreExec.__init__(self, p, cpu)
         self.auto_load()
 
-    # load the program into virtual memory (populate the mmap dict)
+    # load the program into virtual memory (populate the state.mmap)
     def auto_load(self):
         p = self.bin
         if hasattr(p, "load_binary"):
             p.load_binary(self.state.mmap)
         else:
-            self.state.mmap.write(0, p[0:])
+            self.state.mmap.write(0, p.dataio[0:])
         if self.cpu is None:
             logger.warning("a cpu module must be imported")
         else:
@@ -44,7 +44,7 @@ class RawExec(CoreExec):
         from amoco.arch.x64 import cpu_x64
 
         self.cpu = cpu_x64
-        self.state[cpu_x64.rip] = cpu_x64.cst(0, 32)
+        self.state[cpu_x64.rip] = cpu_x64.cst(0, 64)
 
     def use_arm(self):
         from amoco.arch.arm import cpu_armv7
@@ -56,7 +56,7 @@ class RawExec(CoreExec):
         from amoco.arch.avr import cpu
 
         self.cpu = cpu
-        self.state[cpu.pc] = cpu.cst(0, 32)
+        self.state[cpu.pc] = cpu.cst(0, 16)
 
     def relocate(self, vaddr):
         if self.cpu is None:

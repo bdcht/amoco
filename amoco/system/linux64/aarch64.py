@@ -233,8 +233,7 @@ def pop_rip(m, **kargs):
 @DefineStub(OS, "__libc_start_main")
 def libc_start_main(m, **kargs):
     "tags: func_call"
-    m[cpu.pc] = m(cpu.mem(cpu.sp + 8, 64))
-    cpu.push(m, cpu.ext("exit", size=64))
+    m[cpu.pc] = m(cpu.r0)
 
 
 @DefineStub(OS, "exit")

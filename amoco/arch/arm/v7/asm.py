@@ -133,6 +133,7 @@ def i_ADC(i, fmap):
     result, cout, overflow = AddWithCarry(fmap(op1), fmap(op2), fmap(C))
     fmap[dest] = stst(cond, result, fmap(dest))
     if dest == pc:
+        fmap[pc_] = fmap(pc)
         __check_state(i, fmap)
     elif i.setflags:
         __setflags(fmap, cond, cout, result, overflow)
@@ -143,19 +144,23 @@ def i_ADD(i, fmap):
     result, cout, overflow = AddWithCarry(fmap(op1), fmap(op2))
     fmap[dest] = stst(cond, result, fmap(dest))
     if dest == pc:
+        fmap[pc_] = fmap(pc)
         __check_state(i, fmap)
     elif i.setflags:
         __setflags(fmap, cond, cout, result, overflow)
 
 
 def i_ADR(i, fmap):
-    fmap[pc_] = fmap(pc_ + i.length)
+    cond, dest, offset = __pre(i, fmap)
     if i.add:
-        result = fmap(pc & 0xFFFFFFFC) + i.imm32 + i.length
+        result = fmap(pc & 0xFFFFFFFC) + offset
     else:
-        result = fmap(pc & 0xFFFFFFFC) - i.imm32 + i.length
+        result = fmap(pc & 0xFFFFFFFC) - offset
     cond = fmap(CONDITION[i.cond][1])
-    fmap[i.d] = stst(cond, result, fmap(i.d))
+    fmap[dest] = stst(cond, result, fmap(i.d))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
 
 
 def i_AND(i, fmap):
@@ -163,7 +168,10 @@ def i_AND(i, fmap):
     result = fmap(op1 & op2)
     cout = fmap(op2.bit(31))
     fmap[dest] = stst(cond, result, fmap(dest))
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
 
 
@@ -172,7 +180,10 @@ def i_BIC(i, fmap):
     result = fmap(op1 & (~op2))
     cout = fmap(op2.bit(31))
     fmap[dest] = stst(cond, result, fmap(dest))
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
 
 
@@ -201,7 +212,10 @@ def i_EOR(i, fmap):
     result = fmap(op1 ^ op2)
     cout = fmap(op2.bit(31))
     fmap[dest] = stst(cond, result, fmap(dest))
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
 
 
@@ -210,8 +224,18 @@ def i_MOV(i, fmap):
     result = fmap(op1)
     cout = fmap(op1.bit(31))
     fmap[dest] = stst(cond, result, fmap(dest))
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
+
+
+def i_MOVT(i, fmap):
+    cond, dest, op1 = __pre(i, fmap)
+    result = fmap(op1)
+    cout = fmap(op1.bit(31))
+    fmap[dest[16:32]] = stst(cond, result, fmap(dest[16:32]))
 
 
 def i_MOVW(i, fmap):
@@ -219,7 +243,10 @@ def i_MOVW(i, fmap):
     result = fmap(op1)
     cout = fmap(op1.bit(31))
     fmap[dest] = stst(cond, result, fmap(dest))
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
 
 
@@ -228,7 +255,10 @@ def i_MVN(i, fmap):
     result = fmap(~op1)
     cout = fmap(op1.bit(31))
     fmap[dest] = stst(cond, result, fmap(dest))
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
 
 
@@ -237,7 +267,10 @@ def i_ORN(i, fmap):
     result = fmap(op1 | ~op2)
     cout = fmap(op2.bit(31))
     fmap[dest] = stst(cond, result, fmap(dest)).simplify()
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
 
 
@@ -246,7 +279,10 @@ def i_ORR(i, fmap):
     result = fmap(op1 | op2)
     cout = fmap(op2.bit(31))
     fmap[dest] = stst(cond, result, fmap(dest)).simplify()
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
 
 
@@ -278,7 +314,10 @@ def i_SUB(i, fmap):
     cond, dest, op1, op2 = __pre(i, fmap)
     result, cout, overflow = AddWithCarry(fmap(op1), fmap(~op2), bit1)
     fmap[dest] = stst(cond, result, fmap(dest))
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result, overflow)
 
 
@@ -305,7 +344,10 @@ def i_ASR(i, fmap):
     else:
         result, cout = fmap(op1 >> op2), top(1)
     fmap[dest] = stst(cond, result, fmap(dest))
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
 
 
@@ -317,7 +359,10 @@ def i_LSL(i, fmap):
     else:
         result, cout = fmap(op1 << op2), top(1)
     fmap[dest] = stst(cond, result, fmap(dest))
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
 
 
@@ -329,7 +374,10 @@ def i_LSR(i, fmap):
     else:
         result, cout = fmap(op1 >> op2), top(1)
     fmap[dest] = stst(cond, result, fmap(dest))
-    if i.setflags:
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
+    elif i.setflags:
         __setflags(fmap, cond, cout, result)
 
 
@@ -342,6 +390,7 @@ def i_ROR(i, fmap):
         result, cout = ror(op1, op2), top(1)
     fmap[dest] = stst(cond, result, fmap(dest))
     if dest == pc:
+        fmap[pc_] = fmap(pc)
         __check_state(i, fmap)
     if i.setflags:
         __setflags(fmap, cond, cout, result)
@@ -550,7 +599,6 @@ def i_CLZ(i, fmap):
     fmap[dest] = stst(cond, result, fmap(dest))
 
 
-# MOVT
 # RBIT
 # REV
 # REV16
@@ -588,6 +636,9 @@ def i_LDR(i, fmap):
     if i.wback:
         fmap[src] = stst(cond, fmap(off_addr), fmap(src))
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
 
 
 def i_LDREX(i, fmap):
@@ -596,6 +647,9 @@ def i_LDREX(i, fmap):
     adr = off_addr
     result = fmap(__mem(adr, 32))
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
     # exclusive monitor not supported
 
 
@@ -605,6 +659,9 @@ def i_LDRB(i, fmap):
     adr = off_addr if i.index else src
     result = fmap(mem(adr, 8)).zeroextend(32)
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
     if i.wback:
         fmap[src] = stst(cond, fmap(off_addr), fmap(src))
 
@@ -615,6 +672,9 @@ def i_LDREXB(i, fmap):
     adr = off_addr
     result = fmap(mem(adr, 8)).zeroextend(32)
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
     # exclusive monitor not supported
 
 
@@ -624,6 +684,9 @@ def i_LDRH(i, fmap):
     adr = off_addr if i.index else src
     result = fmap(__mem(adr, 16)).zeroextend(32)
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
     if i.wback:
         fmap[src] = stst(cond, fmap(off_addr), fmap(src))
 
@@ -634,6 +697,9 @@ def i_LDREXH(i, fmap):
     adr = off_addr
     result = fmap(__mem(adr, 16)).zeroextend(32)
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
     # exclusive monitor not supported
 
 
@@ -643,6 +709,9 @@ def i_LDRSB(i, fmap):
     adr = off_addr if i.index else src
     result = fmap(mem(adr, 8)).signextend(32)
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
     if i.wback:
         fmap[src] = stst(cond, fmap(off_addr), fmap(src))
 
@@ -653,6 +722,9 @@ def i_LDRSH(i, fmap):
     adr = off_addr if i.index else src
     result = fmap(__mem(adr, 16)).signextend(32)
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
     if i.wback:
         fmap[src] = stst(cond, fmap(off_addr), fmap(src))
 
@@ -677,6 +749,9 @@ def i_LDRT(i, fmap):
     if i.postindex:
         fmap[src] = stst(cond, fmap(off_addr), fmap(src))
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
 
 
 def i_LDRBT(i, fmap):
@@ -687,6 +762,9 @@ def i_LDRBT(i, fmap):
     if i.postindex:
         fmap[src] = stst(cond, fmap(off_addr), fmap(src))
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
 
 
 def i_LDRHT(i, fmap):
@@ -697,6 +775,9 @@ def i_LDRHT(i, fmap):
     if i.postindex:
         fmap[src] = stst(cond, fmap(off_addr), fmap(src))
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
 
 
 def i_LDRSBT(i, fmap):
@@ -707,6 +788,9 @@ def i_LDRSBT(i, fmap):
     if i.postindex:
         fmap[src] = stst(cond, fmap(off_addr), fmap(src))
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
 
 
 def i_LDRSHT(i, fmap):
@@ -717,6 +801,9 @@ def i_LDRSHT(i, fmap):
     if i.postindex:
         fmap[src] = stst(cond, fmap(off_addr), fmap(src))
     fmap[dest] = stst(cond, result, fmap(dest))
+    if dest == pc:
+        fmap[pc_] = fmap(pc)
+        __check_state(i, fmap)
 
 
 def i_STR(i, fmap):

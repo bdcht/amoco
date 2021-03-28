@@ -15,7 +15,7 @@ the :mod:`amoco.system` package.
 """
 
 from amoco.arch.core import Bits
-from amoco.ui.views import execView
+from amoco.ui.views import execView, dataView
 from amoco.logger import Log
 
 logger = Log(__name__)
@@ -247,6 +247,14 @@ class CoreExec(object):
         "get 8-bit unsigned int expression of current state(loc)"
         return self.getx(loc)
 
+    def get_cstr(self, loc):
+        "get null-terminated unsigned char array of current state(loc)"
+        A = [self.get_uint8(loc)]
+        while A[-1]!=0:
+            loc += 1
+            A.append(self.get_uint8(loc))
+        return bytes(A)
+
 
 # ------------------------------------------------------------------------------
 
@@ -282,6 +290,8 @@ class BinFormat(object):
     is_ELF = False
     is_PE = False
     is_MachO = False
+    is_HEX = False
+    is_SREC = False
     basemap = None
     symtab = None
     strtab = None
@@ -304,7 +314,28 @@ class BinFormat(object):
         return (None, 0, 0)
 
 
-class DataIO(BinFormat):
+class shellcode(BinFormat):
+    """
+    This is the most basic file format for executable binary code. It
+    provides zero information about the targeted architecture, entrypoints, or
+    any other data or code dependencies.
+    """
+    def __init__(self,dataio):
+        self.data = dataio
+
+    @property
+    def entrypoints(self):
+        return [0]
+
+    @property
+    def filename(self):
+        return self.data.name
+
+    @property
+    def dataio(self):
+        return self.data
+
+class DataIO(object):
     """
     This class simply wraps a binary file or a bytes string and implements
     both the file and bytes interface. It allows an input to be provided as
@@ -318,10 +349,13 @@ class DataIO(BinFormat):
             self.f = BytesIO(f)
         else:
             self.f = f
+        self.view = dataView(dataio=self)
 
     def __getitem__(self, i):
         stay = self.f.tell()
-        sta = i.start or stay
+        sta = i.start
+        if sta is None:
+            sta = stay
         self.f.seek(sta, 0)
         if i.stop is None:
             data = self.f.read()
@@ -329,6 +363,13 @@ class DataIO(BinFormat):
             data = self.f.read(i.stop - sta)
         self.f.seek(stay, 0)
         return data
+
+    def size(self):
+        stay = self.f.tell()
+        self.f.seek(0,2)
+        sz = self.f.tell()
+        self.f.seek(stay,0)
+        return sz
 
     def read(self, size=-1):
         return self.f.read(size)
@@ -406,7 +447,6 @@ class DataIO(BinFormat):
     def softspace(self):
         return self.f.softspace
 
-
 # ------------------------------------------------------------------------------
 def read_program(filename):
     """
@@ -481,7 +521,7 @@ def read_program(filename):
         logger.debug(" SREC FormatError raised for %s" % f.name)
 
     logger.warning("unknown format")
-    return f
+    return shellcode(f)
 
 
 # ------------------------------------------------------------------------------

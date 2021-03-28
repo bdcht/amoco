@@ -55,6 +55,7 @@ Attributes:
         - 'Emu' which deals with amoco's emulator parameters:
 
             - 'hist' defines the size of the emulator's instructions' history list (defaults to 100.)
+            - 'stacksize' defines the size in bytes of the emulator's frame view that displays the stack.
 
         - 'Arch' which allows to configure assembly format parameters:
 
@@ -208,8 +209,10 @@ class Emu(Configurable):
 
     Attributes:
         hist (int): size of the emulated instruction history list (defaults to 100.)
+        stacksize (int): max-size of the stack frame displayed by the emulator (defaults to 256.)
     """
     hist = Integer(100, config=True)
+    stacksize = Integer(256, config=True)
 
 
 class System(Configurable):

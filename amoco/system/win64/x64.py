@@ -104,7 +104,7 @@ class OS(object):
 
     def load_pe_iat(self, p):
         for k, f in iter(p.bin.functions.items()):
-            xf = cpu.ext(f, size=64)
+            xf = cpu.ext(f, size=64, task=p)
             xf.stub = self.stub(xf.ref)
             p.state.mmap.write(k, xf)
 

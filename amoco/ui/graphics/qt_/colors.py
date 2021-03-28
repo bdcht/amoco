@@ -1,0 +1,31 @@
+# -*- coding: utf-8 -*-
+
+# This code is part of Amoco
+# Copyright (C) 2020 Axel Tillequin (bdcht3@gmail.com)
+# published under GPLv2 license
+
+from PySide2.QtGui import QColor
+
+palette_trbg = {
+        'Inchworm': QColor(0xa1,0xe4,0x4d,64),
+        'CornFlowerBlue': QColor(0x7b,0x8c,0xde,64),
+        'SuperPink': QColor(0xdc,0x6b,0xad,64),
+        'YellowOrange': QColor(0xff,0xb1,0x40,64),
+        'MintGreen': QColor(0xa2,0xfa,0xa3,64),
+        'Chartreuse': QColor(0xe4,0xff,0x1a,64),
+        'GoldCrayola': QColor(0xed,0xb0,0x85,64),
+        'TeaGreen': QColor(0xd6,0xff,0xb7,64),
+        'OrangePeel': QColor(0xff,0x9f,0x1c,64),
+        'DarkSlateBlue': QColor(0x40,0x37,0x6e,64),
+        'LanguidLavender': QColor(0xd5,0xcf,0xe1,64),
+        'Tuscany': QColor(0xbb,0x99,0x9c,64),
+        'CopperCrayola': QColor(0xe8,0x8d,0x67,64),
+        'LightGreen': QColor(0x81,0xf4,0x99,64),
+        'KeyLime': QColor(0xe2,0xeb,0x98,64),
+        'EggPlant': QColor(0x70,0x4c,0x5e,64),
+        'Celadon': QColor(0xba,0xd9,0xa2,64),
+        'CambridgeBlue': QColor(0x9d,0xc4,0xb5,64),
+        'Salmon': QColor(0xf3,0x83,0x75,64),
+        'SpanishPink': QColor(0xfb,0xc3,0xbc,64),
+        'YaleBlue': QColor(0x08,0x48,0x87,64),
+}

@@ -923,7 +923,7 @@ def A_default(obj, sat_imm, Rd, Rn):
 def A_default(obj, imm24):
     obj.imm32 = env.cst(imm24, 32)
     obj.operands = [obj.imm32]
-    obj.type = type_cpu_state
+    obj.type = type_control_flow
 
 
 @ispec("32[ .cond(4) 00010 0 00 Rn(4) Rt(4) 0000 1001 Rt2(4) ]", mnemonic="SWP")

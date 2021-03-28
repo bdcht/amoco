@@ -22,7 +22,7 @@ ISPECS = []
 @ispec("32<[ 000000 .code(20) 001100]", mnemonic="SYSCALL")
 def mips1_noop(obj):
     obj.operands = []
-    obj.type = type_system
+    obj.type = type_control_flow
 
 @ispec("32<[ 000000 rs(5) rt(5) rd(5) 00000 100000]", mnemonic="ADD")
 @ispec("32<[ 000000 rs(5) rt(5) rd(5) 00000 100010]", mnemonic="SUB")

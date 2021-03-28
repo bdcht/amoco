@@ -4,7 +4,7 @@ Overview
 Amoco is composed of 5 sub-packages
 
 - :ref:`arch <arch>`, deals with
-  CPU architecures' to provide instructions disassemblers, and
+  CPU architectures' to provide instructions disassemblers, and
   instructions' semantics for several CPUs, microcontrollers or
   "virtual machines":
 

@@ -1,58 +1,13 @@
 # -*- coding: utf-8 -*-
 
 # This code is part of Amoco
-# Copyright (C) 2006-2011 Axel Tillequin (bdcht3@gmail.com)
+# Copyright (C) 2020 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
 from amoco.system.elf import *
 from amoco.system.core import CoreExec, DefineStub
 from amoco.code import tag
-import amoco.arch.x64.cpu_x64 as cpu
-
-# AMD 64 specific definitions. #x86_64 relocs.
-with Consts("r_type"):
-    R_X86_64_PLTOFF64 = 0x1F
-    R_X86_64_GOTPCREL64 = 0x1C
-    R_X86_64_GOTOFF64 = 0x19
-    R_X86_64_TPOFF64 = 0x12
-    R_X86_64_GOT32 = 0x3
-    R_X86_64_32 = 0xA
-    R_X86_64_DTPOFF64 = 0x11
-    R_X86_64_PC32 = 0x2
-    R_X86_64_16 = 0xC
-    R_X86_64_32S = 0xB
-    R_X86_64_TPOFF32 = 0x17
-    R_X86_64_64 = 0x1
-    R_X86_64_GOTPCREL = 0x9
-    R_X86_64_TLSDESC = 0x24
-    R_X86_64_TLSGD = 0x13
-    R_X86_64_GOTPC32 = 0x1A
-    R_X86_64_PC8 = 0xF
-    R_X86_64_DTPOFF32 = 0x15
-    R_X86_64_PLT32 = 0x4
-    R_X86_64_8 = 0xE
-    R_X86_64_GOTPC32_TLSDESC = 0x22
-    R_X86_64_IRELATIVE = 0x25
-    R_X86_64_PC16 = 0xD
-    R_X86_64_COPY = 0x5
-    R_X86_64_GLOB_DAT = 0x6
-    R_X86_64_GOT64 = 0x1B
-    R_X86_64_SIZE32 = 0x20
-    R_X86_64_TLSLD = 0x14
-    R_X86_64_JUMP_SLOT = 0x7
-    R_X86_64_TLSDESC_CALL = 0x23
-    R_X86_64_GOTTPOFF = 0x16
-    R_X86_64_NUM = 0x27
-    R_X86_64_SIZE64 = 0x21
-    R_X86_64_GOTPC64 = 0x1D
-    R_X86_64_PC64 = 0x18
-    R_X86_64_RELATIVE64 = 0x26
-    R_X86_64_RELATIVE = 0x8
-    R_X86_64_NONE = 0x0
-    R_X86_64_DTPMOD64 = 0x10
-    R_X86_64_GOTPLT64 = 0x1E
-
-# ------------------------------------------------------------------------------
+import amoco.arch.mips.cpu_r3000 as cpu
 
 
 class OS(object):
@@ -60,7 +15,7 @@ class OS(object):
     It is responsible for setting up the (virtual) memory of the Task as well
     as providing stubs for dynamic library calls and possibly system calls.
 
-    In the specific case of linux64.x64, the OS class will stub all libc
+    In the specific case of linux32.mips, the OS class will stub all libc
     functions including a simulated heap memory allocator API.
     """
 
@@ -75,8 +30,10 @@ class OS(object):
         self.PAGESIZE = conf.pagesize
         self.ASLR = conf.aslr
         self.NX = conf.nx
+        from .abi import cdecl
+
+        self.abi = cdecl
         self.tasks = []
-        self.abi = None
         self.symbols = {}
 
     @classmethod
@@ -99,42 +56,29 @@ class OS(object):
             elif s.p_type == PT_GNU_STACK:
                 # executable_stack = s.p_flags & PF_X
                 pass
-        # init task state:
-        p.state[cpu.rip] = cpu.cst(p.bin.entrypoints[0], 64)
-        p.state[cpu.rbp] = cpu.cst(0, 64)
-        p.state[cpu.rax] = cpu.cst(0, 64)
-        p.state[cpu.rbx] = cpu.cst(0, 64)
-        p.state[cpu.rcx] = cpu.cst(0, 64)
-        p.state[cpu.rdx] = cpu.cst(0, 64)
-        p.state[cpu.rsi] = cpu.cst(0, 64)
-        p.state[cpu.rdi] = cpu.cst(0, 64)
-        p.state[cpu.r8] = cpu.cst(0, 64)
-        p.state[cpu.r9] = cpu.cst(0, 64)
-        p.state[cpu.r10] = cpu.cst(0, 64)
-        p.state[cpu.r11] = cpu.cst(0, 64)
-        p.state[cpu.r12] = cpu.cst(0, 64)
-        p.state[cpu.r13] = cpu.cst(0, 64)
-        p.state[cpu.r14] = cpu.cst(0, 64)
-        p.state[cpu.r15] = cpu.cst(0, 64)
-        p.state[cpu.rflags] = cpu.cst(0, 64)
+        # init task state registers:
+        p.state[cpu.pc] = cpu.cst(p.bin.entrypoints[0], 32)
+        p.state[cpu.npc] = p.state(cpu.pc+4)
+        for r in cpu.registers:
+            p.state[r] = cpu.cst(0, 32)
         # create the stack space:
         if self.ASLR:
-            p.state.mmap.newzone(p.cpu.rsp)
+            p.state.mmap.newzone(p.cpu.sp)
         else:
-            stack_base = 0x00007FFFFFFFFFFF & ~(self.PAGESIZE - 1)
+            stack_base = 0x7FFFFFFF & ~(self.PAGESIZE - 1)
             stack_size = 2 * self.PAGESIZE
             p.state.mmap.write(stack_base - stack_size, b"\0" * stack_size)
-            p.state[cpu.rsp] = cpu.cst(stack_base, 64)
+            p.state[cpu.sp] = cpu.cst(stack_base, 32)
         # create the dynamic segments:
         if bprm.dynamic and interp:
-            self.load_elf_interp(p, interp)
-        # return task:
+            self.load_elf_interp(p)
+        # start task:
         self.tasks.append(p)
         return p
 
-    def load_elf_interp(self, p, interp):
+    def load_elf_interp(self, p):
         for k, f in p.bin._Elf__dynamic(None).items():
-            xf = cpu.ext(f, size=64, task=p)
+            xf = cpu.ext(f, size=32)
             xf.stub = self.stub(xf.ref)
             p.state.mmap.write(k, xf)
         # we want to add .plt addresses as symbols as well
@@ -152,7 +96,7 @@ class OS(object):
                 i = p.cpu.disassemble(pltco)
                 if i.mnemonic=='JMP' and i.operands[0]._is_mem:
                     target = i.operands[0].a
-                    if target.base is p.cpu.rip:
+                    if target.base is p.cpu.pc:
                         target = address+target.disp
                     elif target.base._is_reg:
                         target = got.sh_addr+target.disp
@@ -167,6 +111,9 @@ class OS(object):
         return self.stubs.get(refname, self.default_stub)
 
 
+# ------------------------------------------------------------------------------
+
+
 class Task(CoreExec):
     pass
 
@@ -175,40 +122,40 @@ class Task(CoreExec):
 
 
 @DefineStub(OS, "*", default=True)
-def pop_rip(m, **kargs):
-    cpu.pop(m, cpu.rip)
+def pop_pc(m, **kargs):
+    m[cpu.pc] = m(cpu.lr)
 
 
 @DefineStub(OS, "__libc_start_main")
 def libc_start_main(m, **kargs):
     "tags: func_call"
-    m[cpu.rip] = m(cpu.rdi)
-    cpu.push(m, cpu.ext("exit", size=64))
+    m[cpu.pc] = m(cpu.mem(cpu.sp + 4, 32))
+    cpu.push(m, cpu.ext("exit", size=32))
 
 
 @DefineStub(OS, "exit")
 def libc_exit(m, **kargs):
-    m[cpu.rip] = top(64)
+    m[cpu.pc] = top(32)
 
 
 @DefineStub(OS, "abort")
 def libc_abort(m, **kargs):
-    m[cpu.rip] = top(64)
+    m[cpu.pc] = top(32)
 
 
 @DefineStub(OS, "__assert")
 def libc_assert(m, **kargs):
-    m[cpu.rip] = top(64)
+    m[cpu.pc] = top(32)
 
 
 @DefineStub(OS, "__assert_fail")
 def libc_assert_fail(m, **kargs):
-    m[cpu.rip] = top(64)
+    m[cpu.pc] = top(32)
 
 
 @DefineStub(OS, "_assert_perror_fail")
 def _assert_perror_fail(m, **kargs):
-    m[cpu.rip] = top(64)
+    m[cpu.pc] = top(32)
 
 
 # ----------------------------------------------------------------------------

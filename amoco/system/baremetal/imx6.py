@@ -101,8 +101,8 @@ class HAB_Header(StructFormatter):
             self.unpack(data, offset)
 
     @staticmethod
-    def token_ver_format(k, x, cls=None):
-        return highlight([(Token.Literal, "%d.%d" % (x >> 4, x & 0xF))])
+    def token_ver_format(k, x, cls=None, fmt=None):
+        return highlight([(Token.Literal, "%d.%d" % (x >> 4, x & 0xF))],fmt)
 
 
 # ------------------------------------------------------------------------------

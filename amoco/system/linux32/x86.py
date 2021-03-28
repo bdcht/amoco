@@ -124,7 +124,7 @@ class OS(object):
 
     def load_elf_interp(self, p):
         for k, f in p.bin._Elf__dynamic(None).items():
-            xf = cpu.ext(f, size=32)
+            xf = cpu.ext(f, size=32, task=p)
             xf.stub = self.stub(xf.ref)
             p.state.mmap.write(k, xf)
         # we want to add .plt addresses as symbols as well

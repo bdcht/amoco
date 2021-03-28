@@ -1,0 +1,33 @@
+</ui>
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file>icons/checkbox_unchecked.png</file>
+    <file>icons/checkbox_unchecked_hover.png</file>
+    <file>icons/checkbox_unchecked_pressed.png</file>
+    <file>icons/checkbox_checked.png</file>
+    <file>icons/checkbox_checked_hover.png</file>
+    <file>icons/checkbox_checked_pressed.png</file>
+    <file>icons/checkbox_indeterminate.png</file>
+    <file>icons/checkbox_indeterminate_hover.png</file>
+    <file>icons/checkbox_indeterminate_pressed.png</file>
+    <file>icons/spinup.png</file>
+    <file>icons/spinup_hover.png</file>
+    <file>icons/spinup_off.png</file>
+    <file>icons/spinup_pressed.png</file>
+    <file>icons/spindown.png</file>
+    <file>icons/spindown_hover.png</file>
+    <file>icons/spindown_off.png</file>
+    <file>icons/spindown_pressed.png</file>
+    <file>icons/triangle_vert.png</file>
+    <file>icons/radiobutton_unchecked.png</file>
+    <file>icons/radiobutton_unchecked_hover.png</file>
+    <file>icons/radiobutton_unchecked_pressed.png</file>
+    <file>icons/radiobutton_checked.png</file>
+    <file>icons/radiobutton_checked_hover.png</file>
+    <file>icons/radiobutton_checked_pressed.png</file>
+    <file>icons/down_arrow.png</file>
+    <file>icons/up_arrow.png</file>
+    <file>icons/triangle_horz.png</file>
+    <file>icons/sizegrip.png</file>
+</qresource>
+</RCC>

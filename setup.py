@@ -30,7 +30,7 @@ It features:
 
 setup(
     name = 'amoco',
-    version = '2.9.4',
+    version = '2.9.5',
     description = 'yet another binary analysis framework',
     long_description = long_descr,
     # Metadata
@@ -53,10 +53,11 @@ setup(
     setup_requires=['pytest-runner',],
     tests_require=['pytest',],
     install_requires = ['grandalf>=0.7',
-                        'crysp>=1.1',
+                        'crysp>=1.2',
                         'pyparsing',
                         'traitlets',
                         'blessed',
+                        'tqdm',
                        ],
     entry_points={
         'console_scripts': [ 'amoco=amoco.ui.app:cli [app]' ],
@@ -66,10 +67,12 @@ setup(
                  'pygments',
                  'z3-solver',
                  'tqdm',
-                 'ccrawl>=1.2',
-                 'PySide2'],
+                 'ccrawl>=1.3',
+                 'PySide2',
+                 'IPython'],
     },
     package_data = {
+        'amoco.ui.graphics.qt_': ['*.qml','*.qss']
     },
     data_files = [],
 )

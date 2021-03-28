@@ -153,35 +153,43 @@ def default_formatter():
     return token_default_fmt
 
 
-def token_default_fmt(k, x, cls=None):
+def token_default_fmt(k, x, cls=None, fmt=None):
     """The default formatter just prints value 'x' of attribute 'k'
     as a literal token python string
     """
-    return highlight([(Token.Literal, str(x))])
+    try:
+        s = x.pp__()
+    except AttributeError:
+        s = str(x)
+    return highlight([(Token.Literal, s)],fmt)
 
 
-def token_address_fmt(k, x, cls=None):
+def token_address_fmt(k, x, cls=None, fmt=None):
     """The address formatter prints value 'x' of attribute 'k'
     as a address token hexadecimal value
     """
-    return highlight([(Token.Address, hex(x))])
+    return highlight([(Token.Address, hex(x))],fmt)
 
 
-def token_constant_fmt(k, x, cls=None):
+def token_constant_fmt(k, x, cls=None, fmt=None):
     """The constant formatter prints value 'x' of attribute 'k'
     as a constant token decimal value
     """
-    return highlight([(Token.Constant, str(x))])
+    try:
+        s = x.pp__()
+    except AttributeError:
+        s = str(x)
+    return highlight([(Token.Constant, s)],fmt)
 
 
-def token_mask_fmt(k, x, cls=None):
+def token_mask_fmt(k, x, cls=None, fmt=None):
     """The mask formatter prints value 'x' of attribute 'k'
     as a constant token hexadecimal value
     """
-    return highlight([(Token.Constant, hex(x))])
+    return highlight([(Token.Constant, hex(x))],fmt)
 
 
-def token_name_fmt(k, x, cls=None):
+def token_name_fmt(k, x, cls=None, fmt=None):
     """The name formatter prints value 'x' of attribute 'k'
     as a name token variable symbol matching the value
     """
@@ -190,12 +198,12 @@ def token_name_fmt(k, x, cls=None):
         k = pfx + k
     ks = k
     try:
-        return highlight([(Token.Name, Consts.All[ks][x])])
+        return highlight([(Token.Name, Consts.All[ks][x])],fmt)
     except KeyError:
-        return token_constant_fmt(k, x)
+        return token_constant_fmt(k, x, cls, fmt)
 
 
-def token_flag_fmt(k, x, cls):
+def token_flag_fmt(k, x, cls, fmt=None):
     """The flag formatter prints value 'x' of attribute 'k'
     as a name token variable series of symbols matching
     the flag value
@@ -207,17 +215,17 @@ def token_flag_fmt(k, x, cls):
     ks = k
     for v, name in Consts.All[ks].items():
         if x & v:
-            s.append(highlight([(Token.Name, name)]))
-    return ",".join(s) if len(s) > 0 else token_mask_fmt(k, x)
+            s.append(highlight([(Token.Name, name)],fmt))
+    return ",".join(s) if len(s) > 0 else token_mask_fmt(k, x, cls, fmt)
 
 
-def token_datetime_fmt(k, x, cls=None):
+def token_datetime_fmt(k, x, cls=None, fmt=None):
     """The date formatter prints value 'x' of attribute 'k'
     as a date token UTC datetime string from timestamp value
     """
     from datetime import datetime
 
-    return highlight([(Token.Date, str(datetime.utcfromtimestamp(x)))])
+    return highlight([(Token.Date, str(datetime.utcfromtimestamp(x)))],fmt)
 
 
 # ------------------------------------------------------------------------------
@@ -432,6 +440,52 @@ class RawField(Field):
         return r
 
 
+class BitField(RawField):
+    """
+    A BitField is a 0-count RawField with additional subnames and subsizes to allow
+    unpack the raw type into several named values each of given bit sizes.
+    """
+
+    def __init__(self, ftype, fcount=0, fname=None, forder=None, falign=0, fcomment=""):
+        self.typename = ftype
+        self.type_private = isinstance(ftype, (StructCore))
+        self.count = 0
+        self.subsizes = fcount or []
+        self.name = None
+        self.subnames = fname or []
+        self.order = forder or "<"
+        self._align_value = None
+        if falign:
+            self.align_value = falign
+        self.comment = fcomment
+
+    def unpack(self, data, offset=0):
+        value = super(BitField,self).unpack(data,offset)
+        D = {}
+        l = 0
+        for name,sz in zip(self.subnames,self.subsizes):
+            mask  = (1<<sz)-1
+            D[name] = (value>>l)&mask
+            l += sz
+        return D
+
+    def pack(self, D):
+        value = 0
+        l = 0
+        for x,sz in zip(self.subnames,self.subsizes):
+            mask = (1<<sz)-1
+            v = (D[x]&mask)<<l
+            value |= v
+            l += sz
+        return super(BitField,self).pack(value)
+
+    def __repr__(self):
+        fmt = self.typename
+        r = "<Field %s>" % str(["%s:%s"%(n,s) for n,s in zip(self.subnames,
+                                                             self.subsizes)])
+        return r
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -601,8 +655,8 @@ class StructDefine(object):
     }
     integer = pp.Regex(r"[0-9][0-9]*")
     integer.setParseAction(lambda r: int(r[0]))
-    bitslen = pp.Group(pp.Suppress("#") + integer + pp.Suppress(".") + integer)
-    symbol = pp.Regex(r"[A-Za-z_][A-Za-z0-9_]*")
+    bitslen = pp.Group(pp.Suppress("#") + pp.delimitedList(integer,delim='/'))
+    symbol = pp.Regex(r"[A-Za-z_][A-Za-z0-9_/]*")
     comment = pp.Suppress(";") + pp.restOfLine
     fieldname = pp.Suppress(":") + pp.Group(
         pp.Optional(pp.Literal(">") | pp.Literal("<"), default=None) + symbol
@@ -628,7 +682,10 @@ class StructDefine(object):
                 f_order = kargs["order"]
             if f_type in self.rawtypes:
                 f_cls = RawField
-                if isinstance(f_count, str) and f_count.startswith("~"):
+                if isinstance(f_count, list):
+                    f_cls = BitField
+                    f_name = f_name.split('/')
+                elif isinstance(f_count, str) and f_count.startswith("~"):
                     f_cls = VarField
                     if f_count[1:] in "bBhHiI":
                         f_cls = CntField
@@ -681,9 +738,6 @@ def TypeDefine(newname, typebase, typecount=0, align_value=0):
     StructDefine.All[newname] = f_cls(
         typebase, fcount=typecount, falign=f_align, fname="typedef"
     )
-
-
-# ------------------------------------------------------------------------------
 
 
 #------------------------------------------------------------------------------
@@ -780,14 +834,32 @@ class StructCore(object):
         for f in self.fields:
             if self.union is False and not self.packed:
                 offset = f.align(offset)
-            setattr(self._v, f.name, f.unpack(data, offset))
+            try:
+                value = f.unpack(data, offset)
+            except Exception:
+                name = self.__class__.__name__
+                logger.error("error unpacking %s %s"%(name,str(f)))
+                raise StructureError(name)
+            else:
+                if f.name:
+                    setattr(self._v, f.name, value)
+                elif hasattr(f,'subnames'):
+                    self._v.__dict__.update(value)
             if self.union is False:
                 offset += f.size()
         return self
 
     def pack(self, data=None):
         if data is None:
-            data = [getattr(self._v, f.name) for f in self.fields]
+            data = []
+            for f in self.fields:
+                if f.name:
+                    data.append(getattr(self._v, f.name))
+                elif hasattr(f,'subnames'):
+                    D = {}
+                    for x in self.subnames:
+                        D[x] = getattr(self._v,x)
+                    data.append(D)
         parts = []
         offset = 0
         for f, v in zip(self.fields, data):
@@ -814,6 +886,7 @@ class StructCore(object):
             o = f.align(o) + f.size()
         raise AttributeError(name)
 
+# ------------------------------------------------------------------------------
 
 class StructFormatter(StructCore):
     """
@@ -851,25 +924,34 @@ class StructFormatter(StructCore):
         for key in keys:
             cls.fkeys[key] = token_flag_fmt
 
-    def strkey(self, k, cname, ksz=20):
+    def strkey(self, k, cname, ksz=20, formatter=None):
         fmt = "%%s%%-%ds:%%s" % ksz
         if hasattr(self._v, k):
             val = getattr(self._v, k)
-            return fmt % (self.pfx, k, self.fkeys[k](k, val, cls=cname))
+            if isinstance(val,StructFormatter):
+                val = val.pp__(formatter)
+            result = self.fkeys[k](k, val, cls=cname,fmt=formatter)
         else:
-            return fmt % (self.pfx, k, "None")
+            result = "None"
+        return fmt % (self.pfx, k, result)
 
-    def __str__(self):
+    def pp__(self,fmt=None):
         cname = self.alt or self.__class__.__name__
         ksz = max((len(f.name) for f in self.fields))
         s = []
         for f in self.fields:
-            fs = self.strkey(f.name, cname, ksz)
-            if fs.count("\n") > 0:
-                fs = fs.replace("\n", "\n " + " " * ksz)
+            if f.name:
+                fs = self.strkey(f.name, cname, ksz, fmt)
+                if fs.count("\n") > 0:
+                    fs = fs.replace("\n", "\n " + " " * ksz)
+            elif hasattr(f,'subnames'):
+                fs = "\n".join([self.strkey(n,cname,ksz,fmt) for n in f.subnames])
             s.append(fs)
         s = "\n".join(s)
         return "[%s]\n%s" % (self.__class__.__name__, s)
+
+    def __str__(self):
+        return self.pp__()
 
 
 # ------------------------------------------------------------------------------

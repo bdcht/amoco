@@ -15,7 +15,7 @@ executable formats.
 
 from amoco.system.core import BinFormat
 from amoco.system.structs import struct, Consts, StructFormatter, StructDefine
-from amoco.system.structs import token_datetime_fmt
+from amoco.system.structs import token_datetime_fmt, StructureError
 from amoco.ui.render import Token, highlight
 
 from amoco.logger import Log
@@ -67,6 +67,10 @@ class PE(BinFormat):
     @property
     def filename(self):
         return self.data.name
+
+    @property
+    def dataio(self):
+        return self.data
 
     @property
     def header(self):
@@ -147,14 +151,13 @@ class PE(BinFormat):
                 return s, addr - s.RVA
         if 0 <= addr < self.Opt.SizeOfImage:
             return 0, addr
-        logger.info("address not found (was %08x)" % addr)
         return None, 0
 
     def getdata(self, addr, absolute=False):
         "get section bytes from given virtual address to end of mapped section."
         s, offset = self.locate(addr, absolute)
         if s is None:
-            logger.error("address not mapped")
+            logger.debug("address 0x%08x not mapped"%addr)
             raise ValueError
         return self.loadsegment(s, raw=True)[offset:]
 
@@ -970,11 +973,16 @@ class ImportTable(object):
         self.dlls = []
         e = None
         while len(data) > 0:
-            e = ImportTableEntry(data, offset)
-            if e.isNULL():
+            try:
+                e = ImportTableEntry(data, offset)
+            except StructureError:
+                logger.error("bad ImportTableEntry at offset=%d"%offset)
                 return
-            self.dlls.append(e)
-            offset += len(e)
+            else:
+                if e.isNULL():
+                    return
+                self.dlls.append(e)
+                offset += len(e)
         logger.warning("NULL Import entry not found")
 
 @StructDefine(

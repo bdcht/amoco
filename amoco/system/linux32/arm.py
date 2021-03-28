@@ -234,7 +234,7 @@ class OS(object):
 
     def load_elf_interp(self, p, interp):
         for k, f in p.bin._Elf__dynamic(None).items():
-            xf = cpu.ext(f, size=32)
+            xf = cpu.ext(f, size=32, task=p)
             xf.stub = self.stub(xf.ref)
             p.state.mmap.write(k, xf)
         # we want to add .plt addresses as symbols as well
@@ -279,6 +279,10 @@ class OS(object):
 
 
 class Task(CoreExec):
+
+    def title_info(self):
+        return [{0:"ARM32", 1:"THUMB"}[self.cpu.internals['isetstate']]]
+
     def setx(self, loc, val, size=0):
         pc = self.cpu.PC()
         if isinstance(loc, str):
@@ -321,8 +325,7 @@ def nullstub(m, **kargs):
 @DefineStub(OS, "__libc_start_main")
 def libc_start_main(m, **kargs):
     "tags: func_call"
-    m[cpu.pc_] = m(cpu.mem(cpu.sp + 4, 32))
-    cpu.push(m, cpu.ext("exit", size=32))
+    m[cpu.pc_] = m(cpu.r0)
 
 
 @DefineStub(OS, "exit")
@@ -348,5 +351,16 @@ def libc_assert_fail(m, **kargs):
 @DefineStub(OS, "_assert_perror_fail")
 def _assert_perror_fail(m, **kargs):
     m[cpu.pc_] = top(32)
+
+
+@DefineStub(OS, "printf")
+@DefineStub(OS, "__printf_chk")
+def libc_printf(m, **kargs):
+    task = kargs.get('task',None)
+    if task:
+        res, args = task.OS.abi(m)
+        fmt = task.get_cstr(args[0])
+        print(fmt)
+    m[cpu.pc_] = m(cpu.lr)
 
 

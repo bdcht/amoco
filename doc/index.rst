@@ -35,6 +35,8 @@ It features:
 - a graphical user interface that can either be run as a standalone client or
   as an IDA plugin.
 
+.. image:: ../../_static/images/gui_load.png
+   :width: 600
 
 .. ----------------------------------------------------------------------------  
 .. _user-docs:

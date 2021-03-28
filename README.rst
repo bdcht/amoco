@@ -59,6 +59,9 @@ merged from develop branch or to be more thoroughly implemented.
 User documentation and API can be found at
 `http://amoco.readthedocs.io/en/latest/index.html`
 
+.. image:: ../../_static/images/gui_load.png
+   :width: 600
+
 Todo
 ====
 
@@ -82,6 +85,15 @@ Please see `LICENSE`_.
 
 Changelog
 =========
+
+- `v2.9.5`_
+
+  * merge Qt GUI binfmtview/HexView
+  * fix various ARM instructions' decoder and semantics
+  * add structure view and specific ELF and PE views
+  * add support for Qt ui dark mode
+  * add MIPS loaders
+  * add BitField support in structs
 
 - `v2.9.4`_
 
@@ -350,6 +362,7 @@ Changelog
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.5: https://github.com/bdcht/amoco/releases/tag/v2.9.5
 .. _v2.9.4: https://github.com/bdcht/amoco/releases/tag/v2.9.4
 .. _v2.9.3: https://github.com/bdcht/amoco/releases/tag/v2.9.3
 .. _v2.9.2: https://github.com/bdcht/amoco/releases/tag/v2.9.2

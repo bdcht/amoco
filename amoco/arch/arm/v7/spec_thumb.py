@@ -177,7 +177,7 @@ def A_default(obj, imm8):
     obj.setflags = False
     obj.imm32 = env.cst(imm8, 32)
     obj.operands = [obj.imm32]
-    obj.type = type_cpu_state
+    obj.type = type_control_flow
     obj.cond = env.CONDITION_AL
 
 

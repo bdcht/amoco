@@ -63,6 +63,10 @@ class Elf(BinFormat):
     def header(self):
         return self.Ehdr
 
+    @property
+    def dataio(self):
+        return self.__file
+
     def __init__(self, f):
         self.__file = f
         self.Ehdr = Ehdr(f)
@@ -106,13 +110,13 @@ class Elf(BinFormat):
                 logger.verbose("exception raised while parsing section(s)")
 
         # read section's name string table:
+        for i, s in enumerate(self.Shdr):
+            s.name = ".s%d" % i
         n = self.Ehdr.e_shstrndx
         if n != SHN_UNDEF and n in range(len(self.Shdr)):
             S = self.Shdr[self.Ehdr.e_shstrndx]
             if S.sh_type != SHT_STRTAB:
                 logger.verbose("section names not a string table")
-                for i, s in enumerate(self.Shdr):
-                    s.name = ".s%d" % i
             else:
                 from codecs import decode
 

@@ -52,7 +52,10 @@ def createdb(url=None):
     if has_sql:
         logflag = conf.DB.log
         engine = sql.create_engine(
-            url, echo=logflag, echo_pool=logflag, logging_name=__name__
+            url,
+            echo=logflag,
+            echo_pool=logflag,
+            logging_name=__name__
         )
         Session.configure(bind=engine)
         Case.metadata.create_all(bind=engine)
@@ -66,10 +69,13 @@ def createdb(url=None):
 if has_sql:
 
     class Case(Base):
-        """A Case instance describes the analysis of some binary program.
+        """
+        A Case instance describes the analysis of some binary program.
         It allows to query stored results by date, source, format or
         architecture for example, and provides relations to associated
         functions that have been discovered or saved traces.
+
+        A Case is initialized from an analysis instance.
         """
 
         __tablename__ = "cases_info"

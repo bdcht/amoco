@@ -56,7 +56,7 @@ class sparc_syntax:
     ]
     reg = pp.Suppress("%") + pp.NotAny(pp.oneOf("hi lo")) + symbol
     hilo = pp.oneOf("%hi %lo") + pp.Suppress("(") + exp + pp.Suppress(")")
-    exp << pp.operatorPrecedence(term | reg | hilo, operators)
+    exp << pp.infixNotation(term | reg | hilo, operators)
 
     adr = pp.Suppress("[") + exp + pp.Suppress("]")
     mem = adr  # +pp.Optional(symbol|imm)

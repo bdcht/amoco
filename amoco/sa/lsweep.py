@@ -90,7 +90,7 @@ class lsweep(object):
         while True:
             i = p.read_instruction(loc)
             if i is None:
-                raise StopIteration
+                break
             loc += i.length
             yield i
 
@@ -109,6 +109,9 @@ class lsweep(object):
             until :meth:`sequence` stops.
         """
         l = []
+        if not self.prog.cpu:
+            logger.error("no cpu has been assigned to prog.")
+            return
         if isinstance(loc,int):
             loc = self.prog.cpu.cst(loc,self.prog.cpu.PC().size)
         seq = self.sequence(loc)

@@ -8,7 +8,25 @@
 render.py
 =========
 
-This module ...
+This module implements amoco's pygments interface to allow pretty printed
+outputs of tables of tokens built from amoco's expressions and instructions.
+The rendered texts are used as main inputs for graphic engines to build
+their own views' objects.
+
+A token is a tuple (t,s) where t is a Token type and s is a python string.
+The highlight method uses the Token type to decorate the string s such that
+the targeted renderer is able to show the string with foreground/background
+colors and bold/underline/etc stroke attributes.
+
+The API of this module is essentially the vltable class which implements its
+str interface by calls to the highlight function, wrapping the pygments formatters
+to allow colored output.
+Note that more specialized formatting like HTML tables or even LaTeX blobs is
+also possible.
+
+If the pygments package is not found, all output default to a kind of
+"NullFormatter" that will just ignore input tokens' types and just assemble lines
+into undercorated unicode strings.
 """
 
 from io import BytesIO as StringIO
@@ -55,6 +73,34 @@ except ImportError:
 else:
     logger.verbose("pygments package imported")
     has_pygments = True
+    # define default dark style:
+    dark = {
+        Token.Literal  : "#fff",
+        Token.Address  : "#fb0",
+        Token.Orange   : "#fb0",
+        Token.Constant : "#f30",
+        Token.Red      : "#f30",
+        Token.Prefix   : "#fff",
+        Token.Mnemonic : "bold",
+        Token.Register : "#33f",
+        Token.Memory   : "#3ff",
+        Token.String   : "#3f3",
+        Token.Segment  : "#888",
+        Token.Comment  : "#f8f",
+        Token.Green    : "#8f8",
+        Token.Good     : "bold #8f8",
+        Token.Name     : "bold",
+        Token.Alert    : "bold #f00",
+        Token.Column   : "#000",
+    }
+    S = {}
+    # define sub-tokens with Mark/Taint/Hide atrribute,
+    # allowing to set tokens types like Token.Register.Taint
+    for k in dark.keys():
+        S[getattr(k,'Mark')]  = "bg:#224"
+        S[getattr(k,'Taint')] = "bg:#422"
+        S[getattr(k,'Hide')]  = "noinherit #222"
+    dark.update(S)
 
     dark = {
         Token.Literal  : "#fff",
@@ -85,7 +131,7 @@ else:
     class DarkStyle(Style):
         default_style = ""
         styles = dark
-
+    # define default light style:
     light = {
         Token.Literal  : "",
         Token.Address  : "#c30",
@@ -115,9 +161,9 @@ else:
     class LightStyle(Style):
         default_style = ""
         styles = light
-
+    # the default style is dark:
     DefaultStyle = DarkStyle
-
+    # define supported formatters:
     Formats = {
         "Null"         : NullFormatter(encoding="utf-8"),
         "Terminal"     : TerminalFormatter(style=DefaultStyle, encoding="utf-8"),
@@ -125,10 +171,21 @@ else:
         "TerminalDark" : Terminal256Formatter(style=DarkStyle, encoding="utf-8"),
         "TerminalLight": Terminal256Formatter(style=LightStyle, encoding="utf-8"),
         "Html"         : HtmlFormatter(style=LightStyle, encoding="utf-8"),
+        "HtmlDark"     : HtmlFormatter(style=DarkStyle, encoding="utf-8"),
     }
 
 
 def highlight(toks, formatter=None, outfile=None):
+    """
+    Pretty prints a list of tokens using optionally
+    a given formatter and an output io buffer.
+
+    If no explicit formatter is given, use the formatter from configuration
+    or the Null formatter if not specified in the amoco configuration.
+    If no output io buffer is given, a local StringIO is used.
+
+    The returned value is a decorated python string.
+    """
     formatter = formatter or Formats.get(conf.UI.formatter,"Null")
     if isinstance(formatter, str):
         formatter = Formats[formatter]
@@ -177,7 +234,7 @@ def LambdaTokenListJoin(j,f):
 
 class vltable(object):
     """
-    variable length table relies on pygments to pretty print tabulated data.
+    A variable length table relies on pygments to pretty print tabulated data.
 
     Arguments:
         rows (list): optional argument with initial list of tokenrows.

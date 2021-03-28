@@ -12,5 +12,5 @@ def test_loader_002(samples):
 
 def test_loader_003(sc1):
     p = amoco.load_program(sc1)
-    assert p.bin.f.getvalue() == sc1
+    assert p.bin.dataio.f.getvalue() == sc1
     assert p.bin.filename == '(sc-eb165e31...)'

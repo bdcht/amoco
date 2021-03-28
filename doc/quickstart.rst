@@ -26,7 +26,7 @@ For example, from directory ``amoco/tests``, do::
    In [1]: import amoco
    In [2]: p = amoco.load_program(u'samples/x86/flow.elf')
    In [3]: print(p)
-   <Task amoco.system.linux32.x86 'samples/x86/flow.elf'>
+    ▶ samples/x86/flow.elf ▶ Elf ▶ amoco.system.linux32.x86
 
    In [4]: print(p.bin.Ehdr)
    [Ehdr]
@@ -90,7 +90,9 @@ an *abstraction* of the memory mapped program::
      <mo [7fffd000,7ffff000] data:b'\x00\x00\x00\x00\x00\x00\x00\x...'>>
 
 (other more specific executable formats are supported
-but they need to be loaded manually.)
+but they need to be loaded manually.) The task's state attribute shows
+registers that have been set while state.mmap shows the abstracted memory.
+More on the state object later...
 Also note that it is possible to provide a *raw* bytes string as input and
 then manually load the architecture::
 
@@ -148,7 +150,7 @@ can use any of the code analysis strategies implemented in amoco to disassemble
    In [3]: z = amoco.sa.lsweep(p)
 
    In [4]: z.getblock(0x8048380)
-   Out[4]: <block object (0x8048380-0x80483a1) with 13 instructions> 
+   Out[4]: <block object (0x8048380-0x80483a1) with 13 instructions>
 
    In [5]: b=_
    In [6]: print(b.view)
@@ -178,18 +180,18 @@ comment tokens to instruction lines. For example::
 
    In [7]: print( p.view.codeblock(b) )
    ───────── codeblock 0x8048380 ──────────────────────────────────────────
-   0x8048380.text  '31ed'          xor         ebp, ebp                    
-   0x8048382.text  '5e'            pop         esi                         
-   0x8048383.text  '89e1'          mov         ecx, esp                    
-   0x8048385.text  '83e4f0'        and         esp, 0xfffffff0             
-   0x8048388.text  '50'            push        eax                         
-   0x8048389.text  '54'            push        esp                         
-   0x804838a.text  '52'            push        edx                         
-   0x804838b.text  '6810860408'    push        0x8048610<__libc_csu_fini>  
-   0x8048390.text  '68a0850408'    push        0x80485a0<__libc_csu_init>  
-   0x8048395.text  '51'            push        ecx                         
-   0x8048396.text  '56'            push        esi                         
-   0x8048397.text  '68fd840408'    push        0x80484fd<main>             
+   0x8048380.text  '31ed'          xor         ebp, ebp
+   0x8048382.text  '5e'            pop         esi
+   0x8048383.text  '89e1'          mov         ecx, esp
+   0x8048385.text  '83e4f0'        and         esp, 0xfffffff0
+   0x8048388.text  '50'            push        eax
+   0x8048389.text  '54'            push        esp
+   0x804838a.text  '52'            push        edx
+   0x804838b.text  '6810860408'    push        0x8048610<__libc_csu_fini>
+   0x8048390.text  '68a0850408'    push        0x80485a0<__libc_csu_init>
+   0x8048395.text  '51'            push        ecx
+   0x8048396.text  '56'            push        esi
+   0x8048397.text  '68fd840408'    push        0x80484fd<main>
    0x804839c.text  'e8cfffffff'    call        0x8048370<__libc_start_main>
    ────────────────────────────────────────────────────────────────────────
 
@@ -204,29 +206,29 @@ of instructions is doing::
 
    In [8]: n = amoco.cfg.node(b)
    In [8]: print(n.map.view)
-   eip                                               ⇽ (eip+-0x10)                                        
-   eflags:                                          
-    │ cf                                             ⇽ 0x0                                                
-    │ pf                                             ⇽ (0x6996>>(esp+0x4)[4:8])[0:1]                      
-    │ af                                             ⇽ af                                                 
+   eip                                               ⇽ (eip+-0x10)
+   eflags:
+    │ cf                                             ⇽ 0x0
+    │ pf                                             ⇽ (0x6996>>(esp+0x4)[4:8])[0:1]
+    │ af                                             ⇽ af
     │ zf                                             ⇽ ({[ 0: 4] -> 0x0, [ 4:32] -> (esp+0x4)[4:32]}==0x0)
-    │ sf                                             ⇽ ({[ 0: 4] -> 0x0, [ 4:32] -> (esp+0x4)[4:32]}<0x0) 
-    │ tf                                             ⇽ tf                                                 
-    │ df                                             ⇽ df                                                 
-    │ of                                             ⇽ 0x0                                                
-   ebp                                               ⇽ 0x0                                                
+    │ sf                                             ⇽ ({[ 0: 4] -> 0x0, [ 4:32] -> (esp+0x4)[4:32]}<0x0)
+    │ tf                                             ⇽ tf
+    │ df                                             ⇽ df
+    │ of                                             ⇽ 0x0
+   ebp                                               ⇽ 0x0
    esp                                               ⇽ ({[ 0: 4] -> 0x0, [ 4:32] -> (esp+0x4)[4:32]}-0x24)
-   esi                                               ⇽ M32(esp)                                           
-   ecx                                               ⇽ (esp+0x4)                                          
-   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-4)  ⇽ eax                                                
-   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-8)  ⇽ ({[ 0: 4] -> 0x0, [ 4:32] -> (esp+0x4)[4:32]}-0x4) 
-   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-12) ⇽ edx                                                
-   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-16) ⇽ 0x8048610                                          
-   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-20) ⇽ 0x80485a0                                          
-   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-24) ⇽ (esp+0x4)                                          
-   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-28) ⇽ M32(esp)                                           
-   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-32) ⇽ 0x80484fd                                          
-   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-36) ⇽ (eip+0x21)    
+   esi                                               ⇽ M32(esp)
+   ecx                                               ⇽ (esp+0x4)
+   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-4)  ⇽ eax
+   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-8)  ⇽ ({[ 0: 4] -> 0x0, [ 4:32] -> (esp+0x4)[4:32]}-0x4)
+   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-12) ⇽ edx
+   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-16) ⇽ 0x8048610
+   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-20) ⇽ 0x80485a0
+   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-24) ⇽ (esp+0x4)
+   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-28) ⇽ M32(esp)
+   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-32) ⇽ 0x80484fd
+   ({ | [0:4]->0x0 | [4:32]->(esp+0x4)[4:32] | }-36) ⇽ (eip+0x21)
 
 Here we are with the *map* of the block.
 Now what this :class:`mapper <cas.mapper.mapper>` object says is for example that once the block
@@ -317,4 +319,7 @@ Important note:
 
   *** The merge with emul branch has broken the static-analysis module.
       This is going to be fixed only once the merge is fully integrated ***
+
+
+.. _click: https://click.palletsprojects.com/
 

@@ -38,7 +38,14 @@ def loader_sh2(p):
     return OS.loader(p, conf.System)
 
 @DefineLoader("elf", elf.EM_MIPS)
-def loader_sh2(p):
-    from amoco.system.linux32.mips_le import OS
-    logger.info("linux32/mips_le task loading...")
-    return OS.loader(p, conf.System)
+def loader_mips(p):
+    if p.header.e_ident.EI_DATA == elf.ELFDATA2LSB:
+        from amoco.system.linux32.mips_le import OS
+        logger.info("linux32/mips_le task loading...")
+        return OS.loader(p, conf.System)
+    if p.header.e_ident.EI_DATA == elf.ELFDATA2MSB:
+        from amoco.system.linux32.mips import OS
+        logger.info("linux32/mips (MSB) task loading...")
+        return OS.loader(p, conf.System)
+    else:
+        logger.error("no endianess defined in ELF header")

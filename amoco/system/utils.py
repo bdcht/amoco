@@ -57,19 +57,23 @@ class Consts(object):
             HEX_CONSTS[self.name][G[k]] = k
 
 
-def token_address_fmt(k, x, cls=None):
+def token_address_fmt(k, x, cls=None, fmt=None):
     return highlight([(Token.Address, "0x%04x" % x)])
 
 
-def token_constant_fmt(k, x, cls=None):
-    return highlight([(Token.Constant, str(x))])
-
-
-def token_name_fmt(k, x, cls=None):
+def token_constant_fmt(k, x, cls=None, fmt=None):
     try:
-        return highlight([(Token.Name, HEX_CONSTS[k][x])])
+        s = x.pp__()
+    except AttributeError:
+        s = str(x)
+    return highlight([(Token.Constant, s)],fmt)
+
+
+def token_name_fmt(k, x, cls=None, fmt=None):
+    try:
+        return highlight([(Token.Name, HEX_CONSTS[k][x])],fmt)
     except KeyError:
-        return token_constant_fmt(k, x)
+        return token_constant_fmt(k, x, cls, fmt)
 
 
 # The HEX Constants.
@@ -87,6 +91,7 @@ with Consts("HEXcode"):
 
 
 class HEX(BinFormat):
+    is_HEX = True
     def __init__(self, f, offset=0):
         self.L = []
         self._filename = f.name
@@ -221,6 +226,7 @@ with Consts("SREC"):
 
 
 class SREC(BinFormat):
+    is_SREC = True
     def __init__(self, f, offset=0):
         self.L = []
         self._entrypoint = 0

@@ -4,13 +4,32 @@
 # Copyright (C) 2019-2020 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
+"""
+This is the 'Click' frontend that allows to invoke amoco directly from a shell with
+command 'amoco'::
+
+    $ amoco [-c/--config file]
+            [-v/--verbose]
+            [-g/--debug]
+            [-q/--quiet]
+
+This command essentially loads the amoco python package in the ipython interpreter or
+the CPython interpreter if IPython is not installed.
+The logging level can be adjusted with general options.
+
+Several subcommands are also available::
+
+    $ amoco [general options] bin_info "filename"
+                              load_program [-x/--gui] "filename"
+                              emul_program [-x/--gui] "filename"
+"""
+
 import click
 from blessed import Terminal
 
 import amoco
 
 # we want command aliases:
-
 
 class AliasedGroup(click.Group):
     def get_command(self, ctx, cmd_name):
@@ -29,8 +48,10 @@ class AliasedGroup(click.Group):
 
 
 def spawn_console(ctx,exec_lines=None):
-    """Amoco console for interactive mode.
+    """
+    Start the amoco interactive terminal console.
     The console is based on IPython if found, or uses CPython otherwise.
+    This can be controlled by configuration (see c.UI.console.)
     """
     c = amoco.conf
     cvars = dict(globals(), **locals())
@@ -47,6 +68,7 @@ def spawn_console(ctx,exec_lines=None):
             ic = c.src.__class__()
             ic.TerminalTerminalIPythonApp.display_banner = False
             ic.InteractiveShellApp.exec_lines = ["print(amoco.conf.BANNER)"]
+            ic.InteractiveShellApp.gui = c.UI.graphics
             if c.UI.formatter == 'TerminalLight':
                 ic.TerminalInteractiveShell.colors = 'LightBG'
             if exec_lines:
@@ -69,19 +91,32 @@ def spawn_console(ctx,exec_lines=None):
 
 
 def spawn_emul(ctx,fallback=True):
+    """
+    Start the amoco interactive console-based emulator.
+    If fallback is True, the amoco console is spawned when
+    terminating the emulator.
+    """
     from amoco.ui.srv import srv
-    q = ctx.obj['q']
-    if hasattr(q,'view'):
-        print(q.view)
-    s = srv(obj=q)
+    p = ctx.obj['p']
+    if hasattr(p,'view'):
+        print(p.view)
+    s = srv(obj=p)
     s.start(daemon=False)
     if fallback:
-        spawn_console(ctx,["q"])
+        spawn_console(ctx,["p"])
 
 
 def spawn_gui(ctx):
-    raise NotImplementedError
-
+    """
+    Let the amoco console show the graphic user interface
+    for its current object.
+    """
+    do = ['from amoco.ui.graphics import load_engine',
+          'load_engine()',
+          'p.view.obj.show()',
+          'p',
+         ]
+    spawn_console(ctx,do)
 
 # ------------------------------------------------------------------------------
 
@@ -124,8 +159,8 @@ def cli(ctx, verbose, debug, quiet, configfile):
 
 
 @cli.command("load_program")
-@click.argument("filename", nargs=1, type=click.Path(exists=True, dir_okay=False))
 @click.option("-x", "--gui", is_flag=True, default=False, help="load with GUI")
+@click.argument("filename", nargs=1, type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
 def load_program(ctx, filename, gui):
     p = amoco.load_program(filename)
@@ -133,7 +168,7 @@ def load_program(ctx, filename, gui):
     if gui:
         spawn_gui(ctx)
     else:
-        spawn_console(ctx)
+        spawn_console(ctx,["p"])
 
 @cli.command("bin_info")
 @click.argument("filename", nargs=1, type=click.Path(exists=True, dir_okay=False))
@@ -153,15 +188,14 @@ def bin_info(ctx, filename, header):
 
 @cli.command("emul_program")
 @click.argument("filename", nargs=1, type=click.Path(exists=True, dir_okay=False))
-@click.option("--gui", is_flag=True, default=False, help="load with GUI")
-@click.option("-i","--interact", is_flag=True, default=False,
+@click.option("-x", "--gui", is_flag=True, default=False, help="load with GUI")
+@click.option("-i", "--interact", is_flag=True, default=False,
               help="fallback to python interactive console")
 @click.pass_context
 def emul_program(ctx, filename, gui, interact):
     p = amoco.load_program(filename)
-    q = amoco.emul(p)
+    p = amoco.emul(p)
     ctx.obj["p"] = p
-    ctx.obj["q"] = q
     if gui:
         spawn_gui(ctx)
     else:

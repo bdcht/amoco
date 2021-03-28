@@ -13,7 +13,8 @@ def test_reg_bv(x,y):
     assert complexity(z)<100
     m = solver([z==cst(0x0,32),xl==0xa,xh==0x84]).get_model()
     assert m is not None
-    xv,yv = (m[v].as_long() for v in m)
+    xv = m.eval(x.to_smtlib()).as_long()
+    yv = m.eval(y.to_smtlib()).as_long()
     assert m.eval(xl.to_smtlib()).as_long() == 0xa
     assert m.eval(xh.to_smtlib()).as_long() == 0x84
     assert ((xv^0xcafebabe)+(yv+(xv>>2)))&0xffffffff == 0

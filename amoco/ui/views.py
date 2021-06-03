@@ -283,7 +283,9 @@ class mmapView(View):
             t.addrow((Token.Memory,icons.hor*8))
         return t
 
+
 # -------------------------------------------------------------------------------
+
 
 class funcView(View):
     """Class that implements view of func objects.
@@ -565,6 +567,7 @@ class emulView(View):
                 v = self.of.task.state(x)
                 if v!=0:
                     sp.append(v)
+        sz = self.of.pc.length
         # if we have more than 1 stack registers (ebp, esp)
         if len(sp)==2:
             delta = sp[1]-sp[0]
@@ -579,10 +582,9 @@ class emulView(View):
                     delta = conf.Emu.stacksize
             else:
                 delta = conf.Emu.stacksize
-            sz = self.of.pc.length
             t.append(str(self.of.task.view.memory(sp[0],delta//sz)))
         elif len(sp)==1:
-            t.append(str(self.of.task.view.memory(sp[0],)))
+            t.append(str(self.of.task.view.memory(sp[0],sz)))
         else:
             logger.warning("stack pointer not found")
         return t
@@ -600,128 +602,8 @@ class emulView(View):
 
 # -------------------------------------------------------------------------------
 
-
-class emulView(View):
-    _is_emul = True
-
-    def __init__(self,of,frames=None):
-        super().__init__(of)
-        self.term = Terminal()
-        if frames is None:
-            frames = [self.frame_bin,
-                      self.frame_regs,
-                      self.frame_code,
-                      self.frame_stack,
-                     ]
-        self.frames = frames
-
-    def line(self,title=None):
-        w = self.term.width
-        p = icons.hor*3
-        if title:
-            s = "%s[ %s ]%s"%(p,title,p)
-        else:
-            s = icons.hor
-        s = s.rjust(w,icons.hor)
-        return self.term.bright_black+s+self.term.normal
-
-    def frame_bin(self):
-        t = []
-        t.append(self.line("bin"))
-        t.append(str(self.of.task.view.title()))
-        return t
-
-    def frame_regs(self):
-        t = []
-        t.append(self.line("regs"))
-        t.append(str(self.of.task.view.registers))
-        return t
-
-    def frame_code(self):
-        t = []
-        t.append(self.line("code"))
-        here = self.of.task.state(self.of.pc)
-        T = vltable()
-        flavor = None
-        blk = self.of.sa.iterblocks(here)
-        try:
-            b = next(blk)
-        except StopIteration:
-            b = None
-            logger.warning("no block at address %s"%here)
-        else:
-            blk.close()
-        if b is not None:
-            delay_slot = False
-            for i in b.instr:
-                if (i.address == here):
-                    flavor = 'Mark'
-                    if i.misc.get('delayed',False):
-                        delay_slot = True
-                elif delay_slot:
-                    flavor = 'Mark'
-                    delay_slot = False
-                else:
-                    flavor = None
-                T.addrow(blockView.instr(i, flavor))
-        for index in range(1,conf.Code.hist+1):
-            try:
-                i = self.of.hist[-index]
-            except IndexError:
-                break
-            if (here-i.address)>i.length:
-                T.rows.insert(0,tokenrow([(Token.Literal,'|')]))
-            if i.address < here:
-                T.rows.insert(0,tokenrow(blockView.instr(i)))
-                here = i.address
-        T = self.of.task.view.code(T)
-        T.header = T.footer = ""
-        rest = self.term.width - T.width
-        T.addcolsize(-1,rest)
-        t.append(str(T))
-        return t
-
-    def frame_stack(self):
-        t = []
-        t.append(self.line("stack"))
-        sp = []
-        for x in self.of.task.cpu.registers:
-            if x.etype & regtype.STACK:
-                v = self.of.task.state(x)
-                if v!=0:
-                    sp.append(v)
-        # if we have more than 1 stack registers (ebp, esp)
-        if len(sp)==2:
-            delta = sp[1]-sp[0]
-            if delta._is_cst:
-                delta = delta.value
-                if delta<0:
-                    sp = [sp[1],sp[0]]
-                    delta = -delta
-                elif delta==0:
-                    delta = 8
-            sz = self.of.pc.length
-            t.append(str(self.of.task.view.memory(sp[0],delta//sz)))
-        elif len(sp)==1:
-            t.append(str(self.of.task.view.memory(sp[0],4)))
-        else:
-            logger.warning("stack pointer not found")
-        return t
-
-    def __str__(self):
-        t = []
-        for f in self.frames:
-            try:
-                t.extend(f())
-            except Exception as e:
-                logger.warning("emulView.%s: %s"%(f.__name__,e))
-        t.append(self.line())
-        return '\n'.join(t)
-
-# -------------------------------------------------------------------------------
 
 class archView(View):
-    _is_emul = True
 
     def __init__(self,of):
         super().__init__(of)
@@ -750,5 +632,6 @@ class archView(View):
         for root in self.of.specs:
             t.extend(self.show_subtree(root))
         return "\n".join(t)
+
 
 # -------------------------------------------------------------------------------

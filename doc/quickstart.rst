@@ -178,8 +178,8 @@ Block views can be *enhanced* by several analyses that will possibly add symbols
 are usually available only through the higher level *task* view object and add various
 comment tokens to instruction lines. For example::
 
-   In [7]: print( p.view.codeblock(b) )
-   ───────── codeblock 0x8048380 ──────────────────────────────────────────
+   In [7]: print( p.view.code(b) )
+   ───────── block 0x8048380 ──────────────────────────────────────────────
    0x8048380.text  '31ed'          xor         ebp, ebp
    0x8048382.text  '5e'            pop         esi
    0x8048383.text  '89e1'          mov         ecx, esp

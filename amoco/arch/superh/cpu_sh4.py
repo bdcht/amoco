@@ -23,4 +23,4 @@ disassemble = disassembler([spec_sh4], endian=lambda: -1, iclass=instruction_sh4
 
 
 def PC():
-    return PC
+    return pc

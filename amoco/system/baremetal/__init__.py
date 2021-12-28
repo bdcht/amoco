@@ -21,3 +21,9 @@ def loader_riscv(p):
     from amoco.system.baremetal.riscv import ELF
     logger.info("baremetal/riscv firmware loading...")
     return ELF(p)
+
+@DefineLoader("elf-baremetal", elf.EM_TRICORE)
+def loader_tricore(p):
+    from amoco.system.baremetal.tricore import SSW
+    logger.info("baremetal/tricore firmware loading...")
+    return SSW.loader(p)

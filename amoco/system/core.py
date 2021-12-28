@@ -36,7 +36,9 @@ class CoreExec(object):
     Attributes:
         bin: the program executable format object. Currently supported formats
              are provided in :mod:`system.elf` (Elf32/64), :mod:`system.pe` (PE)
-             and :mod:`system.utils` (HEX/SREC).
+             :mod:`system.macho` (Mach-O) :mod:`system.structs.HEX` (HEX),
+             :mod:`system.structs.SREC` (SREC), and raw "shellcode-like" format
+             in :class:`system.core.shellcode`.
 
         cpu: reference to the architecture cpu module, which provides a generic
              access to the PC() program counter and
@@ -129,10 +131,6 @@ class CoreExec(object):
         else:
             if i.address is None:
                 i.address = addr
-            xsz = i.misc["xsz"] or 0
-            if xsz > 0:
-                xdata = self.state.mmap.read(vaddr + i.length, xsz)
-                i.xdata(i, xdata)
             return i
 
     def symbol_for(self,address):
@@ -335,11 +333,12 @@ class shellcode(BinFormat):
     def dataio(self):
         return self.data
 
+
 class DataIO(object):
     """
     This class simply wraps a binary file or a bytes string and implements
     both the file and bytes interface. It allows an input to be provided as
-    files of bytes and manipulated as either a file or a bytes object.
+    files of bytes and manipulated indifferently as a file or a bytes object.
     """
 
     def __init__(self, f):
@@ -474,7 +473,7 @@ def read_program(filename):
         p = elf.Elf(f)
         logger.info("ELF format detected")
         return p
-    except elf.ElfError:
+    except (elf.StructureError,elf.ElfError):
         f.seek(0)
         logger.debug("ElfError raised for %s" % f.name)
 
@@ -485,7 +484,7 @@ def read_program(filename):
         p = pe.PE(f)
         logger.info("PE format detected")
         return p
-    except pe.PEError:
+    except (pe.StructureError,pe.PEError):
         f.seek(0)
         logger.debug("PEError raised for %s" % f.name)
 
@@ -496,27 +495,28 @@ def read_program(filename):
         p = macho.MachO(f)
         logger.info("Mach-O format detected")
         return p
-    except macho.MachOError:
+    except (macho.StructureError,macho.MachOError):
         f.seek(0)
         logger.debug("MachOError raised for %s" % f.name)
 
     try:
-        from amoco.system import utils
+        from amoco.system.structs.HEX import HEX,HEXError
 
         # open file as a HEX object:
-        p = utils.HEX(f)
+        p = HEX(f)
         logger.info("HEX format detected")
         return p
-    except utils.FormatError:
+    except HEXError:
         f.seek(0)
         logger.debug(" HEX FormatError raised for %s" % f.name)
 
     try:
+        from amoco.system.structs.SREC import SREC,SRECError
         # open file as a SREC object:
-        p = utils.SREC(f)
+        p = SREC(f)
         logger.info("SREC format detected")
         return p
-    except utils.FormatError:
+    except SRECError:
         f.seek(0)
         logger.debug(" SREC FormatError raised for %s" % f.name)
 
@@ -569,7 +569,8 @@ class DefineLoader(object):
 
 def load_program(f, cpu=None):
     """
-    Detects program format header (ELF/PE/Mach-O/HEX/SREC),
+    Detects program format header (ELF/PE/Mach-O/HEX/SREC), or consider
+    the input as a raw "shellcode" if no supported format is recognized,
     and *maps* the program in abstract memory,
     loading the associated "system" (linux/win) and "arch" (x86/arm),
     based header informations.

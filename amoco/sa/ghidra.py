@@ -1,0 +1,94 @@
+import ghidra_bridge
+
+b = ghidra_bridge.GhidraBridge(namespace=__module__.__dict__)
+
+def select_range(begin,end):
+    from ghidra.program.model.address import setCurrentSelection, AddressSet
+    setCurrentSelection(AddressSet(toAddr(begin),toAddr(end)))
+
+def add_memory_block(name,start,size,val=None,access="rw"):
+    mmap = currentProgram.memory
+    blk = mmap.createInitializedBlock(name, toAddr(start), size,
+                                      val, monitor, False)
+    if "w" in access:
+        blk.setWrite(True)
+
+    if "x" in access:
+        blk.setExecute(True)
+
+    return blk
+
+def setPointer(address,size=4):
+    from ghidra.program.model.data import PointerDataType
+    if isinstance(address,int):
+        address = toAddr(address)
+    ls = currentProgram.getListing()
+    ls.createData(address, PointerDataType.dataType, size)
+
+def setFunctionName(address,name):
+    from ghidra.program.model.symbol.SourceType import USER_DEFINED
+    if isinstance(address,int):
+        address = toAddr(address)
+    f = getFunctionAt(address)
+    f.setName(name, USER_DEFINED)
+
+def create_labels(labels):
+    from ghidra.program.model.symbol.SourceType import USER_DEFINED
+    sym = currentProgram.symbolTable
+    for a,r in labels.items():
+        if isinstance(a,int):
+            a = toAddr(a)
+        sym.createLabel(a, r, USER_DEFINED)
+
+def get_decompiled(func_name):
+    from ghidra.app.decompiler import DecompileOptions
+    from ghidra.app.decompiler import DecompInterface
+    from ghidra.util.task import ConsoleTaskMonitor
+    func = getGlobalFunctions(func_name)[0]
+    options = DecompileOptions()
+    monitor = ConsoleTaskMonitor()
+    ifc = DecompInterface()
+    ifc.setOptions(options)
+    ifc.openProgram(func.getProgram())
+    res = ifc.decompileFunction(func, 1000, monitor)
+    return res
+
+def get_decompiled_C(func_name):
+    res = get_decompiled(func_name)
+    # get decompiled C source from res:
+    src = res.getDecompiledFunction().getC()
+    return src
+
+def get_decompiled_symbols(func_name):
+    res = get_decompiled(func_name)
+    # get (decompiled) high-function object from res:
+    high_func = res.getHighFunction()
+    # get local variables' symbols:
+    lsm = high_func.getLocalSymbolMap()
+    symbols = lsm.getSymbols()
+    for i, symbol in enumerate(symbols):
+        print("\nSymbol {}:".format(i+1))
+        print("  name:         {}".format(symbol.name))
+        print("  dataType:     {}".format(symbol.dataType))
+        print("  getPCAddress: 0x{}".format(symbol.getPCAddress()))
+        print("  size:         {}".format(symbol.size))
+        print("  storage:      {}".format(symbol.storage))
+        print("  parameter:    {}".format(symbol.parameter))
+        print("  readOnly:     {}".format(symbol.readOnly))
+        print("  typeLocked:   {}".format(symbol.typeLocked))
+        print("  nameLocked:   {}".format(symbol.nameLocked))
+
+def get_ast_nodes(func_name):
+    from ghidra.app.decompiler import ClangStatement
+    res = get_decompiled(func_name)
+    # get (decompiled) high-function object from res:
+    def walk(node,L):
+        if type(node) == ClangStatement:
+            L.append(node)
+        else:
+            for i in range(node.numChildren()):
+                walk(node.Child(i),L)
+    nodes = []
+    walk(res.getCCodeMarkup(),nodes)
+    return nodes
+

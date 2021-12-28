@@ -46,6 +46,7 @@ Attributes:
             - 'graphics' one of 'term' (default), 'qt' or 'gtk'
             - 'console' one of 'python' (default), or 'ipython'
             - 'unicode' will use unicode symbols for drawing lines and icons if True
+            - 'qstylesheet' filename of a Qt Stylesheet or '' (default)
 
         - 'Server' which deals with amoco's server parameters:
 
@@ -155,6 +156,7 @@ class UI(Configurable):
         console (str): default python console, either 'python' (default) or 'ipython'.
         completekey (str): client key for command completion (Tab).
         cli (str): client frontend. Currently only 'cmdcli' is supported.
+        qstylesheet (str):  Qt stylesheet filename (default to "").
     """
     formatter = Unicode("Null", config=True)
     graphics = Unicode("term", config=True)
@@ -162,6 +164,7 @@ class UI(Configurable):
     completekey = Unicode("tab", config=True)
     cli = Unicode("cmdcli", config=True)
     unicode = Bool(False, config=True)
+    qstylesheet = Unicode("", config=True)
 
 
 class Server(Configurable):
@@ -223,10 +226,12 @@ class System(Configurable):
         pagesize (int): provides the default memory page size in bytes.
         aslr (Bool): simulates ASLR if True. (not supported yet.)
         nx (Bool): unused.
+        romfile (Unicode): path to ROM file.
     """
     pagesize = Integer(4096, config=True)
     aslr = Bool(False, config=True)
     nx = Bool(False, config=True)
+    romfile = Unicode("apple2.rom",config=True)
 
 
 class Config(object):

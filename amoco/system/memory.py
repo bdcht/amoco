@@ -15,9 +15,27 @@ It provides a way to represent both concrete and abstract symbolic values
 located in the virtual memory space of a process.
 In order to allow addresses to be symbolic as well, the MemoryMap is
 organised as a collection of :class:`MemoryZone`.
-A zone holds values located at addresses that are integer offsets
+A zone holds "values" located at addresses that are integer offsets
 related to a symbolic expression. A default zone with related address set
 to ``None`` holds values at concrete (virtual) addresses in every MemoryMap.
+
+A MemoryZone is more complex than just an associative array between
+an address offset and stored "values" because these values can be regular
+bytes or any symbolic expression as well. Hence, the MemoryZone needs to deal
+with reading an area described by several of these "values" or overwritting
+such area with a new value.
+
+For example, imagine that memory offset 0x1000
+initially contains bytes b'01020304' and an instruction writes the symbolic
+expression of register 'eax' to address 0x102. The resulting memory should be
+described such that if an instruction fetches 2 bytes from offset
+0x1001 the result is a compound expression with first byte '02' and second
+byte eax[0:8] in little endian or eax[24:32] in big endian.
+
+In amoco's Memory model, a MemoryZone holds an ordered list of memory
+objects (see class :class:`mo`) and provides method to locate objects
+within an address range, or insert new objects at a given offset,
+thus allowing the "read" or "write" of expressions of those "values".
 """
 
 
@@ -406,9 +424,10 @@ class mo(object):
             data and points current object to this offset. Note that a trim is
             generally the result of data being overwritten by another mo.
 
-        read(vaddr,l): returns the list of datadiv objects at given offset so
-            that the total length is at most l, and the number of bytes missing
-            if the total length is less than l.
+        read(vaddr,l): returns a tuple (L,nb) where L is the list of datadiv
+            objects at given offset so that the total length is at most l,
+            and nb is the number of bytes missing
+            if the total length of this object is less than l.
 
         write(vaddr,data): updates current mo to reflect the writing of data at
             given offset and returns the list of possibly new mo objects to be

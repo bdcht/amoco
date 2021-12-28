@@ -77,6 +77,16 @@ More precisely:
 
 Contributions to fulfill uncomplete/unimplemented parts are welcome.
 
+Developer notes
+===============
+
+The default Qt stylesheet is inspired by the excellent QDarkStyleSheet_ and
+uses most of its icons through the *QResource* API made available
+from the generated *rc_icons.py* module::
+
+  <pyenv>/lib/python3.<x>/site-packages/PySide2/rcc -g python icons.qrc > rc_icons.py
+
+
 Licence
 =======
 
@@ -85,6 +95,18 @@ Please see `LICENSE`_.
 
 Changelog
 =========
+
+- `v2.9.6`_
+
+  * merge Qt GUI ImageView
+  * improve Qt GUI binfmtview/HexView with entropy & InfoView
+  * add specific Mach-O view
+  * improve support for Qt ui dark mode
+  * add Tricore architecture
+  * add w65c02 architecture
+  * add wasm architecture
+  * add wasm binary format parser
+  * move system.structs module into a package
 
 - `v2.9.5`_
 
@@ -361,7 +383,9 @@ Changelog
 .. _pyparsing: http://pyparsing.wikispaces.com/
 .. _ply: http://www.dabeaz.com/ply/
 .. _sqlalchemy: http://www.sqlalchemy.org
+.. _QDarkStyleSheet: https://github.com/ColinDuquesnoy/QDarkStyleSheet
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.6: https://github.com/bdcht/amoco/releases/tag/v2.9.6
 .. _v2.9.5: https://github.com/bdcht/amoco/releases/tag/v2.9.5
 .. _v2.9.4: https://github.com/bdcht/amoco/releases/tag/v2.9.4
 .. _v2.9.3: https://github.com/bdcht/amoco/releases/tag/v2.9.3

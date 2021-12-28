@@ -124,7 +124,7 @@ class instruction(icore):
     methods.
 
     Attributes:
-        address (cst): the memory address where this instruction as been disassembled. 
+        address (cst): the memory address where this instruction as been disassembled.
     """
 
     def __init__(self, istr):
@@ -132,7 +132,7 @@ class instruction(icore):
         self.address = None
 
     def __repr__(self):
-        s = inspect.getmodule(self.spec.hook).__name__ if self.spec else ""
+        s = self.__class__.__name__
         if self.address is not None:
             s += " [%s] " % self.address
         s += " %s ( " % self.mnemonic
@@ -204,7 +204,7 @@ class disassembler(object):
     Arguments:
 
       specmodules: list of python modules containing ispec decorated funcs
-      iclass: the specific instruction class based on :class:`instruction` 
+      iclass: the specific instruction class based on :class:`instruction`
       iset: lambda used to select module (ispec list)
       endian: instruction fetch endianess (1: little, -1: big)
 
@@ -255,13 +255,15 @@ class disassembler(object):
             # self.indent -= 2
             return (0, ispecs)
         # find separating mask:
-        adjust = lambda x: x.ival
         if self.endian() == -1:
-            # in bigendian cases (like ARM), bytes are supposed to be MSB-justified
-            # that means that a spec of length = 1 byte long needs to match the MSB of the
-            # encoded instruction.
+            # in bigendian cases where not all instructions have the same length (like ARM),
+            # then the MSB byte needs to be maxlen-justified. Hence, if a spec is shorter
+            # than maxlen*8 bits, its mask and fix values need to be shifted up to a
+            # maxlen bitsize.
             maxsize = self.maxlen * 8
             adjust = lambda x: x.ival << (maxsize - x.size)
+        else:
+            adjust = lambda x: x.ival
         localmask = reduce(lambda x, y: x & y, [adjust(s.mask) for s in ispecs])
         if localmask == 0:
             # logger.debug('%sno local mask',ind)
@@ -286,10 +288,12 @@ class disassembler(object):
     def __call__(self, bytestring, **kargs):
         e = self.endian(**kargs)
         adjust = lambda x: x.ival
+        bs = bytestring[0:self.maxlen]
         if e == -1:
             maxsize = self.maxlen * 8
             adjust = lambda x: x.ival << (maxsize - x.size)
-        b = adjust(Bits(bytestring[::e], bitorder=1))
+            bs = bytestring[self.maxlen-1::-1]
+        b = adjust(Bits(bs, bitorder=1))
         # get organized/optimized tree of specs:
         fl = self.specs[self.iset(**kargs)]
         while True:
@@ -307,8 +311,8 @@ class disassembler(object):
                         if self.__i is None:
                             self.__i = i
                         return self(bytestring[s.mask.size // 8 :], **kargs)
-                    elif i.spec.pfx > 0:
-                        i.misc["xsz"] = i.spec.pfx
+                    elif i.spec.pfx == "xdata":
+                        i.xdata(i,**kargs)
                     self.__i = None
                     if "address" in kargs:
                         i.address = kargs["address"]
@@ -338,12 +342,14 @@ class ispec(object):
 
         spec (str):
             a human-friendly *format* string that describes how the ispec object will
-            (on request) decode a given bytestring and how it will expose various 
-            decoded entities to the decorated function in order to define an instruction.
-        **kargs: 
+            (on request) decode a given bytestring and how it will expose various
+            decoded entities to the decorated "hook" function to define an instruction.
+        **kargs:
             additional arguments to ispec decorator **must** be provided with ``name=value``
-            form and are declared as attributes/values within the instruction instance *before* 
-            calling the decorated function. See below for conventions about names.
+            form and are declared as attributes/values within the instruction instance *before*
+            calling the hook function. If the provided value is a FunctionType, it is 
+            called with the bytestring passed as a Bits instance argument to produce the final
+            value associated with name. See below for conventions about names.
 
     Attributes:
 
@@ -357,7 +363,8 @@ class ispec(object):
         fargs (dict): the dictionary of keywords arguments to pass to the hook.
                       These keywords are decoded from the format or given by the spec's kargs
                       when name starts with an underscore.
-        precond (func): an optional function that takes the instruction object as argument
+        precond (func): If the spec's kargs contains a name '__obj=func', then the func is
+                        used as a pre-condition function that takes the instruction object
                         and returns a boolean to indicate wether the hook can be called or not.
                         (This allows to avoid decoding when a prefix is missing for example.)
         size (int): the bit length of the format (``LEN`` value)
@@ -387,7 +394,7 @@ class ispec(object):
 
     Note:
 
-        The ``spec`` string format is  ``LEN ('<' or '>') '[' FORMAT ']' ('+' or '&' NUMBER)``
+        The ``spec`` string format is  ``LEN ('<' or '>') '[' FORMAT ']' ('+' or '&')``
 
           - ``LEN`` is either an integer that represents the bit length of the instruction or '*'.
               Length must be a multiple of 8, '*' is used for a variable length
@@ -397,14 +404,16 @@ class ispec(object):
              direction : '<' (default) means that directives are ordered from MSB (bit index LEN-1)
              to LSB (bit index 0) whereas '>' means LSB to MSB.
 
-        The spec string is optionally terminated with  '+' to indicate that it
-        represents an instruction *prefix*, or by '&' NUMBER to indicate that the instruction
-        has a *suffix* of NUMBER more bytes to decode some of its operands. 
+        The spec string is optionally terminated with '+' to indicate that it
+        represents an instruction *prefix*, or by '&' to indicate that the instruction
+        has a *suffix* of some more bytes to decode and that the disassembler needs to call its
+        'xdata' method while passing all its kargs to this method.
         In the *prefix* case, the bytestring matching the ispec format is stacked temporarily
         until the rest of the bytestring matches a non prefix ispec.
         In the *suffix* case, only the spec bytestring is used to define the instruction
-        but the :meth:`read_instruction` fetcher will provide NUMBER more bytes to the
-        :meth:`xdata` method of the instruction.
+        but the :meth:`read_instruction` fetcher will provide additional arguments to the
+        :meth:`xdata` method of the instruction in order to finish its decoding.
+        (See wasm architecture for example.)
 
         The directives defining the ``FORMAT`` string are used to associate symbols to bits
         located at dedicated offsets within the bitstring to be decoded. A directive has the
@@ -413,9 +422,9 @@ class ispec(object):
         * ``-`` (indicates that current bit position is not decoded)
         * ``0`` (indicates that current bit position must be 0)
         * ``1`` (indicates that current bit position must be 1)
-        
+
         or
-        
+
         * ``type SYMBOL location`` where:
 
            * ``type`` is an *optional* modifier char with possible values:
@@ -438,7 +447,7 @@ class ispec(object):
                                 buffer input string are used.
 
              default location value is ``(1)``.
-             
+
         The special directive ``{byte}`` is a shortcut for 8 fixed bits. For example
         ``8>[{2f}]`` is equivalent to ``8>[ 1111 0100 ]``, or ``8<[ 0010 1111 ]``.
     """
@@ -508,7 +517,7 @@ class ispec(object):
         fmt = ast[1]
         self.pfx = ast[2]
         xsz = ast[3]
-        if self.pfx and xsz:
+        if xsz:
             self.pfx = xsz
         go = +1
         chklen = True
@@ -737,7 +746,7 @@ specformat = pp.Group(
     pp.Suppress("[") + pp.OneOrMore(directive | fixed) + pp.Suppress("]")
 )
 specoption = pp.Optional(pp.Literal("+").setParseAction(lambda r: True), default=False)
-specmore = pp.Optional(pp.Suppress("&") + number, default=0)
+specmore = pp.Optional(pp.Literal("&").setParseAction(lambda r: "xdata"), default=False)
 specdecode = speclen + specformat + specoption + specmore
 
 

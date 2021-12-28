@@ -66,7 +66,7 @@ def dw_op_1(obj, offset):
     obj.type = type_data_processing
 
 
-@ispec("*>[ {94} data(*) ]", mnemonic="DW_OP_plus_uconst")
+@ispec("*>[ {94} ~data(*) ]", mnemonic="DW_OP_plus_uconst")
 def dw_op_leb128(obj, data):
     data = pack(data)
     result, blen = read_leb128(data)

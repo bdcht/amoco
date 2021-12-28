@@ -15,7 +15,10 @@ from PySide2.QtWidgets import (QMainWindow,
 
 from PySide2.QtQuickWidgets import QQuickWidget
 
+from . import rc_icons
+
 from .binfmtview import BinFmtView
+from .infoview import InfoView
 from .hexview import HexView
 
 __all__ = ['TaskWindow','HexView']
@@ -38,30 +41,46 @@ class TaskWindow(QMainWindow):
 
     def createDocks(self,task):
         self.createDockBin(task)
-        self.createDockMap(task)
+        self.createDockInfo(task)
 
     def createDockBin(self,task):
         # TreeView for ELF/PE/Mach-O structure
-        dock = QDockWidget(task.bin.filename, self)
+        dock = QDockWidget("[task].view.obj.binfmt", self)
         #dock.setAllowedAreas(Qt.TopDockWidgetArea)
         dock.setFeatures(dock.DockWidgetClosable|\
                          dock.DockWidgetMovable|\
                          dock.DockWidgetFloatable)
         dock.setMinimumWidth(364)
+        self.addDockWidget(Qt.LeftDockWidgetArea, dock)
+        a = dock.toggleViewAction()
+        self.viewMenu.addAction(a)
         self.binfmt = BinFmtView(task)
         if self.binfmt is not None:
             dock.setWidget(self.binfmt)
             enabled = True
         else:
+            dock.hide()
             enabled = False
-        self.addDockWidget(Qt.LeftDockWidgetArea, dock)
+        a.setEnabled(enabled)
+        a.setChecked(enabled)
+
+    def createDockInfo(self,task):
+        dock = QDockWidget("[task].view.obj.info", self)
+        dock.setFeatures(dock.DockWidgetClosable|\
+                         dock.DockWidgetMovable|\
+                         dock.DockWidgetFloatable)
+        self.addDockWidget(Qt.RightDockWidgetArea, dock)
         a = dock.toggleViewAction()
         self.viewMenu.addAction(a)
+        self.info = InfoView(task)
+        if self.info is not None:
+            dock.setWidget(self.info)
+            enabled = True
+        else:
+            dock.hide()
+            enabled = False
         a.setEnabled(enabled)
-
-    def createDockMap(self,data):
-        # various stuff like entropy or view of the MemoryMap
-        pass
+        a.setChecked(enabled)
 
     def createCentral(self,v):
         self.hexview = HexView(self)
@@ -82,6 +101,7 @@ class TaskWindow(QMainWindow):
             size = len(item.struct)
         else:
             parent = item.parent()
+            if parent is None: return
             offset = parent.offset + parent.struct.offset_of(item.text())
             size = int(m.data(index.siblingAtColumn(2)))
         self.statusBar().showMessage("%d bytes @ %+08x"%(size,offset))

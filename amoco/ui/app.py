@@ -178,7 +178,7 @@ def bin_info(ctx, filename, header):
     p = amoco.load_program(filename)
     ctx.obj["p"] = p
     click.secho("file: ",fg='blue')
-    click.secho(str(p.view.title))
+    click.secho(str(p.view.title()))
     click.secho("checksec: ",fg='blue')
     click.echo(str(p.view.checksec))
     if header:

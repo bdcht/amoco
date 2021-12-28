@@ -1,8 +1,31 @@
+/* --------------------------------------------------------------------------*/
+/* | default amoco Qt style                                                 |*/
+/* --------------------------------------------------------------------------*/
+
+* {
+  padding: 0px;
+  margin: 0px;
+  border: 0px;
+  border-style: none;
+  border-image: none;
+  outline: 0;
+}
+
+QToolBar * {
+  margin: 0px;
+  padding: 0px;
+}
+
+/* --------------------------------------------------------------------------*/
+/* All widgets defaults to transparent background: */
 
 QWidget, QStackedWidget,
 QScrollArea, QAbstractScrollArea {
     background-color: transparent;
 }
+
+/* --------------------------------------------------------------------------*/
+/* set background & foreground for all "main" widgets: */
 
 QApplication,
 QMainWindow, QFrame, QDockWidget, QDialog, QFileDialog, QMessageBox,
@@ -14,14 +37,22 @@ QTreeView, QListWidget, QListView, QTableWidget, QTableView,
 QTextEdit, QTextBrowser {
     background-color: #3c3f41;
     color: #bbbbbb;
+    selection-background-color: #4c4f51;
+    selection-color: #dddddd;
 }
+
+/* --------------------------------------------------------------------------*/
+/* set background/foreground & select colors for other common widgets: */
 
 QLabel, QTabBar::tab, QMenuBar::item,
 QCheckBox, QGroupBox {
     background-color: transparent;
     color: #bbbbbb;
-    selection-color: #bbbbbb;
+    selection-color: #dddddd;
 }
+
+/* --------------------------------------------------------------------------*/
+/* set border/margin params for groupbox/checkbox widgets: */
 
 QGroupBox {
     border-top: 1px solid #2d2d2d;
@@ -32,10 +63,14 @@ QGroupBox::title {
     subcontrol-position: top left;
     padding: 0 3px;
 }
+
+/* --------------------------------------------------------------------------*/
+/* set indicator size and icons for groupbox/checkbox widgets: */
+
 QCheckBox::indicator,
 QGroupBox::indicator {
-    width: 13px;
-    height: 13px;
+    width: 12px;
+    height: 12px;
 }
 QCheckBox::indicator:unchecked,
 QGroupBox::indicator:unchecked {
@@ -92,30 +127,8 @@ QLineEdit, QAbstractSpinBox, QComboBox, QPushButton {
     border-width: 0;
 }
 
-QAbstractSpinBox::up-button {
-    image: url(:/icons/spinup.png);
-}
-QAbstractSpinBox::up-button:hover {
-    image: url(:/icons/spinup_hover.png);
-}
-QAbstractSpinBox::up-button:off {
-    image: url(:/icons/spinup_off.png);
-}
-QAbstractSpinBox::up-button:pressed {
-    image: url(:/icons/spinup_pressed.png);
-}
-QAbstractSpinBox::down-button {
-    image: url(:/icons/spindown.png);
-}
-QAbstractSpinBox::down-button:hover {
-    image: url(:/icons/spindown_hover.png);
-}
-QAbstractSpinBox::down-button:off {
-    image: url(:/icons/spindown_off.png);
-}
-QAbstractSpinBox::down-button:pressed {
-    image: url(:/icons/spindown_pressed.png);
-}
+/* --------------------------------------------------------------------------*/
+/* set parameters for PushButton widgets: */
 
 QPushButton {
     min-height: 1.33em;
@@ -148,6 +161,9 @@ QPushButton::menu-indicator  {
     subcontrol-origin: content;
     subcontrol-position: bottom right;
 }
+
+/* --------------------------------------------------------------------------*/
+/* set parameters for ComboBox widgets: */
 
 QComboBox {
     border-radius: 2px;
@@ -183,29 +199,34 @@ QComboBox QAbstractItemView {
 }
 
 
+/* --------------------------------------------------------------------------*/
+/* set parameters for RadioButton widgets: */
+
 QRadioButton::indicator {
     width: 13px;
     height: 13px;
 }
 QRadioButton::indicator:unchecked {
-    image: url(:/icons/radiobutton_unchecked.png);
+    image: url(:/icons/radio_unchecked.png);
 }
 QRadioButton::indicator:unchecked:hover {
-    image: url(:/icons/radiobutton_unchecked_hover.png);
+    image: url(:/icons/radio_unchecked_focus.png);
 }
 QRadioButton::indicator:unchecked:pressed {
-    image: url(:/icons/radiobutton_unchecked_pressed.png);
+    image: url(:/icons/radio_unchecked_pressed.png);
 }
 QRadioButton::indicator:checked {
-    image: url(:/icons/radiobutton_checked.png);
+    image: url(:/icons/radio_checked.png);
 }
 QRadioButton::indicator:checked:hover {
-    image: url(:/icons/radiobutton_checked_hover.png);
+    image: url(:/icons/radio_checked_focus.png);
 }
 QRadioButton::indicator:checked:pressed {
-    image: url(:/icons/radiobutton_checked_pressed.png);
+    image: url(:/icons/radio_checked_pressed.png);
 }
 
+/* --------------------------------------------------------------------------*/
+/* set parameters for TabWidget/TabBar panes: */
 
 QTabWidget::tab-bar {
     /*position: relative;
@@ -279,6 +300,9 @@ QTabBar::tab:left:!selected {
     margin-left: 2px;
 }
 
+/* --------------------------------------------------------------------------*/
+/* set parameters for TableWidget/TableView & HeaderView : */
+
 QTableWidget,
 QTableView {
     border: 1px solid #323232;
@@ -312,20 +336,24 @@ QHeaderView::section:checked {
     background-color: red;
 }
 QHeaderView::down-arrow {
-    image: url(:/icons/down_arrow.png);
+    image: url(:/icons/arrow_down.png);
     right: 7px;
 }
 QHeaderView::up-arrow {
-    image: url(:/icons/up_arrow.png);
+    image: url(:/icons/arrow_up.png);
     height: 7px;
     width: 7px;
 }
+
+/* --------------------------------------------------------------------------*/
+/* set parameters for MenuBar/Menu : */
 
 QMenuBar {
     border-bottom: 2px solid qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop:0 #282828, stop:1 #555555);
 }
 QMenuBar::item:pressed {
-    background-color: #4b6eaf;
+    color: #ffffff;
+    background-color: #2c2f31;
 }
 QMenuBar::item:selected:!pressed {
     background-color: #585b5d;
@@ -340,7 +368,7 @@ QMenu::item:disabled {
     color: #999999;
 }
 QMenu::item:selected {
-    background-color: #4b6eaf;
+    background-color: #ffffaf;
 }
 QMenu::icon {
     border: 0px solid transparent;
@@ -367,41 +395,49 @@ QMenu::separator {
 }*/
 
 
-/*
- * Scroll bar modifications
- */
+/* --------------------------------------------------------------------------*/
+/* set parameters for ScrollBar : */
+
 QScrollBar {
     background-color: transparent;
     margin: 0;
     height: 12px; /* for horizontal */
     width: 12px; /* for vertical */
 }
+
 QScrollBar::handle {
     border: 1px solid #555555;
     border-radius: 4px;
     margin: 1px;
 }
+
 QScrollBar::handle:vertical {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop:0 #5c5c5c, stop:1 #515151);
     min-height: 20px;
     min-width: 8px;
 }
+
 QScrollBar::handle:vertical:hover {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop:0 #666666, stop:1 #5b5b5b);
 }
+
 QScrollBar::handle:horizontal {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop:0 #5c5c5c, stop:1 #515151);
     min-height: 8px;
     min-width: 20px;
 }
+
 QScrollBar::handle:horizontal:hover {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop:0 #666666, stop:1 #5b5b5b);
 }
+
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
 QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
     background-color: transparent;
 }
-/*QScrollBar::sub-page:vertical {
+
+/*
+QScrollBar::sub-page:vertical {
     max-height: 8px;
     margin-top: auto;
     margin-bottom: 0;
@@ -416,16 +452,18 @@ QScrollBar::add-page:vertical {
     background-color: darkblue;
     border-bottom-left-radius: 4px;
     border-bottom-right-radius: 4px;
-}*/
+}
+*/
+
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
     height: 0;
     width: 0;
 }
 
-/*
- * Status bar
- */
+/* --------------------------------------------------------------------------*/
+/* set parameters for StatusBar : */
+
 /*
 QStatusBar {
     background-color: brown;
@@ -442,6 +480,8 @@ QStatusBar QLabel {
 }
 */
 
+/* --------------------------------------------------------------------------*/
+/* set parameters for AbstractItemView : */
 
 QAbstractItemView {
     border: 1px solid #323232;
@@ -452,87 +492,103 @@ QAbstractItemView {
     outline: 0;
 }
 
-/*
 QAbstractItemView:!focus {
-    selection-background-color: #0d293e;
+    selection-background-color: #fd293e;
 }
+
 QTreeView::branch,
 QAbstractItemView::item {
     border-width: 0;
 }
-*/
 
 QAbstractItemView::item:alternate {
-    background-color: #414547;
+    background-color: #4145b7;
 }
+
+/* --------------------------------------------------------------------------*/
+/* set parameters for List/Tree Item widget : */
+
 QListWidgetItem,
 QTreeWidgetItem  {
     background-color: red;
     color: yellow;
     border: 1px solid purple;
 }
+
 QAbstractItemView::text {
     color: #bbbbbb;
 }
+
+/* color of item line when mouse passes over: */
 QTreeView::branch:hover,
 QAbstractItemView::item:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
-QTreeView::branch:selected:active,
-QAbstractItemView::item:selected {
-    background-color: #4b6ebf;
-    color: #ffffff;
-}
+
+/* color of item line when mouse click + window has focus : */
 QTreeView::branch:selected:active,
 QAbstractItemView::item:selected:active {
-    background-color: #4b6ebf;
+    background-color: #2c2f31;
     color: #ffffff;
 }
+
+/* color of last selected item line + window has no focus : */
 QTreeView::branch:selected:!active,
 QAbstractItemView::item:selected:!active {
-    background-color: #0d293e;
+    background-color: #2c2f31;
 }
 
-/* If we want to modify the QTreeView items' icons
-QTreeView::branch:has-siblings:adjoins-item,
-QTreeView::branch:has-siblings:!adjoins-item,
-QTreeView::branch:!has-children:!has-siblings:adjoins-item {
-    border-image: none;
-    image: none;
+QTreeView:branch:selected, QTreeView:branch:hover {
+  background: url(":/icons/transparent.png");
 }
-QTreeView::branch:has-children:!has-siblings:closed,
-QTreeView::branch:closed:has-children:has-siblings {
-    border-image: none;
-    image: url(:/icons/triangle_horz.png);
-}
-QTreeView::branch:open:has-children:!has-siblings,
-QTreeView::branch:open:has-children:has-siblings {
-    border-image: none;
-    image: url(:/icons/triangle_vert.png);
-}
-*/
 
-/*
- * Tool bar
- */
+QTreeView:branch:has-siblings:!adjoins-item {
+  border-image: url(":/icons/branch_line.png") 0;
+}
+
+QTreeView:branch:has-siblings:adjoins-item {
+  border-image: url(":/icons/branch_more.png") 0;
+}
+
+QTreeView:branch:!has-children:!has-siblings:adjoins-item {
+  border-image: url(":/icons/branch_end.png") 0;
+}
+
+QTreeView:branch:has-children:!has-siblings:closed,
+QTreeView:branch:closed:has-children:has-siblings {
+  border-image: none;
+  image: url(":/icons/branch_closed.png");
+}
+
+QTreeView:branch:open:has-children:!has-siblings,
+QTreeView:branch:open:has-children:has-siblings {
+  border-image: none;
+  image: url(":/icons/branch_open.png");
+}
+
+QTreeView:branch:has-children:!has-siblings:closed:hover,
+QTreeView:branch:closed:has-children:has-siblings:hover {
+  image: url(":/icons/branch_closed_focus.png");
+}
+
+QTreeView:branch:open:has-children:!has-siblings:hover,
+QTreeView:branch:open:has-children:has-siblings:hover {
+  image: url(":/icons/branch_open_focus.png");
+}
+
+
+/* --------------------------------------------------------------------------*/
+/* set parameters for ToolBar widget : */
 
 QToolBar {
     border-width: 0;
 }
 
-/*
- * Resizing widget (bottom right in Qt Creator, inside status bar)
- */
-
 QSizeGrip {
-    image: url(:/icons/sizegrip.png);
+    image: url(:/icons/window_grip.png);
     width: 16px;
     height: 16px;
 }
-
-/*
- * ToolTip
- */
 
 QToolTip, QTipLabel {
     border: 1px solid #9a9a66;
@@ -543,7 +599,6 @@ QToolTip, QTipLabel {
     padding: 0;
 }
 
-
 QWizard > QWidget {
     background-color: #3c3f41;
 }
@@ -552,6 +607,9 @@ QWizard > QWidget {
 Core--Internal--NewDialog > QFrame#frame {
     border: 1px solid #323232;
 }
+
+/* --------------------------------------------------------------------------*/
+/* set parameters for text Editor widget : */
 
 QPlainTextEdit {
     background-color: #2b2b2b;
@@ -565,5 +623,46 @@ TextEditor--TextEditorWidget > QWidget {
     background-color: #313335;
     selection-background-color: #4b6eaf;
     color: #bbbbbb;
+}
+
+/* --------------------------------------------------------------------------*/
+/* set dock widget parameters : */
+
+QDockWidget::close-button {
+  icon-size: 10px;
+  border: none;
+  background: transparent;
+  background-image: transparent;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  image: url(":/icons/window_close.png");
+}
+
+QDockWidget::close-button:hover {
+  image: url(":/icons/window_close_focus.png");
+}
+
+QDockWidget::close-button:pressed {
+  image: url(":/icons/window_close_pressed.png");
+}
+
+QDockWidget::float-button {
+  icon-size: 10px;
+  border: none;
+  background: transparent;
+  background-image: transparent;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  image: url(":/icons/window_undock.png");
+}
+
+QDockWidget::float-button:hover {
+  image: url(":/icons/window_undock_focus.png");
+}
+
+QDockWidget::float-button:pressed {
+  image: url(":/icons/window_undock_pressed.png");
 }
 

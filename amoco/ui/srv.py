@@ -8,7 +8,8 @@
 srv.py
 ======
 
-This module ...
+This module defines a set of high-level commands that allow
+to use amoco from a dedicated command-line interface.
 """
 
 import ctypes

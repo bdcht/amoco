@@ -102,32 +102,6 @@ else:
         S[getattr(k,'Hide')]  = "noinherit #222"
     dark.update(S)
 
-    dark = {
-        Token.Literal  : "#fff",
-        Token.Address  : "#fb0",
-        Token.Orange   : "#fb0",
-        Token.Constant : "#f30",
-        Token.Red      : "#f30",
-        Token.Prefix   : "#fff",
-        Token.Mnemonic : "bold",
-        Token.Register : "#33f",
-        Token.Memory   : "#3ff",
-        Token.String   : "#3f3",
-        Token.Segment  : "#888",
-        Token.Comment  : "#f8f",
-        Token.Green    : "#8f8",
-        Token.Good     : "bold #8f8",
-        Token.Name     : "bold",
-        Token.Alert    : "bold #f00",
-        Token.Column   : "#000",
-    }
-    S = {}
-    for k in dark.keys():
-        S[getattr(k,'Mark')]  = "bg:#224"
-        S[getattr(k,'Taint')] = "bg:#422"
-        S[getattr(k,'Hide')]  = "noinherit #222"
-    dark.update(S)
-
     class DarkStyle(Style):
         default_style = ""
         styles = dark

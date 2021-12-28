@@ -11,7 +11,7 @@ system/elf.py
 The system elf module implements Elf classes for both 32/64bits executable format.
 """
 from amoco.system.core import BinFormat
-from amoco.system.structs import Consts, StructDefine
+from amoco.system.structs import Consts, StructDefine, StructureError
 from amoco.system.structs import StructFormatter, token_constant_fmt, token_address_fmt
 
 from amoco.logger import Log

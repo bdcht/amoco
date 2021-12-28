@@ -13,9 +13,9 @@ The system macho module implements the Mach-O executable format parser.
 
 from collections import defaultdict
 from amoco.system.core import BinFormat, DataIO
-from amoco.system.utils import read_uleb128
+from amoco.system.structs.utils import read_uleb128
 from amoco.system.structs import Consts, StructFormatter, default_formatter
-from amoco.system.structs import StructDefine, UnionDefine
+from amoco.system.structs import StructDefine, UnionDefine, StructureError
 from amoco.system.structs import token_name_fmt, token_flag_fmt, Token, highlight
 
 

@@ -33,8 +33,8 @@ class mapper(object):
     Args:
         instrlist (list[instruction]): a list of instructions that are
                   symbolically executed within the mapper.
-        csi (Optional[object]): the optional csi attribute that provide
-                  a *concrete* initial state
+        cur (Optional[object]): the optional cursor attribute that provide
+                  a reference to the task associated with the mapper
 
     Attributes:
         __map  : is an ordered list of mappings of expressions associated with a
@@ -44,18 +44,18 @@ class mapper(object):
         __Mem  : is a memory model where symbolic memory pointers are addressing
                  separated memory zones. See MemoryMap and MemoryZone classes.
         conds  : is the list of conditions that must be True for the mapper
-        csi    : is the optional interface to a *concrete* state
+        cur    : is the optional interface to a task.
     """
 
-    __slots__ = ["__map", "__Mem", "conds", "csi", "view"]
+    __slots__ = ["__map", "__Mem", "conds", "cur", "view"]
 
-    def __init__(self, instrlist=None, csi=None):
+    def __init__(self, instrlist=None, cur=None):
         self.__map = generation()
         self.__map.lastw = 0
         self.__map.delayed = None
         self.__Mem = MemoryMap()
         self.conds = []
-        self.csi = csi
+        self.cur = cur
         icache = []
         # if the __map needs to be inited before executing instructions
         # one solution is to prepend the instrlist with a function dedicated
@@ -162,10 +162,7 @@ class mapper(object):
 
     def R(self, x):
         "get the expression of register x"
-        if self.csi:
-            return self.__map.get(x, self.csi(x))
-        else:
-            return self.__map.get(x, x)
+        return self.__map.get(x, x)
 
     def M(self, k):
         """get the expression of a memory location expression k"""
@@ -217,14 +214,14 @@ class mapper(object):
         cur = 0
         for p in res:
             plen = len(p)
-            if isinstance(p, exp) and (p._is_def == 0):
-                # p is "bottom":
-                if self.csi:
-                    p = self.csi(mem(a, p.size, disp=cur, endian=endian))
-                else:
-                    p = mem(a, p.size, disp=cur)
             if isinstance(p, bytes):
                 p = cst(Bits(p[::endian], bitorder=1).int(), plen * 8)
+            elif isinstance(p, exp):
+                if p._is_def == 0:
+                    # p is "bottom":
+                    p = mem(a, p.size, disp=cur)
+                elif p._is_ext and p._subrefs.get("mmio_r",None):
+                    p = p.stub(self,mode="r")
             P.append(p)
             cur += plen
         return composer(P)
@@ -236,7 +233,14 @@ class mapper(object):
         else:
             locs = (a,)
         for l in locs:
-            self.__Mem.write(l, v, endian)
+            try:
+                oldv = self.__Mem.read(l,len(v))[0]
+            except MemoryError:
+                oldv = l
+            if isinstance(oldv,ext) and oldv._subrefs.get("mmio_w",None):
+                oldv.stub(self,mode="w")
+            else:
+                self.__Mem.write(l, v, endian)
             if l in self.__map:
                 del self.__map[l]
 
@@ -255,6 +259,7 @@ class mapper(object):
             if k.size != v.size:
                 raise ValueError("size mismatch")
             try:
+                # evaluate current location address:
                 loc = k.addr(self)
             except TypeError:
                 logger.error("setitem ignored (invalid left-value expression: %s)" % k)
@@ -321,7 +326,7 @@ class mapper(object):
         """return a new mapper instance where all input locations have
            been replaced by there corresponding values in m.
         """
-        mm = mapper(csi=self.csi)
+        mm = mapper(cur=self.cur)
         mm.setmemory(self.mmap.copy())
         for c in self.conds:
             cc = c.eval(m)
@@ -378,7 +383,7 @@ class mapper(object):
            sizes for all arguments.
            if kargs is empty, a copy of the result is just a copy of current mapper.
         """
-        m = mapper(csi=self.csi)
+        m = mapper(cur=self.cur)
         for loc, v in args:
             m[loc] = v
         if len(kargs) > 0:
@@ -401,7 +406,7 @@ class mapper(object):
 
     # attach/apply conditions to the output mapper
     def assume(self, conds):
-        m = mapper(csi=self.csi)
+        m = mapper(cur=self.cur)
         if conds is None:
             conds = []
         for c in conds:

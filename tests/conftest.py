@@ -8,7 +8,7 @@ def m():
     return mapper()
 
 @pytest.fixture(scope='module')
-def map():
+def amap():
     '''return a no_aliasing mapper with module scope'''
     from amoco.cas.mapper import conf,mapper
     conf.Cas.noaliasing = True

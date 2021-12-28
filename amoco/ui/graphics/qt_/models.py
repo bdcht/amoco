@@ -11,6 +11,7 @@ class DataIOModel(QObject):
     def __init__(self,parent=None,data=None):
         super().__init__(parent)
         self.data = data
+        self.full = data[0:]
         self.cur = 0
         self.linesize = 16
 

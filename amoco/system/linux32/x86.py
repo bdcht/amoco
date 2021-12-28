@@ -176,32 +176,34 @@ def pop_eip(m, **kargs):
 def libc_start_main(m, **kargs):
     "tags: func_call"
     m[cpu.eip] = m(cpu.mem(cpu.esp + 4, 32))
-    cpu.push(m, cpu.ext("exit", size=32))
+    x = cpu.ext("exit",size=32)
+    x.stub = libc_exit
+    cpu.push(m, x)
 
 
 @DefineStub(OS, "exit")
 def libc_exit(m, **kargs):
-    m[cpu.eip] = top(32)
+    m[cpu.eip] = cpu.top(32)
 
 
 @DefineStub(OS, "abort")
 def libc_abort(m, **kargs):
-    m[cpu.eip] = top(32)
+    m[cpu.eip] = cpu.top(32)
 
 
 @DefineStub(OS, "__assert")
 def libc_assert(m, **kargs):
-    m[cpu.eip] = top(32)
+    m[cpu.eip] = cpu.top(32)
 
 
 @DefineStub(OS, "__assert_fail")
 def libc_assert_fail(m, **kargs):
-    m[cpu.eip] = top(32)
+    m[cpu.eip] = cpu.top(32)
 
 
 @DefineStub(OS, "_assert_perror_fail")
 def _assert_perror_fail(m, **kargs):
-    m[cpu.eip] = top(32)
+    m[cpu.eip] = cpu.top(32)
 
 
 # ----------------------------------------------------------------------------

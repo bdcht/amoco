@@ -8,7 +8,7 @@ from os import path
 from PySide2.QtWidgets import QApplication
 from PySide2.QtCore import QPointF
 
-from amoco.ui.render import Formats
+from amoco.ui.render import Formats,conf
 #from . import rc_icons
 
 app = QApplication.instance() or QApplication([])
@@ -17,9 +17,18 @@ app.setApplicationName("amoco-qt")
 # set default styleSheet:
 current_path = path.abspath(path.dirname(__file__))
 filename = path.join(current_path, 'style.qss')
-with open(filename,'r') as f:
-    _style = f.read()
-    app.setStyleSheet(_style)
+filename = conf.UI.qstylesheet or filename
+if filename.startswith(":"):
+    if filename[1:]=="qdarkstyle":
+        try:
+            import qdarkstyle
+            app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside2'))
+        except:
+            pass
+else:
+    with open(filename,'r') as f:
+        _style = f.read()
+        app.setStyleSheet(_style)
 
 try:
     # integrate Qt mainloop into IPython console:

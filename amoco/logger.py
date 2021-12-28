@@ -43,7 +43,7 @@ VERBOSE = 15
 logging.addLevelName(VERBOSE, "VERBOSE")
 # logging.captureWarnings(True)
 
-default_format = logging.Formatter("[%(levelname)-7s] %(name)-24s: %(message)s")
+default_format = logging.Formatter("[%(levelname)-7s] %(name)-32s: %(message)s")
 
 from amoco.config import conf
 

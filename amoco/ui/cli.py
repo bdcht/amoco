@@ -8,7 +8,9 @@
 cli.py
 ======
 
-This module...
+This module allows to prompt for high-level "amoco" commands defined in the srv argument.
+It provides a convinient way of emulating a binary from a gdb-like interface rather than
+from the [i]python console. See :mod:`srv` module for details.
 """
 
 import cmd

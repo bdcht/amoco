@@ -1,6 +1,8 @@
 import pytest
 
-from amoco.system.utils import *
+from amoco.system.core import DataIO
+from amoco.system.structs.HEX import HEX, HEXline, EndOfFile
+from amoco.system.structs.SREC import SREC
 
 def test_parser_hex(samples):
     for filename in samples:

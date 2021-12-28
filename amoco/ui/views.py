@@ -436,7 +436,7 @@ class execView(View):
                     tn = tn[1]
                     if tn == Token.Memory:
                         tn = Token.Address
-                        tv = re.findall('\[(0x[0-9a-zA-Z]+)\]',tv)
+                        tv = re.findall(r'\[(0x[0-9a-zA-Z]+)\]',tv)
                         if len(tv)==1:
                             tv = tv[0]
                         else:

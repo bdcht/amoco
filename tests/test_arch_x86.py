@@ -260,274 +260,274 @@ def test_pickle_instruction():
 #------------------------------------------------------------------------------
 
 
-def test_asm_000(map):
+def test_asm_000(amap):
   c = b'\x90'
   i = cpu.disassemble(c,address=0)
   # fake eip cst:
-  map[eip] = cst(0,32)
-  i(map)
-  assert str(map(eip))=='0x1'
+  amap[eip] = cst(0,32)
+  i(amap)
+  assert str(amap(eip))=='0x1'
 
 # wait
-def test_asm_001(map):
+def test_asm_001(amap):
   c = b'\x9b'
   i = cpu.disassemble(c,address=0)
-  i(map)
+  i(amap)
   assert i.mnemonic=='WAIT'
-  assert str(map(eip))=='0x2'
+  assert str(amap(eip))=='0x2'
 
 # leave
-def test_asm_002(map):
+def test_asm_002(amap):
   c = b'\xc9'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert str(map)=='''\
+  i(amap)
+  assert str(amap)=='''\
 eip <- { | [0:32]->0x3 | }
 esp <- { | [0:32]->(ebp+0x4) | }
 ebp <- { | [0:32]->M32(ebp) | }'''
 
 # ret
-def test_asm_003(map):
+def test_asm_003(amap):
   c = b'\xc3'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert str(map(eip))=='M32(ebp+4)'
-  assert str(map(esp))=='(ebp+0x8)'
-  assert str(map(ebp))=='M32(ebp)'
+  i(amap)
+  assert str(amap(eip))=='M32(ebp+4)'
+  assert str(amap(esp))=='(ebp+0x8)'
+  assert str(amap(ebp))=='M32(ebp)'
 
 # hlt
-def test_asm_004(map):
+def test_asm_004(amap):
   c = b'\xf4'
   i = cpu.disassemble(c,address=0)
-  i(map)
+  i(amap)
   assert i.mnemonic=='HLT'
-  assert map(eip)==top(32)
+  assert amap(eip)==top(32)
 
 # int3
-def test_asm_005(map):
+def test_asm_005(amap):
   c = b'\xcc'
   i = cpu.disassemble(c,address=0)
   assert i.mnemonic=='INT3'
-  i(map)
+  i(amap)
 
 # push eax
-def test_asm_006(map):
+def test_asm_006(amap):
   c = b'\x50'
   i = cpu.disassemble(c,address=0)
-  map.clear()
-  map[eip] = cst(0)
-  map[esp] = cst(0)
-  i(map)
-  assert map(mem(esp))==eax
-  assert map(esp)==cst(-4)
+  amap.clear()
+  amap[eip] = cst(0)
+  amap[esp] = cst(0)
+  i(amap)
+  assert amap(mem(esp))==eax
+  assert amap(esp)==cst(-4)
 
 # pop eax
-def test_asm_007(map):
+def test_asm_007(amap):
   c = b'\x58'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(eax)==eax
-  assert map(esp)==0
+  i(amap)
+  assert amap(eax)==eax
+  assert amap(esp)==0
 
 # call edx
-def test_asm_008(map):
+def test_asm_008(amap):
   c = b'\xff\xd2'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(eip)==edx
-  assert map(mem(esp))==0x4
+  i(amap)
+  assert amap(eip)==edx
+  assert amap(mem(esp))==0x4
 
 # call eip+0x00000000 (eip+0)
-def test_asm_009(map):
+def test_asm_009(amap):
   c = b'\xe8\x00\x00\x00\x00'
   i = cpu.disassemble(c,address=0)
   i.address = 0x08040000
-  map.clear()
-  i(map)
-  assert map(mem(esp,32))==map(eip)
+  amap.clear()
+  i(amap)
+  assert amap(mem(esp,32))==amap(eip)
 
 # call eip+0xffffff9b (eip-101)
-def test_asm_010(map):
+def test_asm_010(amap):
   c = b'\xe8\x9b\xff\xff\xff'
   i = cpu.disassemble(c,address=0)
-  map.clear()
+  amap.clear()
   i.address = 0x08040005
-  map[eip] = cst(i.address,32)
-  i(map)
+  amap[eip] = cst(i.address,32)
+  i(amap)
   assert str(i)=='call        0x803ffa5'
-  assert map(mem(esp))==i.address+5
-  assert map(eip)==(i.address+5-101)
+  assert amap(mem(esp))==i.address+5
+  assert amap(eip)==(i.address+5-101)
 
 # jmp eip+12
-def test_asm_011(map):
+def test_asm_011(amap):
   c = b'\xeb\x0c'
   i = cpu.disassemble(c,address=0)
-  i.address = map(eip).v
-  i(map)
-  assert map(mem(esp))==i.address+101
-  assert map(eip)==i.address+i.length+12
+  i.address = amap(eip).v
+  i(amap)
+  assert amap(mem(esp))==i.address+101
+  assert amap(eip)==i.address+i.length+12
 
 # jmp eip-32
-def test_asm_012(map):
+def test_asm_012(amap):
   c = b'\xe9\xe0\xff\xff\xff'
   i = cpu.disassemble(c,address=0)
-  i.address = map(eip).v
-  i(map)
-  assert map(eip)==i.address+i.length-32
+  i.address = amap(eip).v
+  i(amap)
+  assert amap(eip)==i.address+i.length-32
 
 # jmp [0x0805b0e8]
-def test_asm_013(map):
+def test_asm_013(amap):
   c = b'\xff\x25\xe8\xb0\x05\x08'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(eip)==mem(cst(0x805b0e8))
+  i(amap)
+  assert amap(eip)==mem(cst(0x805b0e8))
 
 # retn 0xc
-def test_asm_014(map):
+def test_asm_014(amap):
   c = b'\xc2\x0c\x00'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(eip)==0x804000a
-  assert str(map(esp))=='(esp+0xc)'
+  i(amap)
+  assert amap(eip)==0x804000a
+  assert str(amap(esp))=='(esp+0xc)'
 
 # int 0x80
-def test_asm_015(map):
+def test_asm_015(amap):
   c = b'\xcd\x80'
   i = cpu.disassemble(c,address=0)
-  i(map)
+  i(amap)
 
 # inc eax
-def test_asm_016(map):
+def test_asm_016(amap):
   c = b'\x40'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(eax)==(eax+1)
+  i(amap)
+  assert amap(eax)==(eax+1)
 
 # dec esi
-def test_asm_017(map):
+def test_asm_017(amap):
   c = b'\x4e'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(esi)==(esi-1)
+  i(amap)
+  assert amap(esi)==(esi-1)
 
 
 # mov eax,[eax+0x10]
-def test_asm_018(map):
+def test_asm_018(amap):
   c = b'\x8b\x40\x10'
   i = cpu.disassemble(c,address=0)
-  map.clear()
-  i(map)
-  assert str(map(eax))=='M32(eax+16)'
+  amap.clear()
+  i(amap)
+  assert str(amap(eax))=='M32(eax+16)'
 
 # movsx edx,al
-def test_asm_019(map):
+def test_asm_019(amap):
   c = b'\x0f\xbe\xd0'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(edx)[0:8]==map(al)
-  assert str(map(edx)[8:32])=='(M8(eax+16)[7:8] ? -0x1 : 0x0)'
+  i(amap)
+  assert amap(edx)[0:8]==amap(al)
+  assert str(amap(edx)[8:32])=='(M8(eax+16)[7:8] ? -0x1 : 0x0)'
 
 # movzx edx,[eax+0x0805b13c]
-def test_asm_020(map):
+def test_asm_020(amap):
   c = b'\x0f\xb6\x90\x3c\xb1\x05\x08'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(edx)[8:32]==0
+  i(amap)
+  assert amap(edx)[8:32]==0
 
 # add [eax],al
-def test_asm_021(map):
+def test_asm_021(amap):
   c = b'\x00\x00'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert str(map(mem(eax,8)))=='(M8(M32(eax+16))+M8(eax+16))'
+  i(amap)
+  assert str(amap(mem(eax,8)))=='(M8(M32(eax+16))+M8(eax+16))'
 
 # sub [edx+esi-0x43aa74b0], cl
-def test_asm_022(map):
+def test_asm_022(amap):
   c = b'\x28\x8c\x32\x50\x8b\x55\xbc'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  loc = ptr(map(edx)+esi,disp=-0x43aa74b0)
-  assert str(map[mem(loc,8)])=='((-cl)+M8(({ | [0:8]->M8(M32(eax+16)+134590780) | [8:32]->0x0 | }+esi)-1135244464))'
+  i(amap)
+  loc = ptr(amap(edx)+esi,disp=-0x43aa74b0)
+  assert str(amap[mem(loc,8)])=='((-cl)+M8(({ | [0:8]->M8(M32(eax+16)+134590780) | [8:32]->0x0 | }+esi)-1135244464))'
 
 # and ebp,[edi-0x18]
-def test_asm_023(map):
+def test_asm_023(amap):
   c = b'\x23\x6f\xe8'
   i = cpu.disassemble(c,address=0)
-  map.clear()
-  i(map)
-  assert map(ebp)==ebp&mem(edi,32,disp=-0x18)
+  amap.clear()
+  i(amap)
+  assert amap(ebp)==ebp&mem(edi,32,disp=-0x18)
 
 # and esp,0xfffffff0
-def test_asm_024(map):
+def test_asm_024(amap):
   c = b'\x83\xe4\xf0'
   i = cpu.disassemble(c,address=0)
-  map[esp] = cst(0xc0000004)
-  i(map)
-  assert map[esp]==0xc0000000
+  amap[esp] = cst(0xc0000004)
+  i(amap)
+  assert amap[esp]==0xc0000000
 
 # or al,0
-def test_asm_025(map):
+def test_asm_025(amap):
   c = b'\x0c\x00'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(al)==al|0
-  assert map(ah)==ah
+  i(amap)
+  assert amap(al)==al|0
+  assert amap(ah)==ah
 
 # xor edx,[ebp-0x1c]
-def test_asm_026(map):
+def test_asm_026(amap):
   c = b'\x33\x55\xe4'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(edx)==edx^map(mem(ebp,32,disp=-0x1c))
+  i(amap)
+  assert amap(edx)==edx^amap(mem(ebp,32,disp=-0x1c))
 
 # cmp edx,0
-def test_asm_027(map):
+def test_asm_027(amap):
   c = b'\x83\xfa\x00'
   i = cpu.disassemble(c,address=0)
-  map.clear()
-  i(map)
-  assert str(map(zf))=='(edx==0x0)'
+  amap.clear()
+  i(amap)
+  assert str(amap(zf))=='(edx==0x0)'
 
 # sal al,2
-def test_asm_028(map):
+def test_asm_028(amap):
   c = b'\xc0\xf0\x02'
   i = cpu.disassemble(c,address=0)
-  i(map)
+  i(amap)
 
 # sal esi,0
-def test_asm_029(map):
+def test_asm_029(amap):
   c = b'\xc1\xf6\x20'
   i = cpu.disassemble(c,address=0)
-  i(map)
+  i(amap)
 
 # mov byte ptr [edx], al
-def test_asm_030(map):
+def test_asm_030(amap):
   c = b'\x88\x02'
   i = cpu.disassemble(c,address=0)
-  i(map)
+  i(amap)
 
 # lea eax, [edx]
-def test_asm_031(map):
+def test_asm_031(amap):
   c = b'\x8d\x02\xc3'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert str(map(eax))=='(edx)'
+  i(amap)
+  assert str(amap(eax))=='(edx)'
 
 # pop esp
-def test_asm_032(map):
+def test_asm_032(amap):
   c = b'\x5c'
   i = cpu.disassemble(c,address=0)
-  map.clear()
-  map[esp] = cst(0x1000,32)
-  map[mem(esp,32)] = cst(0x67452301,32)
-  i(map)
-  assert map(esp)==cst(0x67452301,32)
+  amap.clear()
+  amap[esp] = cst(0x1000,32)
+  amap[mem(esp,32)] = cst(0x67452301,32)
+  i(amap)
+  assert amap(esp)==cst(0x67452301,32)
 
 # push esp
-def test_asm_033(map):
+def test_asm_033(amap):
   c = b'\x54'
   i = cpu.disassemble(c,address=0)
-  i(map)
-  assert map(esp)==0x67452301-4
-  assert map(mem(esp,32))==cst(0x67452301,32)
+  i(amap)
+  assert amap(esp)==0x67452301-4
+  assert amap(mem(esp,32))==cst(0x67452301,32)
 

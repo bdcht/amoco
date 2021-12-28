@@ -30,7 +30,7 @@ It features:
 
 setup(
     name = 'amoco',
-    version = '2.9.5',
+    version = '2.9.6',
     description = 'yet another binary analysis framework',
     long_description = long_descr,
     # Metadata
@@ -67,7 +67,7 @@ setup(
                  'pygments',
                  'z3-solver',
                  'tqdm',
-                 'ccrawl>=1.3',
+                 'ccrawl>=1.5',
                  'PySide2',
                  'IPython'],
     },

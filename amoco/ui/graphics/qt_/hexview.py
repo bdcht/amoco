@@ -6,8 +6,9 @@
 
 from itertools import cycle
 
-from PySide2.QtCore import Qt, QRect, Signal
+from PySide2.QtCore import Qt, QRect, Signal, QPointF, QRectF, QSizeF
 from PySide2.QtGui import QFont, QColor, QPen, QPainter, QPolygon
+from PySide2.QtGui import QPixmap, QImage
 from PySide2.QtWidgets import QAbstractScrollArea
 
 from . import brushes
@@ -20,7 +21,7 @@ class HexView(QAbstractScrollArea):
     handle large list of hexlines to display. A QScrollArea would require
     that the viewport Widget associated to it be fully defined to handle
     the scrolling automatically. Here we really want to render the viewport
-    dynamically based on scrolling events, not the contrary.)
+    dynamically based on scrolling events, not the opposite.)
     """
     clicked = Signal((int,int,QColor))
 
@@ -47,6 +48,9 @@ class HexView(QAbstractScrollArea):
 
     @property
     def select_color(self):
+        """
+        get next color from (cycle) palette
+        """
         self.lastcolor = next(self.palette)
         return self.lastcolor
 
@@ -63,12 +67,17 @@ class HexView(QAbstractScrollArea):
         # the view needs updating whenever the model emits a
         # "UPDATED" signal:
         self.model.UPDATED.connect(self.update)
+        # since we are an "abstract" widget we need to compute the
+        # vertical bar minimum/maximum values.
         self.vb.setMinimum(0)
         nb, r = divmod(self.model.data.size(), self.model.linesize)
         if r>0: nb += 1
         self.vb.setMaximum(nb)
         # set line definition (sizes):
         self.line = HexLine(self.fontMetrics(),self.model.linesize)
+        # prepare grayscale image of the full model data:
+        self.qimg = QImage(self.model.full,self.model.linesize,nb,
+                           QImage.Format_Grayscale8)
         self.update()
 
     def update(self):
@@ -94,6 +103,7 @@ class HexView(QAbstractScrollArea):
             # update drawing:
             self.paintlines(w,first,count,line0)
             self.paintframes(w)
+            self.paintmap(w)
 
     def keyPressEvent(self,e):
         self.statusbar.showMessage("key: %d ('%s') [%08x]"%(e.key(),
@@ -111,12 +121,20 @@ class HexView(QAbstractScrollArea):
         return l
 
     def xyToAddr(self,x,y):
-        h = self.line.height
-        l = y//h
-        # get base address
-        a = self.model.linesize*(self.model.cur+l)
-        # add byte index [0,16[
-        return (a + self.line.index(x))
+        if x<self.line.x_map:
+            h = self.line.height
+            l = y//h
+            # get base address
+            a = self.model.linesize*(self.model.cur+l)
+            # add byte index [0,16[
+            return (a + self.line.index(x))
+        h = self.viewport().height()
+        a = int((y/h)*(self.qimg.height()*self.qimg.width()))
+        a = (a//self.model.linesize)*self.model.linesize
+        if a!=0 and self.selected and a!=(self.selected[0]):
+            return a-1
+        else:
+            return a
 
     def colorize(self,a,nb,color):
         N = self.model.linesize
@@ -145,7 +163,13 @@ class HexView(QAbstractScrollArea):
                 nb = 1
             self.colorize(a,nb_,None)
         else:
-            nb = 1
+            if x<self.line.x_end:
+                nb = 1
+            elif x<self.line.x_map:
+                nb = self.model.linesize
+                a = a-(nb-1)
+            else:
+                nb = self.model.linesize
             self.selected = (a,nb,self.select_color)
         msg = "selection: [addr=%08x, size=%d]"%(a,nb)
         self.statusbar.showMessage(msg)
@@ -253,6 +277,34 @@ class HexView(QAbstractScrollArea):
         x = self.line.x_end
         surface.drawLine(x,r.top(),
                         x,r.bottom())
+
+    def paintmap(self,surface):
+        ww = surface.window().width()
+        wh = surface.window().height()
+        self.vb.setMaximum(self.qimg.height()-(wh//self.line.height))
+        self.line.x_map = ww-32
+        r = QRect(self.line.x_map,2,32,wh-4)
+        surface.drawImage(r,self.qimg)
+        factor = wh/self.qimg.height()
+        pen = surface.pen()
+        p = QPen(Qt.white)
+        p.setCapStyle(Qt.RoundCap)
+        p.setWidth(2)
+        surface.setPen(p)
+        l0 = self.vb.value()*factor
+        l1 = l0+(wh//self.line.height)*factor
+        pad = 4
+        p1 = QPointF(self.line.x_map-pad,l0)
+        p2 = QPointF(self.line.x_map-pad,l1)
+        if l1-l0>4:
+            p.setWidth(2)
+            surface.drawLine(p1,p2)
+            surface.drawLine(p1,QPointF(self.line.x_map,l0))
+            surface.drawLine(p2,QPointF(self.line.x_map,l1))
+        else:
+            p.setWidth(4)
+            surface.drawLine(p1,p2)
+        surface.setPen(pen)
 
     def move(self,cur,e):
         return None

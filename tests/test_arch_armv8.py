@@ -40,11 +40,11 @@ def test_decoder_00x():
 
 #------------------------------------------------------------------------------
 
-def test_asm_000(map):
+def test_asm_000(amap):
   c = b'\x67\x0a\x00\xd0'
   i = cpu.disassemble(c)
   # fake eip cst:
-  map[pc] = cst(0x400924,64)
-  i(map)
-  assert map(r7)==0x54e000
+  amap[pc] = cst(0x400924,64)
+  i(amap)
+  assert amap(r7)==0x54e000
 

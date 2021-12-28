@@ -24,6 +24,9 @@ from amoco.logger import Log
 logger = Log(__name__)
 logger.debug("loading emu")
 
+class EmulError(Exception):
+    pass
+
 
 class emul(object):
     def __init__(self, task):
@@ -41,9 +44,14 @@ class emul(object):
         self.sa = lsweep(task)
         self.hist = deque(maxlen=conf.Emu.hist)
         self.view = emulView(self)
+        self.handlers[EmulError] = self.stop
+        self.handlers[DecodeError] = self.stop
 
     def stepi(self,trace=False):
-        addr = self.task.getx(self.pc)
+        addr = self.task.state(self.pc)
+        if addr._is_top:
+            logger.warning("%s has reached top value")
+            raise EmulError()
         i = self.task.read_instruction(addr)
         if i is not None:
             if trace:
@@ -70,7 +78,10 @@ class emul(object):
                 logger.info("stop iteration due to %s"%reason.__doc__)
                 break
             try:
-                addr = self.task.getx(self.pc)
+                addr = self.task.state(self.pc)
+                if addr._is_top:
+                    raise EmulError()
+                print("%s: %s"%(type(addr),addr))
                 lasti = i = self.task.read_instruction(addr)
                 if trace:
                     ops_v = [(self.task.state(o),o) for o in i.operands]
@@ -206,3 +217,5 @@ class emul(object):
         check.__doc__ = doc
         self.hooks.append(check)
 
+    def stop(self,*args,**kargs):
+        return False

@@ -487,6 +487,7 @@ class OptionalHdr(StructFormatter):
             d = DataDirectory(data, offset=l)
             self.DataDirectories[dnames[dn]] = d
             l += len(d)
+        return self
 
     def __len__(self):
         baselen = StructFormatter.__len__(self)

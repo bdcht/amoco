@@ -24,7 +24,7 @@ r = [reg("r%d" % r, 32) for r in range(8)]
 # status register:
 SR = reg("SR", 32)
 # program counter(s):
-PC = reg("PC", 32)
+pc = reg("PC", 32)
 npc = reg("PC'", 32)
 nnpc = reg('PC"', 32)
 # floating point status/control register:

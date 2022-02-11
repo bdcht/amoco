@@ -3,7 +3,8 @@ import ghidra_bridge
 b = ghidra_bridge.GhidraBridge(namespace=__module__.__dict__)
 
 def select_range(begin,end):
-    from ghidra.program.model.address import setCurrentSelection, AddressSet
+    setCurrentSelection = ghidra.program.model.address.setCurrentSelection
+    AddressSet = ghidra.program.model.address.AddressSet
     setCurrentSelection(AddressSet(toAddr(begin),toAddr(end)))
 
 def add_memory_block(name,start,size,val=None,access="rw"):
@@ -19,21 +20,21 @@ def add_memory_block(name,start,size,val=None,access="rw"):
     return blk
 
 def setPointer(address,size=4):
-    from ghidra.program.model.data import PointerDataType
+    PointerDataType = ghidra.program.model.data.PointerDataType
     if isinstance(address,int):
         address = toAddr(address)
     ls = currentProgram.getListing()
     ls.createData(address, PointerDataType.dataType, size)
 
 def setFunctionName(address,name):
-    from ghidra.program.model.symbol.SourceType import USER_DEFINED
+    USER_DEFINED = ghidra.program.model.symbol.SourceType.USER_DEFINED
     if isinstance(address,int):
         address = toAddr(address)
     f = getFunctionAt(address)
     f.setName(name, USER_DEFINED)
 
 def create_labels(labels):
-    from ghidra.program.model.symbol.SourceType import USER_DEFINED
+    USER_DEFINED = ghidra.program.model.symbol.SourceType.USER_DEFINED
     sym = currentProgram.symbolTable
     for a,r in labels.items():
         if isinstance(a,int):
@@ -41,13 +42,10 @@ def create_labels(labels):
         sym.createLabel(a, r, USER_DEFINED)
 
 def get_decompiled(func_name):
-    from ghidra.app.decompiler import DecompileOptions
-    from ghidra.app.decompiler import DecompInterface
-    from ghidra.util.task import ConsoleTaskMonitor
     func = getGlobalFunctions(func_name)[0]
-    options = DecompileOptions()
-    monitor = ConsoleTaskMonitor()
-    ifc = DecompInterface()
+    options = ghidra.app.decompiler.DecompileOptions()
+    monitor = ghidra.util.task.ConsoleTaskMonitor()
+    ifc = ghidra.app.decompiler.DecompInterface()
     ifc.setOptions(options)
     ifc.openProgram(func.getProgram())
     res = ifc.decompileFunction(func, 1000, monitor)
@@ -79,11 +77,10 @@ def get_decompiled_symbols(func_name):
         print("  nameLocked:   {}".format(symbol.nameLocked))
 
 def get_ast_nodes(func_name):
-    from ghidra.app.decompiler import ClangStatement
     res = get_decompiled(func_name)
     # get (decompiled) high-function object from res:
     def walk(node,L):
-        if type(node) == ClangStatement:
+        if type(node) == ghidra.app.decompiler.ClangStatement:
             L.append(node)
         else:
             for i in range(node.numChildren()):

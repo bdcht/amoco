@@ -476,7 +476,7 @@ class IDENT(StructFormatter):
         if data:
             self.unpack(data)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         StructFormatter.unpack(self, data, offset)
         if self.ELFMAG0 != 0x7F or self.ELFMAG != b"ELF":
             raise ElfError("Wrong magic number, not an ELF file ?")
@@ -543,7 +543,7 @@ class Ehdr(StructFormatter):
         if data:
             self.unpack(data)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         f0 = self.fields[0]
         self._v.e_ident = f0.unpack(data, offset)
         offset += f0.size()

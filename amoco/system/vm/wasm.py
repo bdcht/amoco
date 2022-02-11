@@ -70,7 +70,7 @@ class VectorField(Field):
         self.typename = f0.typename
         self.count = 0
         self.order = f0.order
-        self.align_value = f0.align_value
+        self._align_value = f0.align_value
         self.comment = f0.comment
         self.name = f0.name
         self._sz = 0
@@ -80,7 +80,7 @@ class VectorField(Field):
     def type(self):
         return self.__type
 
-    def size(self):
+    def size(self, psize=0):
         return self._sz
 
     @property
@@ -88,7 +88,7 @@ class VectorField(Field):
         cnt = self.count if self.count>0 else '#'
         return "vector(%s)[%s]: %s; %s"%(self.typename,cnt,self.name,self.comment)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         "returns a vector of count element(s) of its self.type"
         n,sz = read_leb128(data,1,offset)
         offset += sz
@@ -132,7 +132,7 @@ class Module(StructFormatter):
         if data:
             self.unpack(data,offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         super().unpack(data, offset)
         if self.magic != b"\0asm":
             raise WasmError("Wrong magic number, not a binary Wasm file ?")
@@ -225,7 +225,7 @@ class TypeSection(StructFormatter):
         if data:
             self.unpack(data,offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         ft = VectorField("FunctionType : ft")
         self.update(ft.get(self.content))
@@ -281,7 +281,7 @@ class ImportSection(StructFormatter):
         if data:
             self.unpack(data,offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         im = VectorField("Import : im")
         self.update(im.get(self.content))
@@ -309,7 +309,7 @@ class Import(StructFormatter):
         if data:
             self.unpack(data,offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         from codecs import decode
         super().unpack(data,offset)
         self.mod = decode(self.mod,"UTF-8")
@@ -355,7 +355,7 @@ class FunctionSection(StructFormatter):
         if data:
             self.unpack(data,offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         x = VectorField("I*%leb128 : x")
         self.update(x.get(self.content))
@@ -380,7 +380,7 @@ class TableSection(StructFormatter):
         if data:
             self.unpack(data,offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         tt = VectorField("TableType : tt")
         self.update(tt.get(self.content))
@@ -400,7 +400,7 @@ class TableType(StructFormatter):
         if data:
             self.unpack(data,offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         if len(self.fields)==4:
             self.fields.pop()
         super().unpack(data,offset)
@@ -439,7 +439,7 @@ class MemorySection(StructFormatter):
         if data:
             self.unpack(data,offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         mem = VectorField("MemType : mem")
         self.update(mem.get(self.content))
@@ -462,7 +462,7 @@ class MemType(StructFormatter):
         if data:
             self.unpack(data,offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         if len(self.fields)==3:
             self.fields.pop()
         super().unpack(data,offset)
@@ -502,7 +502,7 @@ class GlobalSection(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         glob = VectorField("GlobalType : glob")
         self.update(glob.get(self.content))
@@ -544,7 +544,7 @@ class ExportSection(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         ex = VectorField("Export : ex")
         self.update(ex.get(self.content))
@@ -572,7 +572,7 @@ class Export(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         from codecs import decode
         super().unpack(data,offset)
         self.name = decode(self.name,"UTF-8")
@@ -597,7 +597,7 @@ class StartSection(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         n,sz = read_uleb128(self.content)
         self.x = n
@@ -622,7 +622,7 @@ class ElementSection(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         seg = VectorField("Elem : seg")
         self.update(seg.get(self.content))
@@ -668,7 +668,7 @@ class Elem(StructFormatter):
         self.update(v.get(data,offset))
         return v
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         self.reset()
         super().unpack(data,offset)
         offset += 1
@@ -738,7 +738,7 @@ class CodeSection(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         seg = VectorField("Code : code")
         self.update(seg.get(self.content))
@@ -762,7 +762,7 @@ class Code(StructFormatter):
         t = type("container", (object,), {})
         self._v = t()
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         self.reset()
         super().unpack(data,offset)
         offset += len(self)
@@ -813,7 +813,7 @@ class DataSection(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         seg = VectorField("Data : code")
         self.update(seg.get(self.content))
@@ -855,7 +855,7 @@ class Data(StructFormatter):
         return v
 
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         offset += 1
         if self.d&0x02:
@@ -888,7 +888,7 @@ class DataCountSection(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0,psize=0):
         super().unpack(data,offset)
         n,sz = read_uleb128(self.content)
         self.n = n

@@ -38,7 +38,7 @@ class Header(StructFormatter):
         if data:
             self.unpack(data,offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         super().unpack(data, offset)
         if self.magic != b"PS-X EXE":
             raise TypeError("Wrong magic number, not a PS-X EXE file ?")

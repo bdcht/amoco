@@ -81,7 +81,7 @@ class StructCore(object):
             return cls.fields[cls.union].format()
 
     @classmethod
-    def size(cls):
+    def size(cls, psize=0):
         """
         This is a class method that basically computes the sum of
         the sizes of fields (or the largest field if a union) while
@@ -89,12 +89,13 @@ class StructCore(object):
         It uses the *class* fields instances so that the resulting
         value is infinite if any of these field is a VarField.
         """
-        A = cls.align_value()
+        psize = {32:4, 64:8}.get(psize,psize)
+        A = cls.align_value(psize)
         sz = 0
         for f in cls.fields:
             if cls.union is False and not cls.packed:
-                sz = f.align(sz)
-            fsz = f.size()
+                sz = f.align(sz, psize)
+            fsz = f.size(psize)
             if cls.union is False:
                 sz += fsz
             elif fsz > sz:
@@ -146,15 +147,15 @@ class StructCore(object):
             return False
 
     @classmethod
-    def align_value(cls):
-        return max([f.align_value for f in cls.fields])
+    def align_value(cls,psize=0):
+        return max([f.align_value(psize) for f in cls.fields])
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         for f in self.fields:
             if self.union is False and not self.packed:
-                offset = f.align(offset)
+                offset = f.align(offset, psize)
             try:
-                value = f.unpack(data, offset)
+                value = f.unpack(data, offset, psize)
             except Exception:
                 name = self.__class__.__name__
                 logger.error("error unpacking %s %s"%(name,str(f)))
@@ -172,10 +173,10 @@ class StructCore(object):
                     # is a dict with subnames/subvalues:
                     self._v.__dict__.update(value)
             if self.union is False:
-                offset += f.size()
+                offset += f.size(psize)
         return self
 
-    def pack(self, data=None):
+    def pack(self, data=None, psize=0):
         if data is None:
             data = []
             for f in self.fields:
@@ -190,28 +191,48 @@ class StructCore(object):
         parts = []
         offset = 0
         for f, v in zip(self.fields, data):
-            p = f.pack(v)
+            p = f.pack(v,psize)
             if not self.packed:
-                pad = f.align(offset) - offset
+                pad = f.align(offset,psize) - offset
                 p = b"\0" * pad + p
             parts.append(p)
         if self.union is False:
             res = b"".join(parts)
             if not self.packed:
-                res = res.ljust(self.size(), b"\0")
+                res = res.ljust(self.size(psize), b"\0")
             return res
         else:
             return parts[self.union]
 
-    def offset_of(self, name):
+    def offset_of(self, name, psize=0):
         if self.union is not False:
             return 0
         o = 0
         for f in self.fields:
+            o = f.align(o,psize)
             if f.name == name:
                 return o
-            o = f.align(o) + f.size()
+            o += f.size(psize)
         raise AttributeError(name)
+
+    def offsets(self,psize=0):
+        if self.union is not False:
+            return [(0,f.size(psize)) for f in self.fields]
+        o = 0
+        offsets = []
+        for f in self.fields:
+            o = f.align(o,psize)
+            if hasattr(f,'subsizes'):
+                oo = 0
+                for x in f.subsizes:
+                    xo = float("%d.%d"%(o,oo))
+                    so = float(".%d"%x)
+                    oo += x
+                    offsets.append((xo,so))
+            else:
+                offsets.append((o,f.size(psize)))
+            o += f.size(psize)
+        return offsets
 
 # ------------------------------------------------------------------------------
 

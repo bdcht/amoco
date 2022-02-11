@@ -2,10 +2,20 @@ import pytest
 from amoco.system.structs import *
 
 def test_rawfield():
-    f = RawField('I',fcount=2,fname='v')
+    f = RawField('I',fcount=2,fname='v',falign=4)
     assert f.format()=='2I'
     assert f.size()==8
     assert f.unpack(b'\0\x01\x02\x03AAAA') == (0x03020100,0x41414141)
+    assert f.align_value()==4
+
+def test_rawfieldPtr():
+    f = RawField('P',fname='ptr')
+    assert f.format()=='P'
+    assert f.size(psize=32)==4
+    assert f.size(psize=4)==4
+    assert f.size(psize=64)==8
+    assert f.size(psize=8)==8
+    assert f.unpack(b'\0\x01\x02\x03',psize=32) == 0x03020100
 
 def test_varfield():
     f = VarField('s',fname='string')
@@ -96,6 +106,7 @@ def test_Field_aliasing():
     # s uses type S1 to decode its field 'x',
     # which by default is little-endian:
     s.unpack(b'\x00\x00\x00\x01')
+    assert s.align_value()==4
     assert s.x.i == 0x01000000
     # an S3 instance q, would do the same but
     # if we modify the S1 type to change its
@@ -209,6 +220,50 @@ def test_bitfield2():
     assert v['c'] == 0
     assert v['d'] == 1
 
+def test_bitfield3():
+    xxx = TypeDefine('int16', 'h')
+    f = BitFieldEx('int16',fcount=[2,4,3,1,6],fname=['a','b','c','d','e'])
+    assert f.format()=='2s'
+    assert f.size()==2
+    assert f.type().unpack(b"\x01\x02")==513
+    D = f.unpack(b"\x01\x02")
+    assert D['a'] == D['d'] == 1
+    assert D['b'] == D['c'] == D['e'] == 0
+    D = f.unpack(b"\x29\x8a")
+    assert D['b'] == 10
+    assert D['e'] == 34
+
+def test_bitfield_struct():
+    xxx = TypeDefine('int16', 'h')
+    @StructDefine("""
+    int16 *#2/4/3/1/6 : a/b/c/d/e
+    """)
+    class stru_bf(StructFormatter):
+        order = '<'
+        def __init__(self,data="",offset=0):
+            if data:
+                self.unpack(data,offset)
+    s = stru_bf()
+    assert s.size()==2
+    assert s.offsets() == [(0.0, 0.2), (0.2, 0.4), (0.6, 0.3), (0.9, 0.1), (0.1, 0.6)]
+
+def test_ptr_struct():
+    xxx = TypeDefine('int32', 'I')
+    @StructDefine("""
+    P : ptr
+    int32 : val
+    l : lval
+    """)
+    class stru_ptrval(StructFormatter):
+        order = '<'
+        def __init__(self,data="",offset=0):
+            if data:
+                self.unpack(data,offset)
+    s = stru_ptrval()
+    assert s.size(psize=4)==12
+    assert s.size(psize=8)==24
+    assert s.offsets(psize=4) == [(0, 4), (4, 4), (8, 4)]
+    assert s.offsets(psize=8) == [(0, 8), (8, 4), (16, 8)]
 
 def test_bindedfield():
     @StructDefine("""

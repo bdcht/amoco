@@ -56,7 +56,7 @@ class Field(object):
         self.count = fcount
         self.name = fname
         self.order = forder or "<"
-        self.align_value = falign
+        self._align_value = falign
         self.comment = fcomment
         self.instance = None
 
@@ -79,7 +79,7 @@ class Field(object):
         sz = self.size()
         return "%ds" % sz
 
-    def size(self):
+    def size(self,psize=0):
         # if the field belongs to an instance and was unpacked already,
         # we return the actual byte-length of the resulting struct:
         try:
@@ -87,7 +87,7 @@ class Field(object):
         except:
         # otherwise we return the natural size of the field's type,
         # which may be infinite if the type contains a VarField...
-            sz =  self.type.size()
+            sz =  self.type.size(psize)
             if self.count > 0:
                 sz = sz * self.count
             return sz
@@ -116,26 +116,25 @@ class Field(object):
         else:
             return False
 
-    @property
-    def align_value(self):
+    def align_value(self,psize=0):
         if self._align_value:
             return self._align_value
-        return self.type.align_value()
+        if self.type:
+            return self.type.align_value(psize)
+        return psize
 
-    @align_value.setter
-    def align_value(self, val):
-        self._align_value = val
-
-    def align(self, offset):
-        A = self.align_value
+    def align(self, offset, psize=0):
+        A = self.align_value(psize)
+        if A == 0:
+            return offset
         r = offset % A
         if r == 0:
             return offset
         return offset + (A - r)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         "returns a (sequence of count) element(s) of its self.type"
-        blob = self.type().unpack(data, offset)
+        blob = self.type().unpack(data, offset, psize)
         if self.count>0:
             # since we are not a RawField, blob is normally a StructCore instance,
             # but it can be a python raw type in case self is a typedef.
@@ -144,11 +143,11 @@ class Field(object):
             if isinstance(blob,(bytes,StructCore)):
                 sizeof = lambda b: len(b)
             else:
-                sz = self.type.size()
+                sz = self.type.size(psize)
                 if sz<float('Infinity'):
                     sizeof = lambda b: sz
                 else:
-                    sizeof = lambda b: sum((x.size() for x in b),0)
+                    sizeof = lambda b: sum((x.size(psize) for x in b),0)
             # now lets unpack the rest of the series:
             sz = sizeof(blob)
             count = self.count
@@ -156,19 +155,19 @@ class Field(object):
             count -= 1
             offset += sz
             while count > 0:
-                nextblob = self.type().unpack(data, offset)
+                nextblob = self.type().unpack(data, offset, psize)
                 blob.append(nextblob)
                 offset += sizeof(nextblob)
                 count -= 1
         return blob
 
-    def get(self, data, offset=0):
-        return (self.name, self.unpack(data, offset))
+    def get(self, data, offset=0, psize=0):
+        return (self.name, self.unpack(data, offset, psize))
 
-    def pack(self, value):
+    def pack(self, value, psize=0):
         if self.count > 0:
-            return b"".join([self.type().pack(v) for v in value])
-        return self.type.pack(value)
+            return b"".join([self.type().pack(v,psize) for v in value])
+        return self.type.pack(value,psize)
 
     def copy(self,obj=None):
         cls = self.__class__
@@ -221,26 +220,34 @@ class RawField(Field):
         sz = self.count
         return "%d%s" % (sz, fmt)
 
-    def size(self):
-        sz = struct.calcsize(self.typename)
+    def size(self,psize=0):
+        tn = self.typename
+        if psize and tn in ('P','L','l'):
+            tn = {4:'I',8:'Q',32:'I',64:'Q'}.get(psize,tn)
+        sz = struct.calcsize(tn)
         if self.count > 0:
             sz = sz * self.count
         return sz
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         pfx = "%d" % self.count if self.count > 0 else ""
+        tn = self.typename
+        if psize and tn in ('P','L','l'):
+            tn = {4:'I',8:'Q',32:'I',64:'Q'}.get(psize,tn)
         res = struct.unpack(
-            self.order + pfx + self.typename,
-            data[offset : offset + self.size()]
+            self.order + pfx + tn,
+            data[offset : offset + self.size(psize)]
         )
-        if self.count == 0 or self.typename == "s":
+        if self.count == 0 or tn == "s":
             return res[0]
-        if self.typename == "c":
+        if tn == "c":
             return b"".join(res)
         return res
 
-    def pack(self, value):
+    def pack(self, value, psize=0):
         fmt = self.typename
+        if psize and fmt in ('P','L','l'):
+            fmt = {4:'I',8:'Q',32:'I',64:'Q'}.get(psize,fmt)
         pfx = "%d" % self.count if self.count > 0 else ""
         order = self.ORDER if hasattr(self, "ORDER") else self.order
         if fmt=='c' and isinstance(value,bytes):
@@ -263,7 +270,7 @@ class RawField(Field):
 class BitField(RawField):
     """
     A BitField is a 0-count RawField with additional subnames and subsizes to allow
-    unpack the raw type into several named values each of given bit sizes.
+    unpack the type into several named values each of given bit sizes.
 
     Arguments:
         - The ftype argument is the one that gets "splitted" into parts of bits.
@@ -281,7 +288,7 @@ class BitField(RawField):
         self.subnames = fname or []
         # other attributes are as usual...
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         value = super().unpack(data,offset)
         D = {}
         l = 0
@@ -291,7 +298,7 @@ class BitField(RawField):
             l += sz
         return D
 
-    def pack(self, D):
+    def pack(self, D, psize=0):
         value = 0
         l = 0
         for x,sz in zip(self.subnames,self.subsizes):
@@ -299,7 +306,72 @@ class BitField(RawField):
             v = (D[x]&mask)<<l
             value |= v
             l += sz
-        return super().pack(value)
+        return super().pack(value,psize)
+
+    def copy(self,obj=None):
+        cls = self.__class__
+        newf = cls(
+            self.typename,
+            self.subsizes,
+            self.subnames,
+            self.order,
+            self._align_value,
+            self.comment,
+        )
+        newf.instance = obj
+        return newf
+
+    def __repr__(self):
+        fmt = self.typename
+        r = "<Field %s>" % str(["%s:%s"%(n,s) for n,s in zip(self.subnames,
+                                                             self.subsizes)])
+        return r
+
+class BitFieldEx(Field):
+    """
+    A BitFieldEx is identical to a BitField but inherits from Field rather than RawField.
+    This allows to rely on a type that has been defined from a macro or a typedef.
+    """
+
+    def __init__(self, ftype, fcount=0, fname=None, forder=None, falign=1, fcomment=""):
+        super().__init__(ftype,0,None,forder,falign,fcomment)
+        self.subsizes = fcount or []
+        # names of each splitted part is provided here:
+        self.subnames = fname or []
+        # other attributes are as usual...
+
+    def unpack(self, data, offset=0, psize=0):
+        value = super().unpack(data,offset)
+        D = {}
+        l = 0
+        for name,sz in zip(self.subnames,self.subsizes):
+            mask  = (1<<sz)-1
+            D[name] = (value>>l)&mask
+            l += sz
+        return D
+
+    def pack(self, D, psize=0):
+        value = 0
+        l = 0
+        for x,sz in zip(self.subnames,self.subsizes):
+            mask = (1<<sz)-1
+            v = (D[x]&mask)<<l
+            value |= v
+            l += sz
+        return super().pack(value,psize)
+
+    def copy(self,obj=None):
+        cls = self.__class__
+        newf = cls(
+            self.typename,
+            self.subsizes,
+            self.subnames,
+            self.order,
+            self._align_value,
+            self.comment,
+        )
+        newf.instance = obj
+        return newf
 
     def __repr__(self):
         fmt = self.typename
@@ -326,14 +398,17 @@ class VarField(RawField):
         cnt = self.count if hasattr(self, "_sz") else "#"
         return "%s%s" % (cnt, fmt)
 
-    def size(self):
+    def size(self, psize=0):
         try:
             return self._sz
         except AttributeError:
             return float("Infinity")
 
-    def unpack(self, data, offset=0):
-        sz1 = struct.calcsize(self.typename)
+    def unpack(self, data, offset=0, psize=0):
+        tn = self.typename
+        if psize and tn=='P':
+            tn = {4:'I',8:'Q',32:'I',64:'Q'}.get(psize,'P')
+        sz1 = struct.calcsize(tn)
         el1 = data[offset : offset + sz1]
         el1 = struct.unpack(self.order + self.typename, el1)[0]
         res = [el1]
@@ -351,8 +426,11 @@ class VarField(RawField):
             return b"".join(res)
         return res
 
-    def pack(self, value):
-        res = [struct.pack(self.order + self.typename, v) for v in value]
+    def pack(self, value, psize=0):
+        tn = self.typename
+        if psize and tn=='P':
+            tn = {4:'I',8:'Q',32:'I',64:'Q'}.get(psize,'P')
+        res = [struct.pack(self.order + tn, v) for v in value]
         return b"".join(res)
 
     def copy(self,obj=None):
@@ -415,12 +493,12 @@ class Leb128Field(VarField):
     def _terminate(self,b,f):
         return b&0x80==0
 
-    def unpack(self,data,offset=0):
+    def unpack(self,data,offset=0, psize=0):
         val, sz = read_leb128(data,self.sign,offset)
         self._sz = sz
         return val
 
-    def pack(self, value):
+    def pack(self, value, psize=0):
         if self.sign==1:
             return write_uleb128(value)
         else:
@@ -440,8 +518,10 @@ class CntField(RawField):
     that define its value."
     """
 
-    def format(self):
+    def format(self, psize=0):
         fmt = self.typename
+        if psize and fmt=='P':
+            fmt = {4:'I',8:'Q',32:'I',64:'Q'}.get(psize,'P')
         # fcount is used as a placeholder for the initial fcount value
         # that correspond to the formatting of the counter. For example
         # for a CntField defined from s*~I, the typename is 's' and the
@@ -457,19 +537,19 @@ class CntField(RawField):
             cnt = "#"
         return "%s%s" % (cnt, fmt)
 
-    def size(self):
+    def size(self, psize=0):
         try:
-            return struct.calcsize(self.format())
+            return struct.calcsize(self.format(psize))
         except Exception:
             return float("Infinity")
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         if hasattr(self, "fcount"):
             # the structure has been unpacked already, lets restore
             # the count to its initial form.
             self.count = self.fcount
         # decode the actual count:
-        sz = struct.calcsize(self.count[1:])
+        sz = struct.calcsize(self.count[1:]) #(skip '~')
         nb = data[offset : offset + sz]
         nb = struct.unpack(self.order + self.count[1:], nb)[0]
         # save the initial count form
@@ -478,7 +558,7 @@ class CntField(RawField):
         self.count = nb
         # now fully unpack the whole field:
         res = struct.unpack(
-            self.order + self.format(), data[offset : offset + self.size()]
+            self.order + self.format(psize), data[offset : offset + self.size(psize)]
         )
         if self.count == 0 or self.typename == "s":
             return res[1]
@@ -486,15 +566,15 @@ class CntField(RawField):
             return b"".join(res[1:])
         return res[1:]
 
-    def pack(self, value):
+    def pack(self, value, psize=0):
         if not hasattr(self,"fcount"):
             self.fcount = self.count
         self.count = len(value)
         if isinstance(value,list):
-            res = struct.pack(self.order + self.format(),
+            res = struct.pack(self.order + self.format(psize),
                               self.count, *value)
         else:
-            res = struct.pack(self.order + self.format(),
+            res = struct.pack(self.order + self.format(psize),
                               self.count, value)
         return res
 
@@ -514,8 +594,10 @@ class BindedField(CntField):
     by a (previously unpacked) field of the same structure.
     """
 
-    def format(self):
+    def format(self, psize=0):
         fmt = self.typename
+        if psize and fmt=='P':
+            fmt = {4:'I',8:'Q',32:'I',64:'Q'}.get(psize,'P')
         if hasattr(self, "fcount"):
             cnt = self.count
         else:
@@ -524,13 +606,13 @@ class BindedField(CntField):
             return ""
         return "%s%s" % (cnt, fmt)
 
-    def size(self):
+    def size(self, psize=0):
         try:
-            return struct.calcsize(self.format())
+            return struct.calcsize(self.format(psize))
         except Exception:
             return float("Infinity")
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         if hasattr(self, "fcount"):
             self.count = self.fcount
         self.fcount = self.count
@@ -539,7 +621,7 @@ class BindedField(CntField):
         if self.count==0:
             return None
         res = struct.unpack(
-            self.order + self.format(), data[offset : offset + self.size()]
+            self.order + self.format(psize), data[offset : offset + self.size(psize)]
         )
         if self.typename=="s":
             return res[0]

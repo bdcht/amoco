@@ -344,7 +344,7 @@ class fsd(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         sz = 0
         for f in self.fields[:2]:
             setattr(self, f.name, f.unpack(data, offset + sz, self.order))
@@ -385,7 +385,7 @@ class direct(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         sz = 0
         for f in self.fields[:3]:
             setattr(self, f.name, f.unpack(data, offset + sz, self.order))
@@ -429,7 +429,7 @@ class extent_block(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         sz = 0
         for f in self.fields[:-1]:
             setattr(self, f.name, f.unpack(data, offset + sz, self.order))

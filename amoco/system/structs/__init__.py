@@ -164,13 +164,13 @@ class StructDefine(object):
         "H": 2,
         "i": 4,
         "I": 4,
-        "l": 4,
-        "L": 4,
+        "l": 0,
+        "L": 0,
         "f": 4,
         "q": 8,
         "Q": 8,
         "d": 8,
-        "P": 8,
+        "P": 0,
     }
     integer = pp.Regex(r"[0-9][0-9]*")
     integer.setParseAction(lambda r: int(r[0]))
@@ -229,6 +229,9 @@ class StructDefine(object):
                 f_align = self.alignments[f_type]
             else:
                 f_cls = Field
+                if isinstance(f_count, list):
+                    f_cls = BitFieldEx
+                    f_name = f_name.split('/')
                 f_type = kargs.get(f_type, f_type)
                 f_align = 0
             self.fields.append(
@@ -273,7 +276,7 @@ def TypeDefine(newname, typebase, typecount=0, align_value=0):
     if typecount:
         t.fields[0].count = typecount
     if align_value:
-        t.fields[0].align_value = align_value
+        t.fields[0]._align_value = align_value
     return t
 
 # ------------------------------------------------------------------------------

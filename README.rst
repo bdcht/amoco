@@ -27,7 +27,7 @@ Amoco
 Description
 ===========
 
-Amoco is a python (>=3.7) package dedicated to symbolic analysis of binaries.
+Amoco is a python (>=3.8) package dedicated to symbolic analysis of binaries.
 
 It features:
 
@@ -95,6 +95,12 @@ Please see `LICENSE`_.
 
 Changelog
 =========
+
+- `v2.9.7`_
+
+  * drop python <3.8 support
+  * improve structs package for bitfield support and computation of
+    fields' offsets for chosen pointer size (32 or 64 bits)
 
 - `v2.9.6`_
 
@@ -385,6 +391,7 @@ Changelog
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _QDarkStyleSheet: https://github.com/ColinDuquesnoy/QDarkStyleSheet
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.7: https://github.com/bdcht/amoco/releases/tag/v2.9.7
 .. _v2.9.6: https://github.com/bdcht/amoco/releases/tag/v2.9.6
 .. _v2.9.5: https://github.com/bdcht/amoco/releases/tag/v2.9.5
 .. _v2.9.4: https://github.com/bdcht/amoco/releases/tag/v2.9.4

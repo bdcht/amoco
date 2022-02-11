@@ -447,7 +447,7 @@ class OptionalHdr(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         magic = data[offset : offset + 2]
         if magic == b"\x0b\x01":
             logger.verbose("PE32 Magic found")

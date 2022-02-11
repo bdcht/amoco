@@ -178,7 +178,7 @@ class PublicKey(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         StructFormatter.unpack(self, data, offset)
         offset += 12
         self.modulus = data[offset : offset + self.nlen]
@@ -205,7 +205,7 @@ class CRT(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         StructFormatter.unpack(self, data, offset)
         assert self.header.tag == HAB_TAG_CRT
         crtend = offset + self.header.length
@@ -241,7 +241,7 @@ class CSF(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         StructFormatter.unpack(self, data, offset)
         assert self.header.tag == HAB_TAG_CSF
         csfend = offset + self.header.length
@@ -298,7 +298,7 @@ class CheckData(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         StructFormatter.unpack(self, data, offset)
         assert self.cmd == HAB_CMD_CHK_DAT
         self.flags = self.par >> 3
@@ -355,7 +355,7 @@ class Unlock(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         StructFormatter.unpack(self, data, offset)
         assert self.cmd == HAB_CMD_UNLK
         if self.len > self.size():
@@ -400,7 +400,7 @@ class InstallKey(StructFormatter):
         if data:
             self.unpack(data, offset)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         StructFormatter.unpack(self, data, offset)
         assert self.cmd == HAB_CMD_INS_KEY
         if self.len > self.size():
@@ -458,7 +458,7 @@ class Authenticate(StructFormatter):
             s.append((Token.Literal, ")"))
         return highlight(s)
 
-    def unpack(self, data, offset=0):
+    def unpack(self, data, offset=0, psize=0):
         StructFormatter.unpack(self, data, offset)
         assert self.cmd == HAB_CMD_AUT_DAT
         if self.len > self.size():

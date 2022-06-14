@@ -31,6 +31,13 @@ def listjoin(*args):
 
     return subf
 
+def opport(pos):
+    def port(i, pos=pos):
+        o = i.operands[pos]
+        assert o._is_cst
+        r = mmregs[o.value]
+        return [(Token.Register,"{0}".format(r))]
+    return port
 
 def opreg(pos):
     def subr(i, pos=pos):
@@ -79,7 +86,7 @@ def pcrel(pos):
             npc = pc
         npc += i.length
         offset = i.operands[pos]
-        tgt = npc + 2 * offset
+        tgt = npc + offset
         return [(Token.Address, "*" + str(tgt))]
 
     return subpc
@@ -88,11 +95,23 @@ def pcrel(pos):
 def opadr(pos):
     def subabs(i, pos=pos):
         tgt = i.operands[pos]
-        tgt = 2 * tgt
         return [(Token.Address, "*" + str(tgt))]
 
     return subabs
 
+def format_io(i):
+    L = []
+    for o in i.operands:
+        if o._is_reg:
+            tt = Token.Register
+            r = o
+        elif o._is_cst:
+            tt = Token.Memory
+            r = mmregs.get(o.value,top(8))
+        L.append((tt,"{0}".format(r)))
+        L.append((Token.Literal,', '))
+    L.pop()
+    return L
 
 def format_mem(i):
     s = i.misc["mem"]
@@ -153,6 +172,7 @@ AVR_full_formats = {
     "avr_br": [mnemo, pcrel(0)],
     "avr_noops": [mnemo],
     "avr_call": [mnemo, opadr(0)],
+    "avr_io": [mnemo, format_io],
 }
 
 AVR_full = Formatter(AVR_full_formats)

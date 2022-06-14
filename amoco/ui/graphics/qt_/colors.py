@@ -4,7 +4,7 @@
 # Copyright (C) 2020 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from PySide2.QtGui import QColor
+from PySide6.QtGui import QColor
 
 palette_trbg = {
         'Inchworm': QColor(0xa1,0xe4,0x4d,128),

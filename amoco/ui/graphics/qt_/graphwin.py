@@ -6,19 +6,20 @@
 
 from math import sin,cos,pi,pow,radians
 
-from PySide2.QtCore import (Qt,
+from PySide6.QtCore import (Qt,
                             Signal,
                             QPointF,
                             QRectF,
                            )
-from PySide2.QtGui import (QPen,
+from PySide6.QtGui import (QPen,
                            QColor,
                            QBrush,
                            QFont,
                            QPainterPath,
                            QPolygonF,
+                           QAction,
                           )
-from PySide2.QtWidgets import (QGraphicsScene,
+from PySide6.QtWidgets import (QGraphicsScene,
                                QGraphicsView,
                                QGraphicsItem,
                                QGraphicsEllipseItem,
@@ -26,7 +27,6 @@ from PySide2.QtWidgets import (QGraphicsScene,
                                QGraphicsDropShadowEffect,
                                QGraphicsPathItem,
                                QMenu,
-                               QAction,
                               )
 
 __all__ = ['createFuncGraph','GraphScene','GraphView',

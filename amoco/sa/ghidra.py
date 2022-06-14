@@ -1,9 +1,8 @@
 import ghidra_bridge
 
-b = ghidra_bridge.GhidraBridge(namespace=__module__.__dict__)
+b = ghidra_bridge.GhidraBridge(namespace=locals())
 
 def select_range(begin,end):
-    setCurrentSelection = ghidra.program.model.address.setCurrentSelection
     AddressSet = ghidra.program.model.address.AddressSet
     setCurrentSelection(AddressSet(toAddr(begin),toAddr(end)))
 
@@ -40,6 +39,19 @@ def create_labels(labels):
         if isinstance(a,int):
             a = toAddr(a)
         sym.createLabel(a, r, USER_DEFINED)
+
+def getFunctions_XRefd_at_Location(address):
+    if isinstance(address,int):
+        address = toAddr(address)
+    loc = ghidra.program.util.ProgramLocation(currentProgram,address)
+    F = []
+    for r in ghidra.app.util.XReferenceUtils.getAllXrefs(loc):
+        f = getFunctionContaining(r.getFromAddress())
+        if f is None:
+            print("no function containing reference %s"%r)
+            continue
+        F.append(f)
+    return set(F)
 
 def get_decompiled(func_name):
     func = getGlobalFunctions(func_name)[0]

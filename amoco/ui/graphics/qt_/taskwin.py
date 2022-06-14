@@ -6,14 +6,14 @@
 
 from os import path
 
-from PySide2.QtCore import Qt, QUrl
-from PySide2.QtWidgets import (QMainWindow,
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import (QMainWindow,
                                QDockWidget,
                                QTreeView,
-                               QAction,
                               )
 
-from PySide2.QtQuickWidgets import QQuickWidget
+from PySide6.QtQuickWidgets import QQuickWidget
 
 from . import rc_icons
 
@@ -95,7 +95,7 @@ class TaskWindow(QMainWindow):
         item = m.itemFromIndex(name_index)
         color = self.hexview.select_color
         item.colorize(color)
-        self.binfmt.update()
+        #self.binfmt.update()
         if hasattr(item,'struct'):
             offset = item.offset
             size = len(item.struct)

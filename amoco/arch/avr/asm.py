@@ -21,7 +21,7 @@ def _pop_(fmap, _l):
 
 def __pc(f):
     def pcnpc(i, fmap):
-        fmap[pc] = fmap[pc] + i.length
+        fmap[pc] = fmap[pc] + i.length//2
         if len(fmap.conds) > 0:
             cond = fmap.conds.pop()
             m = mapper()
@@ -97,14 +97,17 @@ def i_BREAK(i, fmap):
     fmap[pc] = ext("BREAK", size=pc.size).call(fmap)
 
 
+@__pc
 def i_IN(i, fmap):
     r, port = i.operands
-    fmap[pc] = ext("IN", size=pc.size).call(fmap)
+    port = port.value
+    fmap[r] = fmap(mmregs.get(port,top(r.size)))
 
-
+@__pc
 def i_OUT(i, fmap):
     port, r = i.operands
-    fmap[pc] = ext("OUT", size=pc.size).call(fmap)
+    port = port.value
+    fmap[mmregs[port]] = fmap(r)
 
 
 # arithmetic & logic instructions:
@@ -513,26 +516,26 @@ def i_LPM(i, fmap):
 @__pc
 def i_BRBC(i, fmap):
     b, offset = i.operands
-    fmap[pc] = fmap(tst(b == bit0, pc + (2 * offset), pc))
+    fmap[pc] = fmap(tst(b == bit0, pc + (offset), pc))
 
 
 @__pc
 def i_BRBS(i, fmap):
     b, offset = i.operands
-    fmap[pc] = fmap(tst(b == bit1, pc + (2 * offset), pc))
+    fmap[pc] = fmap(tst(b == bit1, pc + (offset), pc))
 
 
 @__pc
 def i_CALL(i, fmap):
     adr = i.operands[0]
     _push_(fmap, fmap(pc))
-    fmap[pc] = fmap(2 * adr)
+    fmap[pc] = fmap(adr)
 
 
 @__pc
 def i_JMP(i, fmap):
     adr = i.operands[0]
-    fmap[pc] = fmap(2 * adr)
+    fmap[pc] = fmap(adr)
 
 
 @__pc
@@ -550,13 +553,13 @@ def i_RETI(i, fmap):
 def i_RCALL(i, fmap):
     offset = i.operands[0]
     _push_(fmap, fmap(pc))
-    fmap[pc] = fmap(pc + (2 * offset))
+    fmap[pc] = fmap(pc + (offset))
 
 
 @__pc
 def i_RJMP(i, fmap):
     offset = i.operands[0]
-    fmap[pc] = fmap(pc + (2 * offset))
+    fmap[pc] = fmap(pc + (offset))
 
 
 @__pc

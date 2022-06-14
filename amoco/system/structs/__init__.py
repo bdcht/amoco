@@ -175,7 +175,7 @@ class StructDefine(object):
     integer = pp.Regex(r"[0-9][0-9]*")
     integer.setParseAction(lambda r: int(r[0]))
     bitslen = pp.Group(pp.Suppress("#") + pp.delimitedList(integer,delim='/'))
-    symbol = pp.Regex(r"[A-Za-z_][A-Za-z0-9_/]*")
+    symbol = pp.Regex(r"[A-Za-z_][A-Za-z0-9_/$]*")
     special = pp.Regex(r"[.%][A-Za-z_][A-Za-z0-9_/]*")
     comment = pp.Suppress(";") + pp.restOfLine
     fieldname = pp.Suppress(":") + pp.Group(
@@ -262,8 +262,12 @@ class UnionDefine(StructDefine):
         Alltypes[cls.__name__] = cls
         cls.fields = self.fields
         cls.source = self.source
-        s = [f.size() for f in cls.fields]
-        cls.union = s.index(max(s))
+        cls.union = -1
+        try:
+            s = [f.size() for f in cls.fields]
+            cls.union = s.index(max(s))
+        except AttributeError:
+            pass
         return cls
 
 

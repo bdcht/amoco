@@ -101,6 +101,10 @@ class CoreExec(object):
         if self.cpu is None:
             logger.error("no cpu imported")
             raise ValueError
+        if "mmap" in kargs:
+            mmap = kargs[mmap]
+        else:
+            mmap = self.state.mmap
         maxlen = self.cpu.disassemble.maxlen
         if isinstance(vaddr, int):
             addr = self.cpu.cst(vaddr, self.cpu.PC().size)
@@ -110,7 +114,7 @@ class CoreExec(object):
         else:
             addr = vaddr
         try:
-            istr = self.state.mmap.read(vaddr, maxlen)
+            istr = mmap.read(vaddr, maxlen)
         except MemoryError as e:
             logger.verbose("vaddr %s is not mapped" % addr)
             raise MemoryError(e)
@@ -567,7 +571,7 @@ class DefineLoader(object):
         return loader
 
 
-def load_program(f, cpu=None):
+def load_program(f, cpu=None, loader=None):
     """
     Detects program format header (ELF/PE/Mach-O/HEX/SREC), or consider
     the input as a raw "shellcode" if no supported format is recognized,
@@ -577,6 +581,9 @@ def load_program(f, cpu=None):
 
     Arguments:
         f (str): the program filename or string of bytes.
+        cpu (module): optionally, the cpu python module in the program
+                      header does not provide it (HEX/SREC/shellcode)
+        loader (str): optionally, the loader name (a key of Loaders dict.)
 
     Returns:
         a Task, ELF/PE (old CoreExec interfaces) or RawExec instance.
@@ -599,6 +606,8 @@ def load_program(f, cpu=None):
     logger.verbose("--- create task ---")
 
     Loaders = DefineLoader.LOADERS
+    if loader is not None and (loader in Loaders):
+        x = Loaders[loader](p)
     if p.is_ELF:
         try:
             x = Loaders["elf"][p.Ehdr.e_machine](p)

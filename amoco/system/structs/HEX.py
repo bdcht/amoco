@@ -142,9 +142,9 @@ class HEXline(object):
             self.eip = int(v, 16)
 
     def pack(self):
-        s = ":%02X%04X%02X" % (self.count, self.address, self.HEXcode)
+        s = b":%02X%04X%02X" % (self.count, self.address, self.HEXcode)
         s += codecs.encode(self.data, "hex").upper()
-        s += "%02X" % self.cksum
+        s += b"%02X" % self.cksum
         return s
 
     def __str__(self):

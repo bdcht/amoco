@@ -5,15 +5,29 @@
 # published under GPLv2 license
 
 from os import path
-from PySide2.QtWidgets import QApplication
-from PySide2.QtCore import QPointF
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QPointF
 
 from amoco.ui.render import Formats,conf
+from amoco.logger import Log
+
+logger = Log(__name__)
+logger.debug("loading module")
+
+
 #from . import rc_icons
 
-app = QApplication.instance() or QApplication([])
-app.setApplicationName("amoco-qt")
+try:
+    # integrate Qt mainloop into IPython console:
+    # (the name qt4 here is a relic of the API but what happens
+    # really is not restricted to Qt4...)
+    from IPython.lib.guisupport import get_app_qt4, start_event_loop_qt4
+    app = get_app_qt4()
+    start_event_loop_qt4(app)
+except ImportError:
+    app = QApplication.instance() or QApplication([])
 
+app.setApplicationName("amoco-qt")
 # set default styleSheet:
 current_path = path.abspath(path.dirname(__file__))
 filename = path.join(current_path, 'style.qss')
@@ -30,19 +44,6 @@ else:
         _style = f.read()
         app.setStyleSheet(_style)
 
-try:
-    # integrate Qt mainloop into IPython console:
-    # (the name qt4 here is a relic of the API but what happens
-    # really is not restricted to Qt4...)
-    from IPython.lib.guisupport import start_event_loop_qt4
-    start_event_loop_qt4(app)
-except ImportError:
-    pass
-
-from amoco.logger import Log
-
-logger = Log(__name__)
-logger.debug("loading module")
 
 def builder(view):
     """

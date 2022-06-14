@@ -4,7 +4,7 @@
 # Copyright (C) 2020 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from PySide2.QtCore import Qt, Signal, QObject, QAbstractItemModel
+from PySide6.QtCore import Qt, Signal, QObject, QAbstractItemModel
 
 class DataIOModel(QObject):
     UPDATED = Signal()

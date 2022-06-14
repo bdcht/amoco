@@ -6,10 +6,10 @@
 
 from itertools import cycle
 
-from PySide2.QtCore import Qt, QRect, Signal, QPointF, QRectF, QSizeF
-from PySide2.QtGui import QFont, QColor, QPen, QPainter, QPolygon
-from PySide2.QtGui import QPixmap, QImage
-from PySide2.QtWidgets import QAbstractScrollArea
+from PySide6.QtCore import Qt, QRect, Signal, QPointF, QRectF, QSizeF
+from PySide6.QtGui import QFont, QColor, QPen, QPainter, QPolygon
+from PySide6.QtGui import QPixmap, QImage
+from PySide6.QtWidgets import QAbstractScrollArea
 
 from . import brushes
 from . import colors
@@ -194,7 +194,7 @@ class HexView(QAbstractScrollArea):
             self.selected = None
 
     def wheelEvent(self,e):
-        delta = 1 if e.delta()<0 else -1
+        delta = 1 if e.angleDelta().y()<0 else -1
         v = self.vb.value() + delta
         self.vb.setValue(v)
         msg = "wheel: delta=%d, v=%d"%(delta,v)

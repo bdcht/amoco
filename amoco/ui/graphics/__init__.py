@@ -1,3 +1,9 @@
+from amoco.logger import Log
+
+logger = Log(__name__)
+logger.debug("loading module")
+
+
 from .term import engine as termengine
 
 class Engine(object):

@@ -220,11 +220,15 @@ class RawField(Field):
         sz = self.count
         return "%d%s" % (sz, fmt)
 
-    def size(self,psize=0):
+    def align_value(self,psize=0):
         tn = self.typename
         if psize and tn in ('P','L','l'):
             tn = {4:'I',8:'Q',32:'I',64:'Q'}.get(psize,tn)
         sz = struct.calcsize(tn)
+        return sz
+
+    def size(self,psize=0):
+        sz = self.align_value(psize)
         if self.count > 0:
             sz = sz * self.count
         return sz

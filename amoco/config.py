@@ -307,6 +307,9 @@ class Config(object):
 
 conf = Config()
 
+if ll:=os.getenv("AMOCO_LOG_LEVEL"):
+    conf.Log.level = ll
+
 from amoco.logger import Log as _LogClass #lgtm [py/unsafe-cyclic-import]
 
 logger = _LogClass(__name__)

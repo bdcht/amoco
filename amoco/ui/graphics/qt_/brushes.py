@@ -4,7 +4,7 @@
 # Copyright (C) 2020 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from PySide2.QtGui import QFont, QColor, QBrush
+from PySide6.QtGui import QFont, QColor, QBrush
 
 background = QColor('#4c4f51')
 foreground = QColor('#bbbbbb')

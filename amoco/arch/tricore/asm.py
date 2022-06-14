@@ -836,9 +836,8 @@ def i_CALL(ins,fmap):
     _ea = composer([cst(0,6),FCXO,cst(0,6),FCXS])
     new_fcx = fmap(mem(_ea,32))
     disp=0
-    for r in (PCXI,PSW,A[10],A[11],D[8],D[9],D[10],D[11],A[12],A[13],A[14],
-              A[15],D[12],D[13],D[14],D[15]):
-        fmap[mem(_ea,32,disp=disp)] = r
+    for r in env.Upper_Context:
+        fmap[mem(_ea,32,disp=disp)] = fmap(r)
         disp += 4
     fmap[PCPN] = fmap(CCPN)
     fmap[PIE] = fmap(IE)
@@ -857,8 +856,7 @@ def i_RET(ins,fmap):
     new_pcxi = fmap(mem(_ea,32))
     new_psw = fmap(mem(_ea,32,disp=4))
     disp=8
-    for r in (A[10],A[11],D[8],D[9],D[10],D[11],A[12],A[13],A[14],
-              A[15],D[12],D[13],D[14],D[15]):
+    for r in env.Upper_Context[2:]:
         fmap[r] = fmap(mem(_ea,32,disp=disp))
         disp += 4
     fmap[mem(_ea,32)] = fmap(FCX)
@@ -874,8 +872,7 @@ def i_RFE(ins,fmap):
     new_pcxi = fmap(mem(_ea,32))
     new_psw = fmap(mem(_ea,32,disp=4))
     disp=8
-    for r in (A[10],A[11],D[8],D[9],D[10],D[11],A[12],A[13],A[14],
-              A[15],D[12],D[13],D[14],D[15]):
+    for r in env.Upper_Context[2:]:
         fmap[r] = fmap(mem(_ea,32,disp=disp))
         disp += 4
     fmap[mem(_ea,32)] = fmap(FCX)
@@ -891,8 +888,7 @@ def i_CALLI(ins,fmap):
     _ea = composer([cst(0,6),FCXO,cst(0,6),FCXS])
     new_fcx = fmap(mem(_ea,32))
     disp=0
-    for r in (PCXI,PSW,A[10],A[11],D[8],D[9],D[10],D[11],A[12],A[13],A[14],
-              A[15],D[12],D[13],D[14],D[15]):
+    for r in env.Upper_Context:
         fmap[mem(_ea,32,disp=disp)] = r
         disp += 4
     fmap[PCPN] = fmap(CCPN)
@@ -1003,9 +999,8 @@ def i_BISR(ins,fmap):
     _ea = composer([cst(0,6),FCXO,cst(0,6),FCXS])
     new_fcx = fmap(mem(_ea,32))
     disp=0
-    for r in (PCXI,ra,A[2],A[3],D[0],D[1],D[2],D[3],A[4],A[5],A[6],
-              A[7],D[4],D[5],D[6],D[7]):
-        fmap[mem(_ea,32,disp=disp)] = r
+    for r in env.Lower_Context:
+        fmap[mem(_ea,32,disp=disp)] = fmap(r)
         disp += 4
     fmap[PCPN] = fmap(CCPN)
     fmap[PIE] = fmap(IE)

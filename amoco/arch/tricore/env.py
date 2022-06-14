@@ -46,11 +46,12 @@ pc = reg("pc", 32)
 # -----------------
 
 ISP = reg("ISP",32)             # interrupt stack pointer
+SYSCON = reg("SYSCON",32)       # system control register
 
 ICR = reg("ICR",32)             # interrupt control register
-PIPN = slc(ICR,16,8,"ICR.PIPN")
-IE = slc(ICR,15,1,"IE")
-CCPN = slc(ICR,0,8,"CCPN")
+PIPN = slc(ICR,16,8,"ICR.PIPN") # pending interrupt priority number
+IE = slc(ICR,15,1,"IE")         # global interrupt Enable Bit
+CCPN = slc(ICR,0,8,"CCPN")      # Current CPU Priority Number
 
 BIV = reg("BIV",32)             # base of interrupt vector table register
 BTV = reg("BTV",32)             # base of trap vector table register
@@ -90,6 +91,12 @@ LCXO = slc(FCX,0,16,"LCXO")    # LCX offset into segment
 def get_current_CSA():
     return composer([cst(0,6),PCXO,cst(0,6),PCXS])
 
+Lower_Context = (PCXI, ra, A[2], A[3], D[0], D[1], D[2], D[3],
+                 A[4], A[5], A[6], A[7], D[4], D[5], D[6], D[7])
+
+Upper_Context = (PCXI,PSW,A[10],A[11],D[8],D[9],D[10],D[11],A[12],A[13],A[14],
+                 A[15],D[12],D[13],D[14],D[15])
+
 is_reg_pc(pc)
 is_reg_flags(PSW)
 is_reg_stack(sp)
@@ -99,6 +106,30 @@ registers = D+A+[PSW,pc]
 CSFR = {
         0xfe00: PCXI,
         0xfe04: PSW,
+        0xfe14: SYSCON,
+        0xfe20: BIV,
+        0xfe24: BTV,
+        0xfe28: ISP,
+        0xfe2c: ICR,
 }
+
+addr = 0xff00
+for d in D:
+    CSFR[addr] = d
+    addr+=4
+
+addr = 0xff80
+for a in A:
+    CSFR[addr] = d
+    addr+=4
+
+Traps = [ ("VAF", "VAP"),                                     # Class 0: MMU
+        ("PRIV", "MPR", "MPW", "MPX", "MPP", "MPN", "GRWP"),  # Class 1: Internal Protection Traps
+        ("IOPC", "UOPC", "OPD", "ALN", "MEM"),                # Class 2: Instruction Errors
+        ("FCD", "CDO", "CDU", "FCU", "CSU", "CTYP", "NEST"),  # Class 3: Context Management
+        ("PSE", "DSE", "DAE", "PIE", "DIE", "TAE"),           # Class 4: System Bus & Periph.
+        ("OVF", "SOVF"),                                      # Class 5: Assertion Traps
+        ("SYS",),                                             # Class 6: System Call,
+        ("NMI",)]                                             # Class 7: Non-Maskable Interrupt
 
 internals = {"trap": None}

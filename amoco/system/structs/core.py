@@ -90,7 +90,7 @@ class StructCore(object):
         value is infinite if any of these field is a VarField.
         """
         psize = {32:4, 64:8}.get(psize,psize)
-        A = cls.align_value(psize)
+        A = cls.align_value(psize) or 1
         sz = 0
         for f in cls.fields:
             if cls.union is False and not cls.packed:

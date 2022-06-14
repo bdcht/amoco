@@ -4,9 +4,9 @@
 # Copyright (C) 2020 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QTreeView, QHeaderView
-from PySide2.QtGui import QStandardItemModel, QFont
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QTreeView, QHeaderView
+from PySide6.QtGui import QStandardItemModel, QFont
 
 from .structview import StructItem
 

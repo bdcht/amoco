@@ -30,7 +30,7 @@ It features:
 
 setup(
     name = 'amoco',
-    version = '2.9.7',
+    version = '2.9.8',
     description = 'yet another binary analysis framework',
     long_description = long_descr,
     # Metadata
@@ -68,8 +68,9 @@ setup(
                  'z3-solver',
                  'tqdm',
                  'ccrawl>=1.6',
-                 'PySide2',
-                 'IPython'],
+                 'PySide6',
+                 'IPython',
+                 'prompt_tookkit>=3.0.28'],
     },
     package_data = {
         'amoco.ui.graphics.qt_': ['*.qml','*.qss']

@@ -5,3 +5,4 @@ grandalf
 crysp
 click
 blessed
+prompt_toolkit>=3.0.28

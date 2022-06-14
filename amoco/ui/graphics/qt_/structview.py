@@ -4,7 +4,7 @@
 # Copyright (C) 2020 Axel Tillequin (bdcht3@gmail.com)
 # published under GPLv2 license
 
-from PySide2.QtGui import QStandardItem, QBrush
+from PySide6.QtGui import QStandardItem, QBrush
 from amoco.system.structs import StructCore,Field
 
 from amoco.logger import Log

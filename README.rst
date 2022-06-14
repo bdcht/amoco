@@ -84,7 +84,7 @@ The default Qt stylesheet is inspired by the excellent QDarkStyleSheet_ and
 uses most of its icons through the *QResource* API made available
 from the generated *rc_icons.py* module::
 
-  <pyenv>/lib/python3.<x>/site-packages/PySide2/rcc -g python icons.qrc > rc_icons.py
+  <pyenv>/lib/python3.<x>/site-packages/PySide6/rcc -g python icons.qrc > rc_icons.py
 
 
 Licence
@@ -95,6 +95,13 @@ Please see `LICENSE`_.
 
 Changelog
 =========
+
+- `v2.9.8`_
+
+  * update to PySide6 (Qt6)
+  * add ole2 format
+  * update structs subpackage to allow chosen pointer sizes
+  * partial update of avr architecture
 
 - `v2.9.7`_
 

@@ -398,6 +398,7 @@ Changelog
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _QDarkStyleSheet: https://github.com/ColinDuquesnoy/QDarkStyleSheet
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.8: https://github.com/bdcht/amoco/releases/tag/v2.9.8
 .. _v2.9.7: https://github.com/bdcht/amoco/releases/tag/v2.9.7
 .. _v2.9.6: https://github.com/bdcht/amoco/releases/tag/v2.9.6
 .. _v2.9.5: https://github.com/bdcht/amoco/releases/tag/v2.9.5

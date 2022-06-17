@@ -70,7 +70,7 @@ setup(
                  'ccrawl>=1.6',
                  'PySide6',
                  'IPython',
-                 'prompt_tookkit>=3.0.28'],
+                 'prompt_toolkit>=3.0.28'],
     },
     package_data = {
         'amoco.ui.graphics.qt_': ['*.qml','*.qss']

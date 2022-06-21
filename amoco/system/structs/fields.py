@@ -286,7 +286,7 @@ class BitField(RawField):
     """
 
     def __init__(self, ftype, fcount=0, fname=None, forder=None, falign=1, fcomment=""):
-        super().__init__(ftype,0,None,forder,falign,fcomment)
+        super().__init__(ftype,0,"",forder,falign,fcomment)
         self.subsizes = fcount or []
         # names of each splitted part is provided here:
         self.subnames = fname or []
@@ -338,7 +338,7 @@ class BitFieldEx(Field):
     """
 
     def __init__(self, ftype, fcount=0, fname=None, forder=None, falign=1, fcomment=""):
-        super().__init__(ftype,0,None,forder,falign,fcomment)
+        super().__init__(ftype,0,"",forder,falign,fcomment)
         self.subsizes = fcount or []
         # names of each splitted part is provided here:
         self.subnames = fname or []

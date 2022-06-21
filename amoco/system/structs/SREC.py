@@ -48,17 +48,26 @@ class SREC(BinFormat):
         self._entrypoint = 0
         self._filename = f.name
         count = 0
+        i = 0
         for line in f.readlines():
+            if not line.strip():
+                continue
             l = SRECline(line)
             if l.SRECtype == Header:
                 self.name = l.data
             elif l.SRECtype in (Start16, Start24, Start32):
-                self.entrypoint = l.address
+                if l.address:
+                    self.entrypoint = l.address
+                count = 0
             elif l.SRECtype in (Count16, Count24):
-                assert count == l.address
-            else:
+                if count != l.address:
+                    logger.error("invalid count in SREC format at line %d"%i)
+            elif l.SRECtype in (Data16,Data24,Data32):
                 count += 1
+            else:
+                logger.warn("unknown SRECtype: %d"%l.SRECtype)
             self.L.append(l)
+            i += 1
         self.__dataio = None
 
     @property
@@ -116,6 +125,10 @@ class SRECline(object):
             self.count = int(line[2:4], 16)
             # address:
             l = [4, 4, 6, 8, 0, 4, 6, 8, 6, 4][self.SRECtype]
+            if self.SRECtype in (Count16, Count24):
+                r = 2*self.count
+                if r-2 != l:
+                    l = r-2
             self.size = l
             self.address = int(line[4 : 4 + l], 16)
             # data:
@@ -133,26 +146,26 @@ class SRECline(object):
             raise SRECError(line)
 
     def pack(self):
-        s = "S%1d%02X" % (self.SRECtype, self.count)
-        fa = "%%0%dX" % self.size
+        s = b"S%1d%02X" % (self.SRECtype, self.count)
+        fa = b"%%0%dX" % self.size
         s += fa % self.address
         s += codecs.encode(self.data, "hex").upper()
-        s += "%02X" % self.cksum
+        s += b"%02X" % self.cksum
         return s
 
     def __str__(self):
         h = token_name_fmt("SRECtype", self.SRECtype)
         if self.SRECtype == Header:
-            return "[%s] %s: '%s'" % (
+            return "[%s] %s: %s" % (
                 h,
                 token_address_fmt(None, self.address),
                 self.data,
             )
         if self.SRECtype in (Data16, Data24, Data32):
-            return "[%s] %s: '%s'" % (
+            return "[%s] %s: %s" % (
                 h,
                 token_address_fmt(None, self.address),
-                codecs.encode(self.data, "hex"),
+                self.data,
             )
         if self.SRECtype in (Count16, Count24):
             return "[%s] %s" % (h, token_constant_fmt(None, self.address))

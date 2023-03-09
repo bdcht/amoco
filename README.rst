@@ -56,7 +56,7 @@ User documentation and API can be found at
 `http://amoco.readthedocs.io/en/latest/index.html`
 
 .. image:: https://github.com/bdcht/amoco/blob/release/doc/gui_load.png
-   :width: 600
+   :width: 100%
 
 Todo
 ====

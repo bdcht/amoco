@@ -32,7 +32,7 @@ def tricore_branch(obj, disp1, disp2):
 @ispec("32<[ disp1(16) disp2(8) {dd} ]", mnemonic="JLA")
 def tricore_branch(obj, disp1, disp2):
     v = env.cst((disp2<<16)+disp1,24)
-    addr = composer([env.bit0,v[0:20],env.cst(0,7),v[20:24]])
+    addr = env.composer([env.bit0,v[0:20],env.cst(0,7),v[20:24]])
     obj.operands = [addr]
     obj.type = type_control_flow
 
@@ -83,7 +83,7 @@ def tricore_dd_arithmetic(obj, c, b):
 def tricore_dd_arithmetic(obj, c, b, a):
     src2 = env.D[b]
     dst = env.E[c]
-    obj.operands = [dst, composer([src2,src1])]
+    obj.operands = [dst, env.composer([src2,src1])]
     obj.type = type_data_processing
 
 @ispec("32<[ c(4) {0e} ---- b(4) a(4) {0b} ]", mnemonic="ABSDIF")
@@ -1102,14 +1102,14 @@ def tricore_ld(obj, off2, off3, off1, off4, a):
     if obj.mnemonic in ("LD_D","LDMST") : dst = env.E[a]
     if obj.mnemonic=="LD_DA": dst = env.P[a]
     src = off1//off2//off3
-    obj.operands = [dst, composer([env.cst(src.int(),28),env.cst(off4,4)])]
+    obj.operands = [dst, env.composer([env.cst(src.int(),28),env.cst(off4,4)])]
     obj.type = type_data_processing
 
 @ispec("32<[ ~off2(4) 01 ~off3(4) ~off1(6) ~off4(4) a(4) {c5} ]", mnemonic="LHA", mode="Absolute")
 def tricore_ld(obj, off2, off3, off1, off4, a):
     dst = env.A[a]
     src = off1//off2//off3//off4
-    obj.operands = [dst, composer([env.cst(0,14),env.cst(src.int(),18)])]
+    obj.operands = [dst, env.composer([env.cst(0,14),env.cst(src.int(),18)])]
     obj.type = type_data_processing
 
 @ispec("32<[ ~off2(4) 10 ~off3(4) ~off1(6) ~off4(4) a(4) {a5} ]", mnemonic="ST_A", mode="Absolute")
@@ -1127,24 +1127,24 @@ def tricore_st(obj, off2, off3, off1, off4, a):
     if obj.mnemonic in ("ST_D","LDMST") : src = env.E[a]
     if obj.mnemonic=="ST_DA": src = env.P[a]
     addr = off1//off2//off3
-    obj.operands = [composer([env.cst(addr.int(),28),env.cst(off4,4)]), src]
+    obj.operands = [env.composer([env.cst(addr.int(),28),env.cst(off4,4)]), src]
     obj.type = type_data_processing
 
 @ispec("32<[ ~off2(4) 00 ~off3(4) ~off1(6) ~off4(4) b bpos(3) {d5} ]", mnemonic="ST_T", mode="Absolute")
 def tricore_st(obj, off2, off3, off1, off4, b, bpos):
-    obj.operands = [composer([env.cst(src.int(),28),env.cst(off4,4)]), env.cst(bpos,3), env.cst(b,1)]
+    obj.operands = [env.composer([env.cst(src.int(),28),env.cst(off4,4)]), env.cst(bpos,3), env.cst(b,1)]
     obj.type = type_data_processing
 
 @ispec("32<[ ~off2(4) 00 ~off3(4) ~off1(6) ~off4(4) ---- {15} ]", mnemonic="STLCX", mode="Absolute")
 def tricore_st(obj, off2, off3, off1, off4):
-    obj.operands = [composer([env.cst(src.int(),28),env.cst(off4,4)])]
+    obj.operands = [env.composer([env.cst(src.int(),28),env.cst(off4,4)])]
     obj.type = type_data_processing
 
 @ispec("32<[ ~off2(4) 10 ~off3(4) ~off1(6) ~off4(4) a(4) {15} ]", mnemonic="LDLCX", mode="Absolute")
 @ispec("32<[ ~off2(4) 11 ~off3(4) ~off1(6) ~off4(4) a(4) {15} ]", mnemonic="LDUCX", mode="Absolute")
 def tricore_ld(obj, off2, off3, off1, off4, a):
     src = off1//off2//off3
-    obj.operands = [composer([env.cst(src.int(),28),env.cst(off4,4)])]
+    obj.operands = [env.composer([env.cst(src.int(),28),env.cst(off4,4)])]
     obj.type = type_data_processing
 
 @ispec("32<[ ~off2(4) 10 0110 ~off1(6) b(4) a(4) {09} ]", mnemonic="LD_A", mode="Short-offset")

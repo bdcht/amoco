@@ -66,7 +66,7 @@ class Field(object):
             try:
                 cls = Alltypes[self.typename]
             except (KeyError):
-                logger.verbose("type %s is not defined"%self.typename)
+                logger.warning("type %s is not defined"%self.typename)
             else:
                 self.__type = cls
         return self.__type
@@ -84,10 +84,15 @@ class Field(object):
         # we return the actual byte-length of the resulting struct:
         try:
             return len(self.instance[self.name])
-        except:
+        except Exception:
+            pass
         # otherwise we return the natural size of the field's type,
         # which may be infinite if the type contains a VarField...
+        try:
             sz =  self.type.size(psize)
+        except AttributeError:
+            return float("Infinity")
+        else:
             if self.count > 0:
                 sz = sz * self.count
             return sz
@@ -188,7 +193,7 @@ class Field(object):
     def __repr__(self):
         try:
             fmt = self.type.format()
-        except KeyError:
+        except (AttributeError,KeyError):
             fmt = "?"
         r = "<Field %s {%s}" % (self.name, fmt)
         if self.count > 0:
@@ -222,7 +227,7 @@ class RawField(Field):
 
     def align_value(self,psize=0):
         tn = self.typename
-        if psize and tn in ('P','L','l'):
+        if psize and (tn in ('P','L','l')):
             tn = {4:'I',8:'Q',32:'I',64:'Q'}.get(psize,tn)
         sz = struct.calcsize(tn)
         return sz
@@ -276,6 +281,10 @@ class BitField(RawField):
     A BitField is a 0-count RawField with additional subnames and subsizes to allow
     unpack the type into several named values each of given bit sizes.
 
+    Note that The order of subfields in a BitField **always** goes from LSB to MSB.
+    Subfields are unpacked once the BitField type has been unpacked according to
+    its own endianness indicator.
+
     Arguments:
         - The ftype argument is the one that gets "splitted" into parts of bits.
         - The fcount argument is a list that defines the size of each splitted part
@@ -325,11 +334,23 @@ class BitField(RawField):
         newf.instance = obj
         return newf
 
+    def concat(self,other):
+        oss = other.subsizes[:]
+        osn = other.subnames[:]
+        while oss and (self.size()*8>=sum(self.subsizes,oss[0])):
+            self.subsizes.append(oss.pop(0))
+            if osn:
+                self.subnames.append(osn.pop(0))
+        if oss or osn:
+            logger.debug("BitField size too small in %s"%self)
+            raise TypeError
+
     def __repr__(self):
         fmt = self.typename
-        r = "<Field %s>" % str(["%s:%s"%(n,s) for n,s in zip(self.subnames,
-                                                             self.subsizes)])
-        return r
+        pre = " "*7
+        f = [pre+"%s:%s"%(n,s) for n,s in zip(self.subnames,self.subsizes)]
+        s = '\n'.join(f).strip()
+        return "<Field %s>" % s
 
 class BitFieldEx(Field):
     """
@@ -560,14 +581,20 @@ class CntField(RawField):
         self.fcount = self.count
         # ...before overwritting with actual value:
         self.count = nb
-        # now fully unpack the whole field:
-        res = struct.unpack(
-            self.order + self.format(psize), data[offset : offset + self.size(psize)]
-        )
-        if self.count == 0 or self.typename == "s":
+        if self.count == 0:
+            res = [0,b""]
+        else:
+            # now fully unpack the whole field:
+            res = struct.unpack(
+                self.order + self.format(psize),
+                data[offset : offset + self.size(psize)]
+            )
+        if self.typename == "s":
             return res[1]
         if self.typename == "c":
             return b"".join(res[1:])
+        if self.count == 0:
+            return None
         return res[1:]
 
     def pack(self, value, psize=0):

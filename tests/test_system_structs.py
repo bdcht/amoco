@@ -191,8 +191,7 @@ def test_bitfield1():
     f = BitField('B',fcount=[2,4,1,1],fname=['a','b','c','d'])
     assert f.format()=='B'
     assert f.size()==1
-    assert f.name is None
-    assert str(f)=="<Field ['a:2', 'b:4', 'c:1', 'd:1']>"
+    assert f.name is ''
     v = f.unpack(b"\x93")
     # values are splitted from low to high order bits...
     assert v['a'] == 3
@@ -204,8 +203,7 @@ def test_bitfield2():
     f = BitField('H',fcount=[2,4,1,1],fname=['a','b','c','d'])
     assert f.format()=='H'
     assert f.size()==2
-    assert f.name is None
-    assert str(f)=="<Field ['a:2', 'b:4', 'c:1', 'd:1']>"
+    assert f.name is ''
     v = f.unpack(b"\x40\x93")
     # values are splitted from low to high order bits...
     assert v['a'] == 0

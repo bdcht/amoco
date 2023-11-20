@@ -2107,10 +2107,11 @@ def ismask(v):
 def eqn2_helpers(e, bitslice=False, widening=False):
     "helpers for simplifying binary expressions"
     threshold = conf.Cas.complexity
-    if complexity(e.r) > threshold:
-        e.r = top(e.r.size)
-    if complexity(e.l) > threshold:
-        e.l = top(e.l.size)
+    if threshold>0:
+        if complexity(e.r) > threshold:
+            e.r = top(e.r.size)
+        if complexity(e.l) > threshold:
+            e.l = top(e.l.size)
     if e.r._is_top or e.l._is_top:
         return top(e.size)
     # if e := ((a l.op cst) e.op r)
@@ -2156,6 +2157,12 @@ def eqn2_helpers(e, bitslice=False, widening=False):
             # if e:= (l [|&*] 0) then e:= 0
             if e.op.symbol in (OP_AND, OP_MUL, OP_MUL2):
                 return cst(0, e.size)
+            # external == 0 ? => false, we assume ext is defined
+            if e.op.symbol == OP_EQ and e.l._is_ext:
+                return bit0
+            # external != 0 ? => true, we assume ext is defined
+            if e.op.symbol == OP_NEQ and e.l._is_ext:
+                return bit1
         # if e:= (l [|*/] 1) then e:= l
         elif e.r.value == 1 and e.op.symbol in (OP_MUL, OP_MUL2, OP_DIV):
             return e.l

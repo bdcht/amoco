@@ -219,17 +219,21 @@ class Elf(BinFormat):
         need to be mapped at virtual base address.
         (Returns None if not a PT_LOAD segment.)
         """
+        ELF_PAGESTART  = lambda _v : (_v)&(~(pagesize-1))
+        ELF_PAGEOFFSET = lambda _v : (_v)&( (pagesize-1))
+        ELF_PAGEALIGN  = lambda _v : (_v+pagesize-1) & (~(pagesize-1))
         if S.p_type == PT_LOAD:
-            self.__file.seek(S.p_offset)
-            if S.p_align > 1 and (S.p_offset != (S.p_vaddr % S.p_align)):
+            if S.p_align > 1 and ((S.p_offset % S.p_align) != (S.p_vaddr % S.p_align)):
                 logger.verbose(
                     "wrong p_vaddr/p_align [%08x/%0d]" % (S.p_vaddr, S.p_align)
                 )
-            base = S.p_vaddr
-            bytes_ = self.__file.read(S.p_filesz).ljust(S.p_memsz, b"\x00")
-            if pagesize:
-                # note: bytes are not truncated, only extended if needed...
-                bytes_ = bytes_.ljust(pagesize, b"\x00")
+            size = S.p_filesz + ELF_PAGEOFFSET(S.p_vaddr)
+            off  = S.p_offset - ELF_PAGEOFFSET(S.p_vaddr)
+            addr = ELF_PAGESTART(S.p_vaddr)
+            size = ELF_PAGEALIGN(size)
+            self.__file.seek(off)
+            base = addr
+            bytes_ = self.__file.read(size)
             return {base: bytes_}
         else:
             logger.error("segment not a PT_LOAD [%08x/%0d]" % (S.p_vaddr, S.p_align))

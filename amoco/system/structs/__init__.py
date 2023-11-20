@@ -234,9 +234,25 @@ class StructDefine(object):
                     f_name = f_name.split('/')
                 f_type = kargs.get(f_type, f_type)
                 f_align = 0
-            self.fields.append(
-                f_cls(f_type, f_count, f_name,f_order, f_align, f_comment)
-            )
+            f = f_cls(f_type, f_count, f_name, f_order, f_align, f_comment)
+            # if this is a bitfield with only one subfield, we want to
+            # concatenate it with a previous bitfield if possible:
+            if f_cls in (BitField,BitFieldEx):
+                if len(f_count)==len(f_name)==1:
+                    if len(self.fields)>0:
+                        prev = self.fields[-1]
+                        if isinstance(prev,(BitField,BitFieldEx)):
+                            try:
+                                prev.concat(f)
+                            except TypeError:
+                                # concat raises TypeError if prev is
+                                # already "full" or if f would exceed
+                                # its size...
+                                pass
+                            else:
+                                # concat suceeded, so we don't append f
+                                continue
+            self.fields.append(f)
 
     def __call__(self, cls):
         # Alltypes is a global dict located in structs.core module

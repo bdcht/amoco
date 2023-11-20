@@ -2,13 +2,9 @@
 Amoco
 =====
 
-.. image:: https://travis-ci.org/bdcht/amoco.svg?branch=release
-    :target: https://travis-ci.org/bdcht/amoco
-
 .. image:: http://readthedocs.org/projects/amoco/badge/?version=latest
     :target: http://amoco.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
-
 
 +-----------+--------------------------------------------------+
 | Status:   | Under Development                                |
@@ -56,7 +52,7 @@ User documentation and API can be found at
 `http://amoco.readthedocs.io/en/latest/index.html`
 
 .. image:: https://github.com/bdcht/amoco/blob/release/doc/gui_load.png
-   :width: 100%
+   :width: 800
 
 Todo
 ====
@@ -91,6 +87,13 @@ Please see `LICENSE`_.
 
 Changelog
 =========
+
+- `v2.9.9`_
+
+  * add ppc32 (e200) architecture
+  * add support for COFF executable format
+  * add parser for gdb trace files
+  * improve structs subpackage
 
 - `v2.9.8`_
 
@@ -394,6 +397,7 @@ Changelog
 .. _sqlalchemy: http://www.sqlalchemy.org
 .. _QDarkStyleSheet: https://github.com/ColinDuquesnoy/QDarkStyleSheet
 .. _LICENSE: https://github.com/bdcht/amoco/blob/release/LICENSE
+.. _v2.9.9: https://github.com/bdcht/amoco/releases/tag/v2.9.9
 .. _v2.9.8: https://github.com/bdcht/amoco/releases/tag/v2.9.8
 .. _v2.9.7: https://github.com/bdcht/amoco/releases/tag/v2.9.7
 .. _v2.9.6: https://github.com/bdcht/amoco/releases/tag/v2.9.6

@@ -276,8 +276,8 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'python': ('https://docs.python.org/', None),
-                       'grandalf':('https://grandalf.readthedocs.io/',None),
-                       'ccrawl':('https://ccrawl.readthedocs.io/',None),
+                       'grandalf':('https://grandalf.readthedocs.io/en/latest/',None),
+                       'ccrawl':('https://ccrawl.readthedocs.io/en/latest/',None),
                       }
 
 autodoc_member_order = 'bysource'

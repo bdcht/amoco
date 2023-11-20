@@ -209,7 +209,8 @@ class StructCore(object):
             return 0
         o = 0
         for f in self.fields:
-            o = f.align(o,psize)
+            if not self.packed:
+                o = f.align(o,psize)
             if f.name == name:
                 return o
             o += f.size(psize)
@@ -221,7 +222,8 @@ class StructCore(object):
         o = 0
         offsets = []
         for f in self.fields:
-            o = f.align(o,psize)
+            if not self.packed:
+                o = f.align(o,psize)
             if hasattr(f,'subsizes'):
                 oo = 0
                 for x in f.subsizes:

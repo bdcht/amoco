@@ -113,15 +113,14 @@ class Cas(Configurable):
     Configurable parameters related to the Computer Algebra System (expressions).
 
     Attributes:
-        complexity (int): limit expressions complexity to given value. Defaults
-                          to 10000, a relatively high value that keeps precision
-                          but can lead to very large expressions.
+        complexity (int): limit expressions complexity to given value if >0.
+                          Defaults to 0, ie. no limit.
         unicode (Bool): use unicode character for expressions' operators if True.
         noaliasing (Bool): If True (default), then assume that symbolic memory
                            expressions (pointers) are **never** aliased.
         memtrace (Bool): keep memory writes in mapper in addition to MemoryMap (default).
     """
-    complexity = Integer(10000, config=True)
+    complexity = Integer(0, config=True)
     unicode = Bool(False, config=True)
     noaliasing = Bool(True, config=True)
     memtrace = Bool(True, config=True)

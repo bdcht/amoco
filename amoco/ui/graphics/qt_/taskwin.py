@@ -47,9 +47,9 @@ class TaskWindow(QMainWindow):
         # TreeView for ELF/PE/Mach-O structure
         dock = QDockWidget("[task].view.obj.binfmt", self)
         #dock.setAllowedAreas(Qt.TopDockWidgetArea)
-        dock.setFeatures(dock.DockWidgetClosable|\
-                         dock.DockWidgetMovable|\
-                         dock.DockWidgetFloatable)
+        dock.setFeatures(dock.DockWidgetFeature.DockWidgetClosable|\
+                         dock.DockWidgetFeature.DockWidgetMovable|\
+                         dock.DockWidgetFeature.DockWidgetFloatable)
         dock.setMinimumWidth(364)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
         a = dock.toggleViewAction()
@@ -66,9 +66,9 @@ class TaskWindow(QMainWindow):
 
     def createDockInfo(self,task):
         dock = QDockWidget("[task].view.obj.info", self)
-        dock.setFeatures(dock.DockWidgetClosable|\
-                         dock.DockWidgetMovable|\
-                         dock.DockWidgetFloatable)
+        dock.setFeatures(dock.DockWidgetFeature.DockWidgetClosable|\
+                         dock.DockWidgetFeature.DockWidgetMovable|\
+                         dock.DockWidgetFeature.DockWidgetFloatable)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
         a = dock.toggleViewAction()
         self.viewMenu.addAction(a)

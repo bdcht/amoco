@@ -60,8 +60,8 @@ def spawn_console(ctx,exec_lines=None):
     if c.UI.console.lower() == "ipython":
         try:
             from IPython import start_ipython
-        except ImportError:
-            if conf.VERBOSE:
+        except (ImportError,ModuleNotFoundError):
+            if c.Log.level=="VERBOSE":
                 click.echo("ipython not found")
             c.UI.console = "python"
         else:
@@ -81,7 +81,7 @@ def spawn_console(ctx,exec_lines=None):
             readline.set_completer(rlcompleter.Completer(cvars).complete)
             readline.parse_and_bind("Tab: complete")
             del readline, rlcompleter
-        except ImportError:
+        except (ImportError,ModuleNotFoundError):
             click.echo("readline not found")
         ic = InteractiveConsole(cvars)
         ic.push("print(amoco.conf.BANNER)")
@@ -172,7 +172,7 @@ def load_program(ctx, filename, gui):
 
 @cli.command("bin_info")
 @click.argument("filename", nargs=1, type=click.Path(exists=True, dir_okay=False))
-@click.option("--header", is_flag=True, default=False, help="show ELF/PE/Mach-O header")
+@click.option("--header", is_flag=True, default=False, help="show executable format (ELF/PE/Mach-O/...) header")
 @click.pass_context
 def bin_info(ctx, filename, header):
     p = amoco.load_program(filename)

@@ -294,6 +294,7 @@ class BinFormat(object):
     is_MachO = False
     is_HEX = False
     is_SREC = False
+    is_COFF = False
     basemap = None
     symtab = None
     strtab = None
@@ -453,14 +454,15 @@ class DataIO(object):
 # ------------------------------------------------------------------------------
 def read_program(filename):
     """
-    Identifies the program header and returns an ELF, PE, Mach-O or DataIO.
+    Identifies the program header and returns an ELF, PE, Mach-O, COFF
+    or DataIO.
 
     Args:
         filename (str): the program to read.
 
     Returns:
         an instance of currently supported program format
-        (ELF, PE, Mach-O, HEX, SREC)
+        (ELF, PE, Mach-O, HEX, SREC, COFF)
     """
 
     try:
@@ -502,6 +504,17 @@ def read_program(filename):
     except (macho.StructureError,macho.MachOError):
         f.seek(0)
         logger.debug("MachOError raised for %s" % f.name)
+
+    try:
+        from amoco.system import coff
+
+        # open file as a COFF object:
+        p = coff.COFF(f)
+        logger.info("COFF format detected")
+        return p
+    except (coff.StructureError,coff.COFFError):
+        f.seek(0)
+        logger.debug("COFFError raised for %s" % f.name)
 
     try:
         from amoco.system.structs.HEX import HEX,HEXError
@@ -573,7 +586,7 @@ class DefineLoader(object):
 
 def load_program(f, cpu=None, loader=None):
     """
-    Detects program format header (ELF/PE/Mach-O/HEX/SREC), or consider
+    Detects program format header (ELF/PE/Mach-O/HEX/SREC/COFF), or consider
     the input as a raw "shellcode" if no supported format is recognized,
     and *maps* the program in abstract memory,
     loading the associated "system" (linux/win) and "arch" (x86/arm),

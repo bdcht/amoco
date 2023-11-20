@@ -124,12 +124,7 @@ class SRECline(object):
             # byte count:
             self.count = int(line[2:4], 16)
             # address:
-            l = [4, 4, 6, 8, 0, 4, 6, 8, 6, 4][self.SRECtype]
-            if self.SRECtype in (Count16, Count24):
-                r = 2*self.count
-                if r-2 != l:
-                    l = r-2
-            self.size = l
+            l = self.size
             self.address = int(line[4 : 4 + l], 16)
             # data:
             # c = 4+l+2*self.count
@@ -141,16 +136,40 @@ class SRECline(object):
                 s = (ord(x) for x in s)
             cksum = sum(s) & 0xFF
             self.cksum = cksum ^ 0xFF
-            assert self.cksum == int(line[-2:], 16)
-        except (AssertionError, ValueError):
+            if self.cksum != int(line[-2:], 16):
+                logger.warn("bad checksum, needed %02x"%(cksum^0xff))
+        except (AssertionError,ValueError):
             raise SRECError(line)
 
-    def pack(self):
+    @property
+    def size(self):
+        l = [4, 4, 6, 8, 0, 4, 6, 8, 6, 4][self.SRECtype]
+        if self.SRECtype in (Count16, Count24):
+            r = 2*self.count
+            if r-2 != l:
+                l = r-2
+        return l
+
+    def fixit(self,count=True,cksum=True):
+        if self.SRECtype:
+            l = self.size
+            if count:
+                self.count = (l/2)+len(self.data)+1
+            if cksum:
+                s = self.pack(False)
+                s = codecs.decode(s[2:],"hex")
+                if isinstance(s, str):
+                    s = (ord(x) for x in s)
+                cksum = sum(s) & 0xFF
+                self.cksum = cksum^0xFF
+
+    def pack(self,cksum=True):
         s = b"S%1d%02X" % (self.SRECtype, self.count)
         fa = b"%%0%dX" % self.size
         s += fa % self.address
         s += codecs.encode(self.data, "hex").upper()
-        s += b"%02X" % self.cksum
+        if cksum:
+            s += b"%02X" % self.cksum
         return s
 
     def __str__(self):

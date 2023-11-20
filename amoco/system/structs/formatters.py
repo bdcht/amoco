@@ -106,6 +106,25 @@ def token_address_fmt(k, x, cls=None, fmt=None):
     """
     return highlight([(Token.Address, hex(x))],fmt)
 
+def token_version_fmt(k, x, cls=None, fmt=None):
+    """The address formatter prints value 'x' of attribute 'k'
+    as an hexadecimal string token value
+    """
+    l = []
+    while x:
+        l.append("%d"%(x&0xff))
+        x = x>>8
+    return highlight([(Token.String, '.'.join(l))],fmt)
+
+def token_bytes_fmt(k, x, cls=None, fmt=None):
+    """The address formatter prints value 'x' of attribute 'k'
+    as an hexadecimal string token value
+    """
+    l = []
+    while x:
+        l.append("%02X"%(x&0xff))
+        x = x>>8
+    return highlight([(Token.String, ' '.join(l))],fmt)
 
 def token_constant_fmt(k, x, cls=None, fmt=None):
     """The constant formatter prints value 'x' of attribute 'k'
@@ -211,6 +230,8 @@ class StructFormatter(StructCore):
             val = getattr(self._v, k)
             if isinstance(val,StructFormatter):
                 val = val.pp__(formatter)
+            elif isinstance(val,list):
+                val = "\n".join((e.pp__(formatter) for e in val))
             result = self.fkeys[k](k, val, cls=cname,fmt=formatter)
         else:
             result = "None"
@@ -221,12 +242,15 @@ class StructFormatter(StructCore):
         ksz = max((len(f.name) for f in self.fields))
         s = []
         for f in self.fields:
-            if f.name:
+            if f.name and f.name!='_':
                 fs = self.strkey(f.name, cname, ksz, fmt)
                 if fs.count("\n") > 0:
                     fs = fs.replace("\n", "\n " + " " * ksz)
             elif hasattr(f,'subnames'):
-                fs = "\n".join([self.strkey(n,cname,ksz,fmt) for n in f.subnames])
+                subn = filter(lambda n:n!='_', f.subnames)
+                fs = "\n".join((self.strkey(n,cname,ksz,fmt) for n in subn))
+            else:
+                continue
             s.append(fs)
         s = "\n".join(s)
         return "[%s]\n%s" % (self.__class__.__name__, s)

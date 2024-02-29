@@ -972,10 +972,7 @@ def ia32_longnop(obj, Mod, RM, data):
 @ispec("*>[ {0f}{ae} RM(3) 101 Mod(2) ~data(*) ]", mnemonic="XRSTOR", type=type_cpu_state)
 @ispec("*>[ {0f}{ae} RM(3) 011 Mod(2) ~data(*) ]", mnemonic="XSAVEOPT", type=type_cpu_state)
 @ispec("*>[ {0f}{ae} RM(3) 111 Mod(2) ~data(*) ]", mnemonic="CLFLUSH", type=type_cpu_state)
-@ispec("*>[ {0f}{ae} RM(3) 101 11=Mod(2) ~data(*) ]", mnemonic="LFENCE", type=type_cpu_state)
-@ispec("*>[ {0f}{ae} RM(3) 011 11=Mod(2) ~data(*) ]", mnemonic="MFENCE", type=type_cpu_state)
-@ispec("*>[ {0f}{ae} RM(3) 111 11=Mod(2) ~data(*) ]", mnemonic="SFENCE", type=type_cpu_state)
-def ia32_xfence(obj, Mod, RM, data):
+def ia32_xxx(obj, Mod, RM, data):
     op1, data = getModRM(obj, Mod, RM, data)
     if Mod == 0b11 and obj.mnemonic in ("XRSTOR", "XSAVEOPT", "CLFLUSH"):
         raise InstructionError(obj)
@@ -983,6 +980,12 @@ def ia32_xfence(obj, Mod, RM, data):
         obj.operands = [op1]
         if obj.mnemonic == "CLFLUSH":
             obj.misc["opdsz"] = 8
+
+@ispec("*>[ {0f}{ae} RM(3) 101 11=Mod(2) ~data(*) ]", mnemonic="LFENCE", type=type_cpu_state)
+@ispec("*>[ {0f}{ae} RM(3) 011 11=Mod(2) ~data(*) ]", mnemonic="MFENCE", type=type_cpu_state)
+@ispec("*>[ {0f}{ae} RM(3) 111 11=Mod(2) ~data(*) ]", mnemonic="SFENCE", type=type_cpu_state)
+def ia32_xfence(obj, Mod, RM, data):
+    obj.operands = []
 
 
 @ispec_ia32("*>[ {0f}{20} /r ]", mnemonic="MOV", _inv=False)

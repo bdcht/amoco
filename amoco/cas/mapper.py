@@ -220,7 +220,7 @@ class mapper(object):
                 if p._is_def == 0:
                     # p is "bottom":
                     p = mem(a, p.size, disp=cur)
-                elif p._is_ext and p._subrefs.get("mmio_r",None):
+                elif p.etype==et_ext and p._subrefs.get("mmio_r",None):
                     p = p.stub(self,mode="r")
             P.append(p)
             cur += plen
@@ -237,7 +237,7 @@ class mapper(object):
                 oldv = self.__Mem.read(l,len(v))[0]
             except MemoryError:
                 oldv = l
-            if isinstance(oldv,ext) and oldv._subrefs.get("mmio_w",None):
+            if oldv.etype==et_ext and oldv._subrefs.get("mmio_w",None):
                 oldv.stub(self,mode="w")
             else:
                 self.__Mem.write(l, v, endian)

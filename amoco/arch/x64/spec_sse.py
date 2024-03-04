@@ -135,8 +135,8 @@ def sse_ps(obj, Mod, REG, RM, data):
 
 # moves:
 
-# mmx, r/m32
-# r/m32, mmx
+# mmx, r/m32  no prefix
+# r/m32, mmx  no prefix
 @ispec_ia32("*>[ {0f}{6e} /r ]", mnemonic="MOVD", _inv=False)
 @ispec_ia32("*>[ {0f}{7e} /r ]", mnemonic="MOVD", _inv=True)
 def sse_pd(obj, Mod, REG, RM, data, _inv):
@@ -1034,13 +1034,18 @@ def sse_pd(obj, Mod, RM, data):
 
 # moves:
 
-# xmm, xmm/m32
-# xmm/m32, xmm
+# xmm, xmm/m32 with 66 prefix
+# xmm/m32, xmm with 66 prefix
 @ispec_ia32("*>[ {0f}{6e} /r ]", mnemonic="MOVD", _inv=False)
 @ispec_ia32("*>[ {0f}{7e} /r ]", mnemonic="MOVD", _inv=True)
 def sse_pd(obj, Mod, REG, RM, data, _inv):
     if not check_66(obj, set_opdsz_32):
         raise InstructionError(obj)
+    REX = obj.misc["REX"]
+    if REX is not None:
+        W, R, X, B = REX
+        if W == 1:
+            obj.mnemonic = "MOVQ"
     op2, data = getModRM(obj, Mod, RM, data)
     op1 = getregR(obj, REG, 128)
     obj.operands = [op1, op2] if not _inv else [op2, op1]

@@ -202,3 +202,21 @@ def test_decoder_028():
   assert i.mnemonic=='MOVHPD'
   assert i.operands[0].ref == 'xmm2'
   assert i.operands[1].size == 64
+
+def test_decoder_29():
+    i = cpu.disassemble(b'\x66\x48\x0f\x6e\xce')
+    assert i.mnemonic == "MOVQ"
+    assert i.operands[0].ref == "xmm1"
+    assert i.operands[1].ref == "rsi"
+    i = cpu.disassemble(b'\x48\x0f\x6e\xce')
+    assert i.mnemonic == "MOVQ"
+    assert i.operands[0].ref == "mm1"
+    assert i.operands[1].ref == "rsi"
+    i = cpu.disassemble(b'\x66\x0f\x6e\xce')
+    assert i.mnemonic == "MOVD"
+    assert i.operands[0].ref == "xmm1"
+    assert i.operands[1].ref == "esi"
+    i = cpu.disassemble(b'\x0f\x6e\xce')
+    assert i.mnemonic == "MOVD"
+    assert i.operands[0].ref == "mm1"
+    assert i.operands[1].ref == "esi"

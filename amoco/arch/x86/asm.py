@@ -1800,3 +1800,7 @@ def i_PEXTRW(i, fmap):
     else:
         v = top(16)
     fmap[op1] = v.zeroextend(op1.size)
+
+i_ENDBR32 = i_NOP
+i_ENDBR64 = i_NOP
+

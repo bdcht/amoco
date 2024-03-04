@@ -1819,3 +1819,7 @@ def i_XLATB(i, fmap):
     fmap[rip] = fmap[rip] + i.length
     _b = fmap(mem(rbx + al.zeroextend(64), 8))
     fmap[al] = _b
+
+i_ENDBR32 = i_NOP
+i_ENDBR64 = i_NOP
+

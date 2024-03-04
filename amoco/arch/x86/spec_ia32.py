@@ -315,8 +315,6 @@ def ia32_rm8(obj, Mod, RM, data):
 # r/m16/32
 @ispec_ia32("*>[ {ff} /0 ]", mnemonic="INC", type=type_data_processing)
 @ispec_ia32("*>[ {ff} /1 ]", mnemonic="DEC", type=type_data_processing)
-@ispec_ia32("*>[ {ff} /2 ]", mnemonic="CALL", type=type_control_flow)
-@ispec_ia32("*>[ {ff} /4 ]", mnemonic="JMP", type=type_control_flow)
 @ispec_ia32("*>[ {ff} /6 ]", mnemonic="PUSH", type=type_data_processing)
 @ispec_ia32("*>[ {8f} /0 ]", mnemonic="POP", type=type_data_processing)
 @ispec_ia32("*>[ {f7} /2 ]", mnemonic="NOT", type=type_data_processing)
@@ -328,8 +326,16 @@ def ia32_rm8(obj, Mod, RM, data):
 def ia32_rm32(obj, Mod, RM, data):
     op1, data = getModRM(obj, Mod, RM, data)
     obj.operands = [op1]
-    if obj.mnemonic in ("JMP", "CALL"):
-        obj.misc["absolute"] = True
+
+@ispec_ia32("*>[ {ff} /2 ]", mnemonic="CALL")
+@ispec_ia32("*>[ {ff} /4 ]", mnemonic="JMP")
+def ia32_rm32(obj, Mod, RM, data):
+    op1, data = getModRM(obj, Mod, RM, data)
+    obj.operands = [op1]
+    obj.misc["absolute"] = True
+    if obj.misc['segreg'] is env.ds:
+        setpfx(obj, ('notrack',True), 0)
+    obj.type = type_control_flow
 
 
 # r/m32/48
@@ -339,6 +345,14 @@ def ia32_rm32(obj, Mod, RM, data):
 @ispec_ia32("*>[ {0f}{01} /1 ]", mnemonic="SIDT", type=type_system)
 @ispec_ia32("*>[ {0f}{01} /2 ]", mnemonic="LGDT", type=type_system)
 @ispec_ia32("*>[ {0f}{01} /3 ]", mnemonic="LIDT", type=type_system)
+def ia32_far(obj, Mod, RM, data):
+    op1, data = getModRM(obj, Mod, RM, data)
+    if op1._is_reg:
+        raise InstructionError(obj)
+    size = obj.misc["opdsz"] or env.internals["mode"]
+    op1.size = size+16
+    obj.operands = [op1]
+
 @ispec_ia32("*>[ {0f}{01} /4 ]", mnemonic="SMSW", type=type_system)
 @ispec_ia32("*>[ {0f}{01} /7 ]", mnemonic="INVLPG", type=type_system)
 def ia32_op48(obj, Mod, RM, data):
@@ -1011,6 +1025,13 @@ def ia32_movbe_crc32(obj, s, Mod, RM, REG, data):
     op2, data = getModRM(obj, Mod, RM, data)
     obj.operands = [op1, op2]
     obj.type = type_data_processing
+
+# ENDBR (added by Intel in 2017 to protect against ROP)
+@ispec_ia32("32>[ {f3}{0f}{1e}{fb} ]", mnemonic="ENDBR32")
+@ispec_ia32("32>[ {f3}{0f}{1e}{fa} ]", mnemonic="ENDBR64")
+def ia32_endbr(obj):
+    obj.operands = []
+    obj.type = type_cpu_state
 
 # FPU instructions:
 # -----------------

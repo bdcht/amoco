@@ -203,7 +203,18 @@ def test_decoder_028():
   assert i.operands[0].ref == 'xmm2'
   assert i.operands[1].size == 64
 
-def test_decoder_29():
+def test_decoder_029():
+  i = cpu.disassemble(b'\xf3\x0f\x1e\xfa')
+  assert i.mnemonic=='ENDBR64'
+  assert str(i).strip()=='endbr64'
+
+def test_decoder_030():
+  i = cpu.disassemble(b'\x3e\xff\xe0')
+  assert i.mnemonic=='JMP'
+  assert i.misc['notrack']==True
+  assert str(i).startswith('notrack')
+
+def test_decoder_30():
     i = cpu.disassemble(b'\x66\x48\x0f\x6e\xce')
     assert i.mnemonic == "MOVQ"
     assert i.operands[0].ref == "xmm1"

@@ -370,6 +370,8 @@ def ia32_rm64(obj, Mod, RM, data):
     op1, data = getModRM(obj, Mod, RM, data, REX)
     obj.operands = [op1]
     obj.misc["absolute"] = True
+    if obj.misc['segreg'] is env.ds:
+        setpfx(obj, ('notrack',True), 0)
     obj.type = type_control_flow
 
 
@@ -1088,6 +1090,13 @@ def ia32_movbe_crc32(obj, s, Mod, RM, REG, data):
     op2, data = getModRM(obj, Mod, RM, data)
     obj.operands = [op1, op2]
     obj.type = type_data_processing
+
+# ENDBR (added by Intel in 2017 to protect against ROP)
+@ispec_ia32("32>[ {f3}{0f}{1e}{fb} ]", mnemonic="ENDBR32")
+@ispec_ia32("32>[ {f3}{0f}{1e}{fa} ]", mnemonic="ENDBR64")
+def ia32_endbr(obj):
+    obj.operands = []
+    obj.type = type_cpu_state
 
 
 # FPU instructions:

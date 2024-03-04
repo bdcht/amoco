@@ -78,6 +78,7 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
             "repe",
             "repne",
             "repnz",
+            "notrack",
         ]
     )
 
@@ -318,13 +319,15 @@ def att_syntax_gen(env, CONDITION_CODES, cpu_addrsize, instruction):
         i = instruction(b"")
         i.mnemonic = toks[0].upper()
         # Remove prefixes
-        if i.mnemonic in ("REP", "REPZ", "REPNZ", "REPE", "REPNE", "LOCK"):
+        if i.mnemonic in ("REP", "REPZ", "REPNZ", "REPE", "REPNE", "LOCK", "NOTRACK"):
             if i.mnemonic in ("REP", "REPZ", "REPE"):
                 i.misc.update({"pfx": ["rep", None, None, None], "rep": True})
             if i.mnemonic in ("REPNZ", "REPNE"):
                 i.misc.update({"pfx": ["repne", None, None, None], "repne": True})
             if i.mnemonic in ("LOCK",):
                 i.misc.update({"pfx": ["lock", None, None, None], "lock": True})
+            if i.mnemonic in ("NOTRACK",):
+                i.misc.update({"pfx": ["notrack", None, None, None], "notrack": True})
             del toks[0]  # toks.pop(0) is broken for pyparsing 2.0.2
             # https://bugs.launchpad.net/ubuntu/+source/pyparsing/+bug/1381564
             i.mnemonic = toks[0].upper()

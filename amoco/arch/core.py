@@ -629,6 +629,7 @@ class ispec(object):
             i = iclass(bs)
         else:
             i.bytes += bs
+        saved_bytes = i.bytes[:-len(bs)]
         i.spec = self
         # set instruction attributes from directives, and then
         # call hook function with instruction as first parameter
@@ -651,7 +652,7 @@ class ispec(object):
             self.hook(obj=i, **kargs)
         except InstructionError:
             # clean up:
-            i.bytes = i.bytes[: -len(bs)]
+            i.bytes = saved_bytes
             for k in iter(self.iattr.keys()):
                 delattr(i, k)
             raise InstructionError(i)

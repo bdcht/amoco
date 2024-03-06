@@ -237,7 +237,7 @@ class mapper(object):
                 oldv = self.__Mem.read(l,len(v))[0]
             except MemoryError:
                 oldv = l
-            if oldv.etype==et_ext and oldv._subrefs.get("mmio_w",None):
+            if isinstance(oldv,ext) and oldv._subrefs.get("mmio_w",None):
                 oldv.stub(self,mode="w")
             else:
                 self.__Mem.write(l, v, endian)

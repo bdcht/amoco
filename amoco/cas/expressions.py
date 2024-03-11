@@ -2329,7 +2329,7 @@ class vec(exp):
         if widening:
             return vecw(self)
         cl = [complexity(x) for x in self.l]
-        if sum(cl, 0.0) > conf.Cas.complexity:
+        if sum(cl, 0.0) > conf.Cas.complexity > 0:
             return top(self.size)
         return self
 

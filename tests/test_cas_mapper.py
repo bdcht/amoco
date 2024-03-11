@@ -2,6 +2,8 @@ import pytest
 
 from amoco.cas.mapper import *
 
+conf.Cas.complexity = 0
+
 def test_slicing(m,x,y):
     m.clear()
     m[x] = cst(0xabcdef89,32)

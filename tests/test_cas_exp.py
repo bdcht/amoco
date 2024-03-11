@@ -2,6 +2,8 @@ import pytest
 import pickle
 from amoco.cas.expressions import *
 
+conf.Cas.complexity = 0
+
 def test_cst():
     c = cst(253,8)
     assert c == 0xfd

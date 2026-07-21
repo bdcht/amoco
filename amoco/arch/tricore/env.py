@@ -10,7 +10,7 @@ from amoco.cas.expressions import is_reg_pc, is_reg_flags, is_reg_stack
 from amoco.cas.expressions import *  # noqa: F403
 
 # reference documentations:
-# TriCore TC1.6.2 core architecture manual, volume 1, Core architecure V1.1 2017-08-24.
+# TriCore TC1.6.2 core architecture manual, volume 1, Core architecture V1.1 2017-08-24.
 # TriCore TC1.6.2 core architecture manual, volume 2, Instruction Set  V1.2.1 2019-07-29.
 
 # registers :
